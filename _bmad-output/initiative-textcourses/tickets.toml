@@ -1,0 +1,42 @@
+# tickets.toml — TextCourses Framework Initiative breakdown
+# Build order is defined by the table order.
+
+[[epic]]
+id = 1
+slug = "epic-runtime-engine"
+title = "Deterministic Engine Runtime"
+covers = ["FR-14", "FR-19", "FR-22", "AD-1", "AD-2", "AD-3"]
+
+[[epic]]
+id = 2
+slug = "epic-onboarding-lifecycle"
+title = "Workspace Onboarding & Lifecycle Management"
+covers = ["FR-1", "FR-2", "FR-3", "FR-20", "FR-21", "AD-6", "AD-7"]
+after = [{ epic = 1, needs = "manifest.py and hash_tracker.py runtime scripts" }]
+
+[[epic]]
+id = 3
+slug = "epic-curriculum-creation"
+title = "Curriculum Creation & Triad Consensus"
+covers = ["FR-4", "FR-5", "FR-6", "FR-7", "FR-8", "AD-4"]
+after = [{ epic = 1, needs = "dag.py and manifest.py runtime scripts" }]
+
+[[epic]]
+id = 4
+slug = "epic-instruction-delivery"
+title = "Conversational Instruction & Notes Compilation"
+covers = ["FR-9", "FR-10", "FR-11", "FR-12", "AD-5"]
+after = [
+  { epic = 1, needs = "manifest.py and context.py runtime scripts" },
+  { epic = 3, needs = "course directory schema and lesson-plan formats" }
+]
+
+[[epic]]
+id = 5
+slug = "epic-assessment-verification"
+title = "Diagnostic Assessment & Applied Verification"
+covers = ["FR-13", "FR-15", "FR-16", "FR-17", "FR-18"]
+after = [
+  { epic = 1, needs = "ledger.py atomic logging and misconception summarizer" },
+  { epic = 4, needs = "completed notes.md and review section status" }
+]

@@ -1,0 +1,45 @@
+# tickets.toml — Epic 1: epic-runtime-engine breakdown
+
+[[entry]]
+id = 1
+type = "story"
+title = "Implement atomic manifest manager (manifest.py)"
+description = "Implement _tc/scripts/manifest.py with inline PEP 723 metadata to read, validate, and atomically write course.toml and roadmap.toml using POSIX atomic replace (os.fsync + os.replace). Exposes CLI subcommands to read progress, update section status, and validate schema integrity."
+verify = "Script creates, reads, and updates mock course.toml and roadmap.toml files atomically; invalid schemas are rejected with exit code 1 and structured JSON error output on stderr."
+covers = ["FR-1", "FR-3", "FR-11", "AD-1", "AD-3"]
+after = []
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 2
+type = "story"
+title = "Implement assessment ledger engine (ledger.py)"
+description = "Implement _tc/scripts/ledger.py with inline PEP 723 metadata for atomic append-only logging of diagnostic test results to courses/<slug>/test-ledger.jsonl with file locking (fcntl.flock). Provides a summarize subcommand returning a compact (<100 tokens) JSON digest of recurring misconceptions."
+verify = "Concurrent appends to test-ledger.jsonl succeed without corruption; summarize returns deduplicated active misconceptions and weak sections under 100 tokens."
+covers = ["FR-14", "FR-16", "AD-1", "AD-3"]
+after = [1]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 3
+type = "story"
+title = "Implement DAG validator (dag.py) and context manifest engine (context.py)"
+description = "Implement _tc/scripts/dag.py using Python graphlib.TopologicalSorter to validate prerequisite dependency graphs and detect cycles. Implement _tc/scripts/context.py to enforce Stage Loading Matrices per skill, returning authorized file paths and pre-computed summaries to keep turn budgets <4,000 tokens."
+verify = "dag.py detects circular dependency loops and returns topological build order; context.py returns exact authorized file manifests for tc-teach, tc-test-me, and tc-practicals."
+covers = ["FR-7", "FR-8", "FR-22", "AD-4", "AD-5"]
+after = [1]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 4
+type = "story"
+title = "Implement SHA-256 delta tracker (hash_tracker.py) and test suite"
+description = "Implement _tc/scripts/hash_tracker.py to compute SHA-256 hashes of files in plan/sources/ and record changes in ledger.toml. Build comprehensive test suites in tests/ covering manifest.py, ledger.py, dag.py, context.py, and hash_tracker.py."
+verify = "hash_tracker.py detects added/modified/deleted source files; pytest executes in tests/ with 100% pass rate."
+covers = ["FR-19", "AD-1", "AD-2"]
+after = [1, 2, 3]
+hitl = false
+risk = "low"
