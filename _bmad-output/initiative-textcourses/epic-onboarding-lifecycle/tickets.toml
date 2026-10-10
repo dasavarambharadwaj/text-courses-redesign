@@ -1,0 +1,31 @@
+next_id = 4
+
+[[entry]]
+id = 1
+type = "story"
+title = "Implement workspace bootstrapper and scanner (tc-init)"
+after = []
+risk = "medium"
+covers = ["FR-1", "FR-2", "FR-3", "AD-6"]
+description = "Implement skills/tc-init/SKILL.md and skills/tc-init/scripts/bootstrapper.py. In empty directory, bootstraps .tc/, plan/, courses/, portfolio/, deploys _tc/scripts/, and creates plan/preferences.md. In existing workspace, inspects course.toml / roadmap.toml and outputs recommended next action."
+verify = "bootstrapper.py creates valid workspace layout with deployed engine scripts; get-status on populated workspace outputs correct next action; pytest tests pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Implement course evolution and deprecation manager (tc-redirect-course)"
+after = [1]
+risk = "low"
+covers = ["FR-19", "FR-20", "AD-7"]
+description = "Implement skills/tc-redirect-course/SKILL.md and skills/tc-redirect-course/scripts/redirector.py. Uses hash_tracker.py to detect source changes in plan/sources/, identifies affected unfinished chapters, and prepends deprecation warning markers to completed notes.md without altering historical notes content."
+verify = "redirector.py detects modified source files, prepends deprecation header to completed notes.md while preserving body bitwise; unit tests pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "Implement consent-gated schema migrator (tc-migrate)"
+after = [1]
+risk = "low"
+covers = ["FR-21", "AD-8"]
+description = "Implement skills/tc-migrate/SKILL.md and skills/tc-migrate/scripts/migrator.py. Inspects workspace health, produces migration-plan.md dry-run report, and requires explicit confirmation (--confirm) before mutating files."
+verify = "migrator.py dry-run exits 0 without writing changes; --confirm applies migrations cleanly; unit tests pass."

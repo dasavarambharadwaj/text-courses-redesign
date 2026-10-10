@@ -1,0 +1,31 @@
+# customize.toml — Customizable options for tc-init intake and style configuration
+
+[roles]
+options = [
+  "Software Engineer (Backend / Systems / DevOps)",
+  "Frontend / Full-Stack Developer",
+  "Data Scientist / ML Engineer / Quant",
+  "Product Manager / Technical Business Analyst",
+  "Student / Academic Researcher",
+]
+allow_custom = true
+
+[experience_levels]
+options = [
+  "Complete Beginner (Start from ground zero; focus on intuition)",
+  "Familiar with Basics (Skip intro fluff; focus on core mechanics)",
+  "Experienced Practitioner (Focus on internals, edge cases, deep architecture)",
+]
+
+[explanation_densities]
+options = [
+  "Short & Sweet (High-Velocity / Minimal Tokens) (~60–100 words per concept)",
+  "Example-Driven (Practical & Balanced) (~150–200 words per concept)",
+  "Deep-Dive Technical (Comprehensive & Academic) (~250–350 words per concept)",
+]
+
+[styles]
+direct_technical = { label = "Direct Technical & Internals", directive = "Focus on systems internals, runtime execution models, Big-O mechanics, and failure modes. Avoid introductory analogies." }
+analogy = { label = "Analogy & Intuition", directive = "Use conceptual and intuitive analogies as bridging mechanisms before introducing formal technical details." }
+code_first = { label = "Code & Case-First", directive = "Ground explanations immediately in practical code implementations, concrete snippets, and edge-case execution traces." }
+math = { label = "First-Principles & Math", directive = "Derive concepts from first principles, formal definitions, invariants, and mathematical formulations." }

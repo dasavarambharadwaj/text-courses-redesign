@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0",
+  "framework": "TextCourses",
+  "settings": {
+    "default_archetype": "applied_creation",
+    "default_style": "direct_technical",
+    "density": "example_driven"
+  }
+}
