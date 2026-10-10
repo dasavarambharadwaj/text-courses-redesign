@@ -3,7 +3,7 @@ title: 'Story 1.2: Implement assessment ledger engine (ledger.py)'
 type: 'feature'
 ticket: 2
 created: '2026-10-10'
-status: 'built'
+status: done
 baseline_revision: 'b86a11f'
 route: 'full'
 route_source: 'auto'
