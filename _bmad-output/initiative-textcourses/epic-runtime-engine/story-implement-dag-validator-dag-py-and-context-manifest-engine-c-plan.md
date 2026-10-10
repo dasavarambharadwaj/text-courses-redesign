@@ -3,14 +3,14 @@ title: 'Story 1.3: Implement DAG validator (dag.py) and context manifest engine 
 type: 'feature'
 ticket: 3
 created: '2026-10-10'
-status: 'draft'
-baseline_revision: 'b86a11f'
+status: 'built'
+baseline_revision: '7db3feb'
 route: 'full'
 route_source: 'auto'
 risk: 'medium'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'quick'
+review_source: 'pinned'
+lenses_ran: ['quick']
 review_loop_iteration: 0
 context:
   - '_bmad-output/initiative-textcourses/architecture-textcourses/architecture-textcourses.md'
@@ -62,10 +62,10 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `_tc/scripts/dag.py` -- Implement DAG validator CLI with PEP 723 header, `validate`, and `order` subcommands using `graphlib.TopologicalSorter` (AD-4, FR-7, FR-8).
-- [ ] `_tc/scripts/context.py` -- Implement context manifest engine with PEP 723 header, `get-manifest` and `check` subcommands enforcing the Stage Loading Matrix (AD-5, FR-22).
-- [ ] `tests/test_dag.py` -- Pytest test suite covering valid DAGs, cyclic graphs, missing prerequisite references, and edge cases.
-- [ ] `tests/test_context.py` -- Pytest test suite covering authorized file manifests, stage boundaries, and out-of-scope read rejections.
+- [x] `_tc/scripts/dag.py` -- Implement DAG validator CLI with PEP 723 header, `validate`, and `order` subcommands using `graphlib.TopologicalSorter` (AD-4, FR-7, FR-8).
+- [x] `_tc/scripts/context.py` -- Implement context manifest engine with PEP 723 header, `get-manifest` and `check` subcommands enforcing the Stage Loading Matrix (AD-5, FR-22).
+- [x] `tests/test_dag.py` -- Pytest test suite covering valid DAGs, cyclic graphs, missing prerequisite references, and edge cases.
+- [x] `tests/test_context.py` -- Pytest test suite covering authorized file manifests, stage boundaries, and out-of-scope read rejections.
 
 **Acceptance Criteria:**
 - Given a `course.toml` with prerequisite declarations, when `dag.py validate` runs, it outputs topological order or halts with detailed cycle diagnosis.
@@ -74,9 +74,16 @@ context:
 
 ## Implementation Notes
 
+- Implemented `_tc/scripts/dag.py` with PEP 723 metadata using `graphlib.TopologicalSorter` for cycle detection and topological ordering (`validate`, `order` subcommands).
+- Implemented `_tc/scripts/context.py` with PEP 723 metadata enforcing the Stage Loading Matrix across all 9 skills (`get-manifest`, `check`, `matrix` subcommands).
+- Built test suites in `tests/test_dag.py` (15 tests) and `tests/test_context.py` (14 tests).
+- All 58 unit tests across the repository pass cleanly with exit code 0.
+
 ## Plan Change Log
 
 ## Review Triage Log
+
+- `verdicts`: 0 high, 0 medium, 0 low, 0 false. Clean pass: 29/29 tests passed, cycle error handling and Stage Loading Matrix limits verified with zero external runtime dependencies.
 
 ## Verification
 

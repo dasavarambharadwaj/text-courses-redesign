@@ -222,6 +222,34 @@ uv run _tc/scripts/ledger.py summarize --path ./my-course
 uv run _tc/scripts/ledger.py validate --path ./my-course/test-ledger.jsonl
 ```
 
+### DAG Validator (`_tc/scripts/dag.py`)
+
+Deterministic prerequisite dependency graph cycle detection and topological order sequencing using Python's standard library `graphlib.TopologicalSorter`.
+
+#### Validate Graph for Cycles & Missing Prerequisites
+```bash
+uv run _tc/scripts/dag.py validate --path ./my-course/course.toml
+```
+
+#### Output Topological Build Order
+```bash
+uv run _tc/scripts/dag.py order --path ./my-course/course.toml
+```
+
+### Context Manifest Engine (`_tc/scripts/context.py`)
+
+Enforces the Stage Loading Matrix across all 9 TextCourses skills, keeping turn budgets under 4,000 tokens and preventing out-of-order concept leaks.
+
+#### Get Authorized File Manifest for a Skill
+```bash
+uv run _tc/scripts/context.py get-manifest --skill tc-teach --path ./my-course
+```
+
+#### Check File Access Authorization
+```bash
+uv run _tc/scripts/context.py check --skill tc-test-me --file chapter-02/lesson-plan.md
+```
+
 ---
 
 ## Verification & Pre-Commit Checklist
