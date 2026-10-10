@@ -6,6 +6,7 @@ covers: [FR-1, FR-2, FR-3, FR-20, FR-21]
 after: [epic-runtime-engine]
 assignee: ""
 risk: medium
+status: done
 ---
 
 # Workspace Onboarding & Lifecycle Management
