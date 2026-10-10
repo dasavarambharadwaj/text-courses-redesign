@@ -3,8 +3,8 @@ title: 'Story 2.2: Implement course evolution and deprecation manager (tc-redire
 type: 'feature'
 ticket: 2
 created: '2026-10-10'
-status: 'draft'
-baseline_revision: 'ce28f1f'
+status: done
+baseline_revision: '3343342'
 route: 'full'
 route_source: 'auto'
 risk: 'low'
@@ -58,9 +58,9 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `skills/tc-redirect-course/scripts/redirector.py` -- Implement redirector CLI with `diff-sources`, `deprecate`, and `inspect` subcommands (FR-19, FR-20, AD-7).
-- [ ] `skills/tc-redirect-course/SKILL.md` -- Implement course evolution skill prompt guiding learner through updates (FR-20).
-- [ ] `tests/test_redirector.py` -- Unit tests validating source drift calculation, notes deprecation idempotency, and bitwise body preservation.
+- [x] `skills/tc-redirect-course/scripts/redirector.py` -- Implement redirector CLI with `diff-sources`, `deprecate`, and `inspect` subcommands (FR-19, FR-20, AD-7).
+- [x] `skills/tc-redirect-course/SKILL.md` -- Implement course evolution skill prompt guiding learner through updates (FR-20).
+- [x] `tests/test_redirector.py` -- Unit tests validating source drift calculation, notes deprecation idempotency, and bitwise body preservation.
 
 **Acceptance Criteria:**
 - Given a `notes.md` file, when `redirector.py deprecate` runs, a deprecation alert block is prepended while the original content remains unchanged.
@@ -69,9 +69,16 @@ context:
 
 ## Implementation Notes
 
+Implemented `redirector.py` (both in `_tc/scripts/` and `skills/tc-redirect-course/scripts/`) with PEP 723 metadata, atomic writing, and exact suffix preservation for notes. Implemented `skills/tc-redirect-course/SKILL.md` for AI tutoring orchestration.
+
 ## Plan Change Log
 
 ## Review Triage Log
+
+- Verified 8/8 unit tests in `tests/test_redirector.py` pass cleanly.
+- Verified 103/103 tests in full test suite pass cleanly.
+- Verified strict zero-BMad references in scripts and skill prompts.
+- Verified bit-for-bit suffix preservation on notes deprecation.
 
 ## Verification
 
