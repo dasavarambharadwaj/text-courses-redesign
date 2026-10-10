@@ -41,8 +41,11 @@ def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
         sys.exit(exit_code)
 
 
-def load_manifest_data(path_or_str: Path | str) -> tuple[dict[str, Any], Path | None]:
-    """Load course manifest from file path or raw JSON/TOML string."""
+def load_manifest_data(path_or_str: Path | str | dict[str, Any]) -> tuple[dict[str, Any], Path | None]:
+    """Load course manifest from dict, file path, or raw JSON/TOML string."""
+    if isinstance(path_or_str, dict):
+        return path_or_str, None
+
     candidate = Path(path_or_str)
     if candidate.exists():
         if candidate.is_dir():

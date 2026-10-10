@@ -41,8 +41,11 @@ def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
         sys.exit(exit_code)
 
 
-def load_manifest_data(path_or_str: Path | str) -> tuple[dict[str, Any], Path | None]:
-    """Load course manifest from file path or raw JSON/TOML string."""
+def load_manifest_data(path_or_str: Path | str | dict[str, Any]) -> tuple[dict[str, Any], Path | None]:
+    """Load course manifest from dict, file path, or raw JSON/TOML string."""
+    if isinstance(path_or_str, dict):
+        return path_or_str, None
+
     candidate = Path(path_or_str)
     if candidate.exists():
         if candidate.is_dir():
@@ -148,6 +151,7 @@ def audit_curriculum(
     cycle_detected = False
     ts = graphlib.TopologicalSorter()
     for sec_id, prereqs in dep_graph.items():
+        # filter to valid nodes for cycle check
         valid_prereqs = [p for p in prereqs if p in section_map]
         ts.add(sec_id, *valid_prereqs)
 
@@ -237,6 +241,7 @@ def audit_curriculum(
                 sec_id = sec_record.get("id", "")
                 vocab_introduced = [t.lower() for t in (sec_record.get("vocabulary_introduced") or [])]
 
+                # Check if section title or vocabulary has overlap with research
                 matched = any(term in sec_title for term in all_research_terms) or any(
                     v in all_research_terms for v in vocab_introduced
                 )
