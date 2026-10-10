@@ -178,6 +178,50 @@ uv run _tc/scripts/manifest.py advance \
 uv run _tc/scripts/manifest.py validate --path ./my-course/course.toml
 ```
 
+### Assessment Ledger Engine (`_tc/scripts/ledger.py`)
+
+Handles atomic append-only logging of diagnostic assessments to `test-ledger.jsonl` with POSIX advisory file locking (`fcntl.flock`), schema validation, and compact (<100 tokens) misconception summarization.
+
+#### Display Help
+```bash
+uv run _tc/scripts/ledger.py --help
+```
+
+#### Append an Assessment Record
+```bash
+uv run _tc/scripts/ledger.py append \
+  --path ./my-course \
+  --record '{
+    "course": "rust-basics",
+    "chapter": "chapter-01",
+    "section": "section-01",
+    "question_type": "hinge_dilemma",
+    "prompt": "Evaluate mutable vs shared borrow semantics.",
+    "learner_response": "Only one mutable borrow allowed at a time.",
+    "outcome": "pass"
+  }'
+```
+
+#### Summarize Active Misconceptions (<100 Tokens)
+```bash
+uv run _tc/scripts/ledger.py summarize --path ./my-course
+```
+*Output:*
+```json
+{
+  "ok": true,
+  "total_tests": 8,
+  "pass_rate": 0.88,
+  "weak_sections": ["section-02"],
+  "active_misconceptions": ["Assumes borrow lives across thread boundary"]
+}
+```
+
+#### Validate Ledger File
+```bash
+uv run _tc/scripts/ledger.py validate --path ./my-course/test-ledger.jsonl
+```
+
 ---
 
 ## Verification & Pre-Commit Checklist
