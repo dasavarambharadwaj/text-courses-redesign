@@ -3,7 +3,7 @@ title: 'Story 1.4: Implement SHA-256 delta tracker (hash_tracker.py) and test su
 type: 'feature'
 ticket: 4
 created: '2026-10-10'
-status: 'built'
+status: done
 baseline_revision: '2d65c87'
 route: 'full'
 route_source: 'auto'
