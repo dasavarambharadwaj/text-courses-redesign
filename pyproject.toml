@@ -1,0 +1,17 @@
+[project]
+name = "textcourses"
+version = "0.1.0"
+description = "TextCourses Autonomous Apprenticeship Engine"
+requires-python = ">=3.11"
+dependencies = [
+    "tomli-w>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["_bmad*", ".*"]
