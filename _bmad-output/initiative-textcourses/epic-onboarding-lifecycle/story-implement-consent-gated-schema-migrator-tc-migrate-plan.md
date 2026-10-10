@@ -3,8 +3,8 @@ title: 'Story 2.3: Implement consent-gated schema migrator (tc-migrate)'
 type: 'feature'
 ticket: 3
 created: '2026-10-10'
-status: 'draft'
-baseline_revision: 'ce28f1f'
+status: done
+baseline_revision: '3101ec2'
 route: 'full'
 route_source: 'auto'
 risk: 'low'
@@ -59,9 +59,9 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `skills/tc-migrate/scripts/migrator.py` -- Implement migrator CLI with `check`, `plan`, and `apply` subcommands (FR-21, AD-8).
-- [ ] `skills/tc-migrate/SKILL.md` -- Implement migration skill prompt guiding user through transparent health reviews and consent gating.
-- [ ] `tests/test_migrator.py` -- Unit tests validating health checks, dry-run safety, and confirmation enforcement.
+- [x] `skills/tc-migrate/scripts/migrator.py` -- Implement migrator CLI with `check`, `plan`, and `apply` subcommands (FR-21, AD-8).
+- [x] `skills/tc-migrate/SKILL.md` -- Implement migration skill prompt guiding user through transparent health reviews and consent gating.
+- [x] `tests/test_migrator.py` -- Unit tests validating health checks, dry-run safety, and confirmation enforcement.
 
 **Acceptance Criteria:**
 - Given an outdated workspace, `migrator.py plan` generates a dry run without altering files.
@@ -71,9 +71,16 @@ context:
 
 ## Implementation Notes
 
+Implemented `migrator.py` with PEP 723 metadata, strict `--confirm APPLY` consent gate, atomic directory creation and config upgrade, and self-cleaning migration plan report. Implemented `skills/tc-migrate/SKILL.md` prompt.
+
 ## Plan Change Log
 
 ## Review Triage Log
+
+- Verified 8/8 unit tests in `tests/test_migrator.py` pass cleanly.
+- Verified 111/111 full test suite pass cleanly.
+- Verified zero BMad references in scripts, skills, and tests.
+- Verified strict rejection on apply when `--confirm APPLY` is omitted.
 
 ## Verification
 
