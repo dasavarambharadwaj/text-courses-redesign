@@ -6,6 +6,7 @@ covers: [FR-9, FR-10, FR-11, FR-12]
 after: [epic-runtime-engine, epic-curriculum-creation]
 assignee: ""
 risk: medium
+status: done
 ---
 
 # Conversational Instruction & Notes Compilation
