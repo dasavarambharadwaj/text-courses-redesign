@@ -1,0 +1,31 @@
+next_id = 4
+
+[[entry]]
+id = 1
+type = "story"
+title = "Implement session hygiene manager and lesson-plan progress tracker (lesson_tracker.py)"
+after = []
+risk = "low"
+covers = ["FR-12", "AD-5"]
+description = "Implement _tc/scripts/lesson_tracker.py. Inspects lesson-plan.md checklists, tracks concept completion state ([ ] vs [x]), resolves current active concept for seamless interruption recovery, and updates checkmarks atomically."
+verify = "lesson_tracker.py inspects lesson plans, resolves current uncompleted concept, ticks concepts atomically, and recovers mid-session progress; pytest tests pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Implement textbook notes compiler and section transition manager (notes_compiler.py)"
+after = [1]
+risk = "medium"
+covers = ["FR-11", "AD-3"]
+description = "Implement _tc/scripts/notes_compiler.py. Flow-preserving distillation of completed section concepts into permanent notes.md with 3-bullet recap, worked examples, and key mechanics; updates section status in course.toml to 'review' atomically."
+verify = "notes_compiler.py compiles valid notes.md, updates course.toml to review status, prevents overwriting completed notes; pytest tests pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "Implement conversational instruction skill and Next-Action Fork orchestrator (tc-teach)"
+after = [1, 2]
+risk = "medium"
+covers = ["FR-9", "FR-10", "AD-5"]
+description = "Implement skills/tc-teach/SKILL.md and teach_engine.py. Integrates context.py, loads active style profile and density from plan/preferences.md, delivers bounded single-concept lessons with bold mechanics and fatal mistakes, concludes turns with 4-option Next-Action Fork, and coordinates lesson_tracker and notes_compiler."
+verify = "teach_engine.py coordinates single-concept delivery, renders Next-Action Fork, triggers notes compilation upon final concept; skill guide validated; pytest tests pass."
