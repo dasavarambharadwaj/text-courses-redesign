@@ -1,0 +1,31 @@
+next_id = 4
+
+[[entry]]
+id = 1
+type = "story"
+title = "Implement documentation scout and research caching engine (tc-research)"
+after = []
+risk = "medium"
+covers = ["FR-6", "AD-4"]
+description = "Implement skills/tc-research/SKILL.md and skills/tc-research/scripts/scout.py (_tc/scripts/scout.py). Scrapes/extracts documentation ToC, API indexes, and vocabulary concepts into .tc/research/<slug>/digest.json and sources.toml with confidence scoring (high, medium, low, unverified)."
+verify = "scout.py generates structured research cache with confidence scores; CLI subcommands work; pytest tests pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Implement curriculum pre-flight auditor and vocabulary validator (tc-verify-course)"
+after = [1]
+risk = "medium"
+covers = ["FR-7", "AD-4"]
+description = "Implement skills/tc-verify-course/SKILL.md and skills/tc-verify-course/scripts/auditor.py (_tc/scripts/auditor.py). Audits prerequisite DAGs using dag.py, verifies vocabulary contracts against prerequisite chapters, and cross-checks proposed topic coverage against research digests. Reports findings categorized by severity."
+verify = "auditor.py validates DAG and vocabulary contracts; rejects cyclic or premature vocabulary references with exit code 1; passes valid courses with exit code 0; pytest tests pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "Implement course scaffolding architect and Triad Consensus Loop (tc-create)"
+after = [1, 2]
+risk = "high"
+covers = ["FR-4", "FR-5", "FR-8", "AD-4"]
+description = "Implement skills/tc-create/SKILL.md and skills/tc-create/scripts/course_builder.py (_tc/scripts/course_builder.py). Scaffolds courses across 5 Universal Archetypes, ingests user curriculum text or URLs, orchestrates Triad Consensus Loop (scout -> draft -> auditor), logs reconciliation events to .tc/cache/consensus-trace.jsonl, and writes courses/<slug>/ only upon reaching consensus (0 critical findings)."
+verify = "course_builder.py scaffolds all 5 archetypes, runs Triad Consensus Loop logging trace events, rejects invalid schemas, writes valid course manifests and overview.md; pytest tests pass."
