@@ -5,6 +5,7 @@ parent: initiative-textcourses
 covers: [FR-14, FR-19, FR-22]
 after: []
 assignee: ""
+status: done
 risk: medium
 ---
 
