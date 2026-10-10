@@ -250,6 +250,31 @@ uv run _tc/scripts/context.py get-manifest --skill tc-teach --path ./my-course
 uv run _tc/scripts/context.py check --skill tc-test-me --file chapter-02/lesson-plan.md
 ```
 
+### Source Hash Tracker (`_tc/scripts/hash_tracker.py`)
+
+Cryptographic SHA-256 source file delta tracker streaming files in 64KB chunks to detect added, modified, or deleted references across course updates.
+
+#### Create Source Snapshot
+```bash
+uv run _tc/scripts/hash_tracker.py snapshot \
+  --path ./my-course/plan/sources \
+  --output ./my-course/plan/sources/ledger.toml
+```
+
+#### Diff Source Files Against Reference Manifest
+```bash
+uv run _tc/scripts/hash_tracker.py diff \
+  --path ./my-course/plan/sources \
+  --manifest ./my-course/plan/sources/ledger.toml
+```
+
+#### Verify Source Integrity (Zero Drift)
+```bash
+uv run _tc/scripts/hash_tracker.py verify \
+  --path ./my-course/plan/sources \
+  --manifest ./my-course/plan/sources/ledger.toml
+```
+
 ---
 
 ## Verification & Pre-Commit Checklist
