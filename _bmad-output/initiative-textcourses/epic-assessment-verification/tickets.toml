@@ -1,0 +1,21 @@
+next_id = 3
+
+[[entry]]
+id = 1
+type = "story"
+title = "Implement diagnostic assessment engine and conceptual testing skill (tc-test-me)"
+after = []
+risk = "medium"
+covers = ["FR-13", "FR-14", "FR-15", "AD-3", "AD-5"]
+description = "Implement _tc/scripts/diagnostic_tester.py and skills/tc-test-me/SKILL.md. Enforces 100% question-based conceptual diagnostic testing without code copy-pasting, Cumulative Boundary Rule (strictly tests review/completed sections), logs results atomically to test-ledger.jsonl via ledger.py, and updates section status in course.toml upon passing."
+verify = "diagnostic_tester.py enforces cumulative boundaries, prevents future concept leaks, records test outcomes atomically in test-ledger.jsonl, marks section completed in course.toml on pass; zero code copy-pasting and zero BMad references in skill; pytest tests pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Implement applied verification engine, 4-lens project reviewer, and capstone evaluator (tc-practicals)"
+after = [1]
+risk = "medium"
+covers = ["FR-16", "FR-17", "FR-18", "AD-3", "AD-5"]
+description = "Implement _tc/scripts/practical_evaluator.py and skills/tc-practicals/SKILL.md. Formulates customizable practical project briefs in portfolio/project-XX/project-spec.md weighted toward recurring misconceptions from test-ledger.jsonl, defines deterministic verifiable deliverable contracts, runs 4-lens project review passes (Functional Completeness, Edge Cases, Architecture & Craft, Verification Integrity), generates review-report.md, and marks course status completed."
+verify = "practical_evaluator.py generates project specs weighted by test-ledger misconceptions, executes 4-lens reviews, produces review-report.md, updates course.toml status to completed; pytest tests pass."
