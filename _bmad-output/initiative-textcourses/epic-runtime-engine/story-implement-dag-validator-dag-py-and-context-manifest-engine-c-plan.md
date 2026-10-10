@@ -3,7 +3,7 @@ title: 'Story 1.3: Implement DAG validator (dag.py) and context manifest engine 
 type: 'feature'
 ticket: 3
 created: '2026-10-10'
-status: 'built'
+status: done
 baseline_revision: '7db3feb'
 route: 'full'
 route_source: 'auto'
