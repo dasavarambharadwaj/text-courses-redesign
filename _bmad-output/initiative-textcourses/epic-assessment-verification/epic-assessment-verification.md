@@ -6,6 +6,7 @@ covers: [FR-13, FR-15, FR-16, FR-17, FR-18]
 after: [epic-runtime-engine, epic-instruction-delivery]
 assignee: ""
 risk: medium
+status: done
 ---
 
 # Diagnostic Assessment & Applied Verification
