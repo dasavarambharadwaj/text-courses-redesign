@@ -465,6 +465,31 @@ All text intended for human reading (notes, explanations, guides) SHALL be writt
   - `notes_compiler.py` enforces a readability and jargon audit (`audit_jargon_and_readability`), ensuring all newly introduced technical terms feature an intuitive breakdown box before use.
   - Faculty teaching prompts in `teach_engine.py` strictly forbid technical gatekeeping or ungrounded terminology, requiring visceral analogies before formal definitions.
 
+#### FR-38: Unified Runtime Dispatcher (`_tc/scripts/tc.py` CLI)
+The system SHALL provide a unified CLI entrypoint `_tc/scripts/tc.py` dispatching all runtime commands (`init`, `research`, `create`, `teach`, `eval`, `notes`, `audit`, `dag`), consolidating script invocation into a single source of truth and eliminating redundant script duplication across skill folders. Realizes UJ-1, UJ-2, UJ-4.
+- **Consequences (testable):**
+  - Running `python _tc/scripts/tc.py <subcommand>` routes directly to the corresponding engine module with consistent argument parsing and unified error handling.
+  - All skill prompts reference `_tc/scripts/tc.py` or `_tc/scripts/<module>.py`, terminating manual copies into `skills/*/scripts/runtime/`.
+
+#### FR-39: Persistent Socratic Session State (`session.jsonl`)
+The instruction engine SHALL record structured conversational turn snapshots into `courses/<slug>/session.jsonl` upon every concept transition and interactive exchange, ensuring long-term pedagogical continuity across sessions. Realizes UJ-2, UJ-6.
+- **Consequences (testable):**
+  - Logs timestamp, active section, concept, faculty persona, learner inputs, teacher explanations, and Socratic state.
+  - Resuming `/tc-teach` automatically restores dialogue context from the last active session record without relying solely on chat window context.
+
+#### FR-40: Dynamic Context-Adaptive Next-Action Fork
+The instruction engine SHALL dynamically synthesize Next-Action Fork options based on the active pedagogical state, presenting immediate contextual actions such as practical challenge submissions, diagnostic testing, or concept advancement. Realizes UJ-2.
+- **Consequences (testable):**
+  - When a practical challenge is pending (`practical_pending = true`), option `[1]` dynamically adapts to `- [1] Submit Practical Solution: Daedalus evaluates your code`.
+  - When all concepts in a section are mastered and practicals are passed, option `[1]` dynamically adapts to `- [1] Advance to Next Section: Compiles notes and begins next chapter`.
+
+#### FR-41: Resilient Cross-Platform Hash Checksum Normalization
+The integrity tracking engine (`hash_tracker.py`) SHALL normalize line endings (`\r\n` to `\n`) and strip trailing whitespace prior to computing SHA-256 hashes for course notes, manifests, and lesson plans. Realizes UJ-1, UJ-5.
+- **Consequences (testable):**
+  - Git line-ending normalization (e.g. `core.autocrlf`) and cross-platform checkouts do not trigger false-positive tampering warnings in `hash_tracker.py` or `auditor.py`.
+  - Verification succeeds consistently across Linux, macOS, and Windows.
+
+
 ---
 
 ## 5. Non-Goals (Explicit)

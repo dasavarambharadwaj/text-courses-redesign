@@ -75,4 +75,17 @@ after = [
   { epic = 7, needs = "universal critical hats and dual-register knowledge" }
 ]
 
+[[epic]]
+id = 9
+slug = "epic-unified-dispatcher-session-continuity-and-resilience"
+title = "Unified Dispatcher CLI, Session State Continuity & Cross-Platform Integrity"
+covers = ["FR-38", "FR-39", "FR-40", "FR-41"]
+after = [
+  { epic = 4, needs = "teach_engine.py and notes_compiler.py" },
+  { epic = 5, needs = "practical_evaluator.py and diagnostic_tester.py" },
+  { epic = 7, needs = "dual-register knowledge and memlog.py" },
+  { epic = 8, needs = "pedagogical brainstorm, in-loop practicals, and jargon guardrails" }
+]
+
+
 

@@ -74,9 +74,42 @@ def atomic_write_json(filepath: Path, data: dict[str, Any]) -> None:
         raise RuntimeError(f"Atomic JSON write failed for {filepath}: {e}") from e
 
 
-def compute_file_hash(filepath: Path) -> str:
-    """Compute SHA-256 byte digest of a file, streaming in 64KB chunks."""
+BINARY_EXTENSIONS = {
+    ".bin", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip",
+    ".tar", ".gz", ".xz", ".7z", ".exe", ".so", ".dylib", ".dll",
+    ".woff", ".woff2", ".ttf", ".eot", ".mp3", ".mp4",
+}
+
+
+def normalize_content_for_hashing(content: bytes | str) -> bytes:
+    """Normalize CRLF to LF and trim line trailing whitespace for cross-platform resilience."""
+    if isinstance(content, bytes):
+        if not content:
+            return b""
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError:
+            return content
+    else:
+        text = content
+        if not text:
+            return b""
+
+    lines = [line.rstrip() for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n")]
+    return "\n".join(lines).encode("utf-8")
+
+
+def compute_file_hash(filepath: Path, normalize_text: bool = True) -> str:
+    """Compute SHA-256 byte digest of a file, with cross-platform text normalization."""
     filepath = Path(filepath)
+    if normalize_text and filepath.suffix.lower() not in BINARY_EXTENSIONS:
+        try:
+            raw = filepath.read_bytes()
+            normalized = normalize_content_for_hashing(raw)
+            return hashlib.sha256(normalized).hexdigest()
+        except Exception:
+            pass
+
     hasher = hashlib.sha256()
     with open(filepath, "rb") as f:
         while chunk := f.read(CHUNK_SIZE):

@@ -1,0 +1,41 @@
+next_id = 5
+
+[[entry]]
+id = 1
+type = "story"
+title = "Unified Runtime Dispatcher CLI (tc.py)"
+after = []
+risk = "medium"
+covers = ["FR-38"]
+description = "Implement unified CLI dispatcher _tc/scripts/tc.py routing all subcommands (init, research, create, teach, practicals, test, notes, audit, dag, redirect, migrate) to their underlying modules with unified argument parsing and clean JSON error propagation."
+verify = "tc.py exposes all subcommands; subcommands execute identically to individual scripts; unit tests pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Persistent Socratic Session State Machine"
+after = [1]
+risk = "medium"
+covers = ["FR-39"]
+description = "Record structured conversational turn logs into courses/<slug>/session.jsonl during /tc-teach turns. Restore active Socratic context upon session resume."
+verify = "teach_engine.py logs dialogue entries to session.jsonl and restores them during session recovery; unit tests pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "Dynamic Context-Adaptive Next-Action Fork"
+after = [1, 2]
+risk = "low"
+covers = ["FR-40"]
+description = "Adapt Next-Action Fork options dynamically to reflect pending practical lab submissions, section milestone advances, or diagnostic inquiries."
+verify = "teach_engine.py renders adaptive Next-Action Fork options based on session state; unit tests pass."
+
+[[entry]]
+id = 4
+type = "story"
+title = "Resilient Cross-Platform Hash Checksum Normalization"
+after = [1]
+risk = "low"
+covers = ["FR-41"]
+description = "Normalize line endings (CRLF to LF) and trailing whitespace before computing SHA-256 integrity hashes in hash_tracker.py and auditor.py."
+verify = "hash_tracker.py computes consistent SHA-256 hashes regardless of Windows/Linux CRLF differences; unit tests pass."

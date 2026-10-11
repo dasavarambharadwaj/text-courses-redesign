@@ -16,6 +16,7 @@ instruction events to courses/<slug>/memlog.md (FR-9, FR-10, FR-11, FR-32, AD-5)
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import re
@@ -58,26 +59,62 @@ NEXT_ACTION_FORK_OPTIONS = [
 ]
 
 
-def render_fork(tag_team: str | None = None) -> tuple[str, list[dict[str, Any]]]:
-    """Render Next-Action Fork text and option array, optionally surfacing a tag-team handoff."""
-    if not tag_team:
-        return NEXT_ACTION_FORK_TEXT, NEXT_ACTION_FORK_OPTIONS
+def render_fork(
+    tag_team: str | None = None,
+    practical_pending: bool = False,
+    section_completed: bool = False,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Render Next-Action Fork text and option array, dynamically adapting to session state."""
+    if practical_pending:
+        fork_text = """---
+### Next Action Fork
+- `[1]` **Submit Practical Solution**: Submit your implementation for AI evaluation by Daedalus.
+- `[2]` **View Lab Requirements**: Review the practical challenge specifications and starter template.
+- `[3]` **Ask Socratic Guidance**: Request an architectural hint without spoiling the solution.
+- `[4]` **Custom**: Ask a specific question or explore an edge case.
+"""
+        options = [
+            {"key": "1", "label": "Submit Practical Solution", "action": "submit_practical"},
+            {"key": "2", "label": "View Lab Requirements", "action": "view_practical"},
+            {"key": "3", "label": "Ask Socratic Guidance", "action": "socratic_hint"},
+            {"key": "4", "label": "Custom", "action": "write_in"},
+        ]
+        return fork_text, options
 
-    tag_team_clean = tag_team.strip()
-    fork_text = f"""---
+    if section_completed:
+        fork_text = """---
+### Next Action Fork
+- `[1]` **Advance to Next Section**: Finalize permanent notes.md and transition to next section.
+- `[2]` **Comprehensive Section Test**: Challenge me with diagnostic inquiries across this section.
+- `[3]` **Review Compiled Notes**: Inspect human-first textbook notes and analogies.
+- `[4]` **Custom**: Ask an open-ended question or request an alternate perspective.
+"""
+        options = [
+            {"key": "1", "label": "Advance to Next Section", "action": "advance_section"},
+            {"key": "2", "label": "Comprehensive Section Test", "action": "test_section"},
+            {"key": "3", "label": "Review Compiled Notes", "action": "review_notes"},
+            {"key": "4", "label": "Custom", "action": "write_in"},
+        ]
+        return fork_text, options
+
+    if tag_team:
+        tag_team_clean = tag_team.strip()
+        fork_text = f"""---
 ### Next Action Fork
 - `[1]` **Next Concept**: Advance to the next concept in the lesson plan.
 - `[2]` **Test Me**: Challenge me with a diagnostic inquiry on this concept.
 - `[3]` **Tag-in {tag_team_clean}**: Bring in {tag_team_clean} for an alternate perspective / mental model.
 - `[4]` **Custom**: Ask a specific question or explore a custom edge case.
 """
-    options = [
-        {"key": "1", "label": "Next Concept", "action": "advance"},
-        {"key": "2", "label": "Test Me", "action": "test_inquiry"},
-        {"key": "3", "label": f"Tag-in {tag_team_clean}", "action": "tag_team", "teacher": tag_team_clean, "faculty": tag_team_clean},
-        {"key": "4", "label": "Custom", "action": "write_in"},
-    ]
-    return fork_text, options
+        options = [
+            {"key": "1", "label": "Next Concept", "action": "advance"},
+            {"key": "2", "label": "Test Me", "action": "test_inquiry"},
+            {"key": "3", "label": f"Tag-in {tag_team_clean}", "action": "tag_team", "teacher": tag_team_clean, "faculty": tag_team_clean},
+            {"key": "4", "label": "Custom", "action": "write_in"},
+        ]
+        return fork_text, options
+
+    return NEXT_ACTION_FORK_TEXT, NEXT_ACTION_FORK_OPTIONS
 
 
 def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
@@ -160,6 +197,59 @@ def append_course_memlog(
             os.fsync(f.fileno())
     except Exception:
         pass
+
+
+def append_session_event(
+    course_dir: Path,
+    entry: dict[str, Any],
+) -> None:
+    """Record structured conversational turn event into courses/<slug>/session.jsonl."""
+    session_file = course_dir / "session.jsonl"
+    clean_entry = {
+        "timestamp": entry.get("timestamp") or datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "section_id": entry.get("section_id", ""),
+        "concept": entry.get("concept", ""),
+        "teacher": entry.get("teacher", "Hypatia"),
+        "turn_type": entry.get("turn_type", "socratic_dialogue"),
+        "summary": entry.get("summary", ""),
+        "details": entry.get("details", {}),
+    }
+    line = json.dumps(clean_entry) + "\n"
+    try:
+        with open(session_file, "a", encoding="utf-8") as f:
+            f.write(line)
+            f.flush()
+            os.fsync(f.fileno())
+    except Exception:
+        pass
+
+
+def load_session_history(
+    course_dir: Path,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    """Load the most recent `limit` conversational events from courses/<slug>/session.jsonl."""
+    session_file = course_dir / "session.jsonl"
+    if not session_file.is_file():
+        return []
+
+    lines = []
+    try:
+        content = session_file.read_text(encoding="utf-8").strip()
+        if not content:
+            return []
+        for line in content.splitlines():
+            line_str = line.strip()
+            if line_str:
+                try:
+                    lines.append(json.loads(line_str))
+                except Exception:
+                    pass
+    except Exception:
+        return []
+
+    return lines[-limit:]
+
 
 
 def find_section_directory(course_dir: Path, chapter_id: Any, section_id: Any) -> Path | None:
@@ -302,7 +392,6 @@ def get_teaching_session(
         }
 
     preferences = load_preferences(ws)
-    fork_text, fork_options = render_fork(tag_team)
 
     # Check course manifest for beginner or practical flags
     course_toml_path = course_dir / "course.toml"
@@ -347,6 +436,21 @@ def get_teaching_session(
         except Exception:
             pass
 
+    has_active_concept = concept_info.get("has_active_concept", False)
+    is_practical_pending = (
+        is_practical
+        and practical_info is not None
+        and practical_info.get("status") != "passed"
+    )
+    is_section_completed = (not has_active_concept) and (not is_practical_pending)
+
+    fork_text, fork_options = render_fork(
+        tag_team=tag_team,
+        practical_pending=(is_practical_pending and not has_active_concept),
+        section_completed=is_section_completed,
+    )
+    recent_history = load_session_history(course_dir, limit=5)
+
     guidance = (
         "Lead with Hypatia (The Empathetic Tutor). Use gentle Socratic stepping stones. Strictly zero unexplained jargon. Anchor in visceral real-world analogies."
         if is_beginner
@@ -363,6 +467,7 @@ def get_teaching_session(
         "is_practical": is_practical,
         "practical": practical_info,
         "pedagogical_guidance": guidance,
+        "recent_session_history": recent_history,
         "fork_text": fork_text,
         "fork_options": fork_options,
     }
@@ -399,6 +504,16 @@ def advance_lesson_concept(
             entry_type="concept",
             by=teacher,
             text=f"{sec_token}:{concept_token}:mastered",
+        )
+        append_session_event(
+            course_dir,
+            {
+                "section_id": active_info["section_id"],
+                "concept": ticked,
+                "teacher": teacher,
+                "turn_type": "concept_mastered",
+                "summary": f"Ticked '{ticked}' in {active_info['section_title']}",
+            },
         )
 
     is_section_completed = (
@@ -466,6 +581,15 @@ def advance_lesson_concept(
             entry_type="milestone",
             text=f"sec:{active_info['section_id']}:all_concepts_mastered",
         )
+        append_session_event(
+            course_dir,
+            {
+                "section_id": active_info["section_id"],
+                "teacher": teacher,
+                "turn_type": "section_completed",
+                "summary": f"Mastered all concepts in section {active_info['section_title']}",
+            },
+        )
 
     return {
         "ok": True,
@@ -529,6 +653,24 @@ def main() -> None:
     p_q.add_argument("--workspace", default=".", help="Workspace path.")
     p_q.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
+    # log-turn
+    p_turn = subparsers.add_parser("log-turn", help="Record structured interactive exchange to session.jsonl.")
+    p_turn.add_argument("--course", required=True, help="Course slug.")
+    p_turn.add_argument("--section", default="", help="Active section ID.")
+    p_turn.add_argument("--concept", default="", help="Active concept.")
+    p_turn.add_argument("--teacher", default="Hypatia", help="Faculty persona.")
+    p_turn.add_argument("--turn-type", default="socratic_dialogue", help="Turn type.")
+    p_turn.add_argument("--summary", required=True, help="Summary of exchange.")
+    p_turn.add_argument("--workspace", default=".", help="Workspace path.")
+    p_turn.add_argument("--json", action="store_true", help="Output results in JSON format.")
+
+    # history
+    p_hist = subparsers.add_parser("history", help="Retrieve recent session events from session.jsonl.")
+    p_hist.add_argument("--course", required=True, help="Course slug.")
+    p_hist.add_argument("--limit", type=int, default=5, help="Number of records to retrieve.")
+    p_hist.add_argument("--workspace", default=".", help="Workspace path.")
+    p_hist.add_argument("--json", action="store_true", help="Output results in JSON format.")
+
     args = parser.parse_args()
 
     try:
@@ -566,6 +708,29 @@ def main() -> None:
                 workspace=args.workspace,
             )
             output_json(result, 0)
+
+        elif args.subcommand == "log-turn":
+            ws = Path(args.workspace).resolve()
+            c_dir = ws / "courses" / args.course
+            if not c_dir.is_dir():
+                raise FileNotFoundError(f"Course directory not found: {c_dir}")
+            event = {
+                "section_id": args.section,
+                "concept": args.concept,
+                "teacher": args.teacher,
+                "turn_type": args.turn_type,
+                "summary": args.summary,
+            }
+            append_session_event(c_dir, event)
+            output_json({"ok": True, "course": args.course, "logged_event": event}, 0)
+
+        elif args.subcommand == "history":
+            ws = Path(args.workspace).resolve()
+            c_dir = ws / "courses" / args.course
+            if not c_dir.is_dir():
+                raise FileNotFoundError(f"Course directory not found: {c_dir}")
+            events = load_session_history(c_dir, limit=args.limit)
+            output_json({"ok": True, "course": args.course, "history": events}, 0)
 
         else:
             output_json({"error": f"Unknown subcommand: {args.subcommand}"}, 1)
