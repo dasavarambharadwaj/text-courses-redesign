@@ -50,6 +50,9 @@ Verify workspace initialization: check if `{project-root}/_tc/scripts/practical_
 ### Step 1: Intake & Brief Initialization
 Prompt the learner to confirm project preferences or propose a custom scenario:
 
+> [!NOTE]
+> Present the recommended defaults (Medium complexity, 4h weekend sprint budget, balanced scope) in a single concise confirmation prompt with an option to accept or propose a custom idea. Do NOT overwhelm the learner with multiple separate parameter inquiries.
+
 1. Confirm preferences (default: Medium complexity, 4h budget, balanced scope) or accept custom idea.
 2. Initialize the project brief on disk:
 

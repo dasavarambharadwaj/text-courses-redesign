@@ -330,7 +330,7 @@ def test_status_command(tmp_path: Path):
     assert data["status"] == "empty"
     assert data["recommendation"] == "/tc-create"
     assert "preferences" in data
-    assert data["preferences"]["role"] == "Software Engineer (Backend / Systems / DevOps)"
+    assert data["preferences"]["role"] == "Software Engineer / Developer"
 
 
 def test_preferences_get_and_set(tmp_path: Path):
@@ -436,4 +436,61 @@ def test_bootstrap_from_skill_bundled_runtime(tmp_path: Path):
     assert scripts_dir.is_dir()
     for s in expected_scripts:
         assert (scripts_dir / s).is_file(), f"Missing deployed script: {s}"
+
+
+def test_ten_diverse_roles_and_kid_friendly_personas():
+    """Verify DEFAULT_ROLES has 10 diverse entries, experience levels has custom, and 3 primary teachers."""
+    from bootstrapper import DEFAULT_ROLES, DEFAULT_EXPERIENCE_LEVELS, DEFAULT_DENSITIES, PRIMARY_TEACHERS
+
+    assert len(DEFAULT_ROLES) == 10
+    assert "Software Engineer / Developer" in DEFAULT_ROLES
+    assert "Product Manager / Business Analyst" in DEFAULT_ROLES
+    assert "Student / Academic Researcher" in DEFAULT_ROLES
+    assert "Lawyer / Legal Professional" in DEFAULT_ROLES
+    assert "Doctor / Healthcare / Medical" in DEFAULT_ROLES
+    assert "Other (write-in)" in DEFAULT_ROLES
+
+    assert len(DEFAULT_EXPERIENCE_LEVELS) == 4
+    assert any("custom" in e.lower() for e in DEFAULT_EXPERIENCE_LEVELS)
+
+    assert len(DEFAULT_DENSITIES) == 3
+
+    assert "feynman" in PRIMARY_TEACHERS
+    assert "hypatia" in PRIMARY_TEACHERS
+    assert "turing" in PRIMARY_TEACHERS
+
+
+def test_dynamic_recommendations():
+    """Verify recommendation CLI dynamically highlights suitable role, experience, and teacher."""
+    res_tech = run_bootstrapper("recommend", "--domain", "Rust Concurrency and Thread Safety")
+    assert res_tech.returncode == 0
+    data_tech = json.loads(res_tech.stdout)
+    assert data_tech["ok"] is True
+    assert data_tech["recommendations"]["role"] == "Software Engineer / Developer"
+
+    res_law = run_bootstrapper("recommend", "--domain", "Contract Law & Liability")
+    assert res_law.returncode == 0
+    data_law = json.loads(res_law.stdout)
+    assert data_law["ok"] is True
+    assert data_law["recommendations"]["role"] == "Lawyer / Legal Professional"
+
+    res_med = run_bootstrapper("recommend", "--domain", "Clinical Medicine and Pharmacology")
+    assert res_med.returncode == 0
+    data_med = json.loads(res_med.stdout)
+    assert data_med["ok"] is True
+    assert data_med["recommendations"]["role"] == "Doctor / Healthcare / Medical"
+
+
+def test_automatic_style_derivation():
+    """Verify that omitting styles derives them automatically from the teacher persona."""
+    from bootstrapper import compile_preferences_content
+
+    # Feynman -> analogy
+    pref_feynman = compile_preferences_content(teacher="feynman", styles=None)
+    assert "Analogy & Intuition" in pref_feynman
+
+    # Turing -> code_first + direct_technical
+    pref_turing = compile_preferences_content(teacher="turing", styles=None)
+    assert "Code & Case-First" in pref_turing
+
 

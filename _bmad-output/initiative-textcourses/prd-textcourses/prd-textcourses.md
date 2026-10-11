@@ -149,17 +149,21 @@ The filesystem hierarchy (`Roadmap` ➔ `Course` ➔ `Chapter` ➔ `Section`) se
 
 **Description:** Manages workspace initialization, learner intake, style configuration, and progress scanning. It rejects open-ended essay prompts in favor of scannable, numbered selections with an `Other` write-in option. Realizes UJ-1.
 
-#### FR-1: Frictionless Structured Intake
-The system SHALL capture learner profile data through a multi-stage numbered intake covering Role Taxonomy, Domain Experience, and Explanation Density. Realizes UJ-1.
+#### FR-1: Low-Friction, Turn-by-Turn Structured Intake & Role Diversity
+The system SHALL capture learner profile data through a conversational, turn-by-turn numbered intake asking strictly ONE question per turn across Learner Identity, Target Domain, 10-Option Role Diversity, Domain Experience Level, and Explanation Density. Realizes UJ-1.
 - **Consequences (testable):**
-  - System presents exactly 5 predefined roles + `[6] Other (write-in)`.
-  - System writes selected attributes into `plan/preferences.md` in valid Markdown frontmatter + body format.
+  - System asks exactly one question per turn and awaits learner input before proceeding to the next turn, eliminating cognitive fatigue.
+  - Presents exactly 9 diverse professional roles + `[10] Other (write-in)` (including Software Engineer, Product Manager, Student, Lawyer, Healthcare, Teacher, Designer, Finance, Sales/Ops).
+  - Domain experience level provides `[4] Custom (write-in)` to allow hybrid/custom learning objectives.
+  - Dynamically tags the most suitable option with `(Recommended)` based on prior answers.
+  - System writes selected attributes into `profile/preferences.md` and `plan/preferences.md`.
   - Re-running `/tc-init` on an existing workspace displays current preferences with an option to retain or re-configure.
 
-#### FR-2: Interactive Style Preview & Evolvable Profile Picker
-The system SHALL display live comparative sample explanations across 4 standard pedagogical voices (Direct Technical, Analogy-Intuition, Code-First, First-Principles/Math) and allow single- or multi-select combination. Realizes UJ-1, UJ-2.
+#### FR-2: Pedagogical Style Automation (Zero-Jargon Derivation)
+The system SHALL eliminate confusing comparative style previews and preferred style selection prompts during intake, automatically deriving the optimal pedagogical style directives from the learner's chosen master teacher persona and explanation density level. Realizes UJ-1, UJ-2.
 - **Consequences (testable):**
-  - Multi-selection (e.g. `A + C`) compiles a compound style directive in `plan/preferences.md`.
+  - Intake flow completely avoids asking the learner to decipher sample paragraphs or pick abstract style codes (e.g., "A + C").
+  - Pedagogical styles (e.g. intuitive analogies for Feynman, practical code-first for Turing, gentle step-by-step for Hypatia) are automatically synthesized into `profile/preferences.md`.
   - At chapter boundaries during `tc-teach`, the system inspects interaction latency and questions, and SHALL prompt the learner if a style profile adjustment is recommended.
 
 #### FR-3: Workspace State Scanner
@@ -330,14 +334,14 @@ All `tc-*` skills SHALL function identically across any AI environment providing
 
 **Description:** Upgrades TextCourses from an isolated single-course engine into a personality-driven apprenticeship platform featuring living master teacher personas, multi-course roadmaps with live Triad Inception Party Mode, a two-tier chronological memory log, and streamlined folder ergonomics. Realizes UJ-5, UJ-6.
 
-#### FR-24: Teacher Persona Selection & The Sovereign Faculty
-The system SHALL replace abstract density and style sliders during onboarding with direct selection of a world-renowned master teacher persona from the Sovereign Faculty roster. Realizes UJ-1, UJ-6.
+#### FR-24: Streamlined Kid-Friendly Teacher Personas
+The system SHALL present a streamlined roster of 3 intuitive, kid-friendly primary master teachers during intake with descriptions understandable by a 10-year-old. Realizes UJ-1, UJ-6.
 - **Consequences (testable):**
-  - Chiron (`/tc-init`) presents the Sovereign Faculty roster with distinct teaching oaths, pedagogical voices, and mental model approaches:
-    - **⚡ Feynman (The Intuitive Builder)**: Analogy-first, mechanical thought experiments, zero academic jargon.
-    - **📐 Euclid (The Axiomatic Purist)**: Axiomatic proofs, first principles, mathematical precision, code-first.
-    - **🦉 Socrates (The Dialectic Inquisitor)**: Probing inquiry, boundary condition dilemmas, guiding questions.
-    - **🎨 Leonardo (The Master Craftsman)**: Workshop builder, demanding proof-of-work, 4-lens reviewer.
+  - Chiron (`/tc-init`) presents 3 distinct, accessible teaching personas + `[4] Other (write-in)`:
+    - **⚡ Feynman (The Everyday Explainer)**: Fun, simple, uses everyday stories and real-world analogies, zero confusing jargon.
+    - **🦉 Hypatia (The Step-by-Step Mentor)**: Patient, gentle, guides you step-by-step from zero without skipping anything.
+    - **💻 Turing (The Practical Builder)**: Logical, hands-on, focuses on building things, how it works under the hood, and real code.
+  - Specialized non-teaching agents (Marie for research, Aristotle for roadmap DAGs, Leonardo for portfolio project reviews) remain dedicated to their pipeline roles and are not thrust upon learners as teaching style choices during intake.
   - The chosen primary teacher is persisted to `profile/preferences.md`.
   - Instructional delivery in `/tc-teach` adopts the selected teacher's persona, tone, and invariants.
 
@@ -489,6 +493,14 @@ The integrity tracking engine (`hash_tracker.py`) SHALL normalize line endings (
   - Git line-ending normalization (e.g. `core.autocrlf`) and cross-platform checkouts do not trigger false-positive tampering warnings in `hash_tracker.py` or `auditor.py`.
   - Verification succeeds consistently across Linux, macOS, and Windows.
 
+#### FR-42: Universal Zero-Cognitive-Overload Pacing & Centralized Interaction Standards
+All TextCourses skills, agents, and interactive flows SHALL adhere to strict cognitive lightness standards designed for any learner (from a 10-year-old child to seasoned professionals). Realizes UJ-1, UJ-2, UJ-6.
+- **Consequences (testable):**
+  - **Strict Single Question Invariant**: Interactive sessions MUST ask strictly ONE question or menu choice per turn, awaiting user response before proceeding. Bundling multiple questions or menus into a single message is strictly prohibited.
+  - **10-Year-Old Plain English Standard**: All menu descriptions, personas, and prompts must be written in simple, scannable, jargon-free English easily comprehended by a 10-year-old.
+  - **Dynamic Recommendation Indicators**: Every menu dynamically marks the most contextual choice with `(Recommended)` based on prior answers in the interaction.
+  - **Related Decisions Scannable Summary**: When a workflow involves multiple related parts or decisions (e.g. multi-part refactoring or final onboarding recap), the system presents a single scannable summary at the end with simple short options so the user never has to scroll up and down repeatedly.
+  - **Centralized Instruction Source of Truth**: All skills reference `_tc/INTERACTION_STANDARDS.md` to guarantee unified conversational behavior across the platform.
 
 ---
 

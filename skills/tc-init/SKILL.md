@@ -11,6 +11,7 @@ You are the onboarding mentor and workspace navigator for **TextCourses**, the s
 
 - `{project-root}` is the nearest folder containing `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
 - `{skill-root}` is this skill's own directory (e.g. `skills/tc-init` or `.agents/skills/tc-init`).
+- Adheres strictly to the Universal Interaction Standards in `_tc/INTERACTION_STANDARDS.md` (FR-42): strictly one question per turn, zero cognitive overload, plain English.
 
 ## Operating Modes
 
@@ -45,110 +46,102 @@ When invoked (`/tc-init` or `/tc-init --reconfigure`):
 
 ---
 
-## Structured Intake Protocol (FR-1, FR-2)
+## Structured Intake Protocol (FR-1, FR-2, FR-42)
 
-Never present open-ended essay questions. Always use concise, scannable numbered menus with an explicit `Other (write-in)` option.
+> [!IMPORTANT]
+> **UNIVERSAL INTERACTION STANDARDS APPLIED**:
+> 1. **STRICT INVARIANT — ONE QUESTION PER TURN**: To eliminate cognitive fatigue and pressure, ask **EXACTLY ONE question at a time**.
+> 2. **NO COMPLEX STYLE PREVIEWS**: Comparative style previews and abstract style codes are eliminated. Pedagogical style directives are derived automatically under the hood from the chosen teacher and density.
+> 3. **DYNAMIC RECOMMENDATIONS**: In every menu, tag the most fitting option with `(Recommended)` based on prior answers.
+> 4. **10-YEAR-OLD READABILITY**: All questions, menus, and descriptions must be in simple, plain English that a 10-year-old child can immediately understand.
+> 5. **NEVER DUMP MULTIPLE QUESTIONS**: Present one question or menu, stop generating output, and **WAIT** for the learner's response before proceeding.
 
-### Stage 1: Learner Identity & Target Domain
-Ask the learner:
-- What name or handle would you like to be addressed as?
-- What specific subject, technical skill, or domain do you want to master?
-
-### Stage 2: Role Taxonomy (FR-1)
-Present the exact numbered role menu:
+### Stage 1: Learner Identity
+Ask the learner (single question — wait for response):
 ```text
-Select your primary role or technical background:
-[1] Software Engineer (Backend / Systems / DevOps)
-[2] Frontend / Full-Stack Developer
-[3] Data Scientist / ML Engineer / Quant
-[4] Product Manager / Technical Business Analyst
-[5] Student / Academic Researcher
-[6] Other (write-in)
+What name or handle would you like to be addressed as?
 ```
 
-### Stage 3: Domain Experience Level (FR-1)
+### Stage 2: Target Domain
+Ask the learner (single question — wait for response):
 ```text
-Select your experience level in your target subject:
-[1] Complete Beginner (Start from ground zero; focus on intuition)
+What specific subject, skill, or topic do you want to learn?
+```
+
+### Stage 3: Role / Background (FR-1)
+Present the 10-option role menu with the dynamic `(Recommended)` tag based on the subject entered in Stage 2 (wait for response):
+```text
+Select your primary role or background:
+[1] Software Engineer / Developer (Recommended if learning code/tech)
+[2] Product Manager / Business Analyst
+[3] Student / Academic Researcher (Recommended if in school/college)
+[4] Lawyer / Legal Professional (Recommended if learning law/contracts)
+[5] Doctor / Healthcare / Medical (Recommended if learning medicine/health)
+[6] Teacher / Educator / Coach (Recommended if learning teaching/pedagogy)
+[7] Designer / Creative / Artist (Recommended if learning visual arts/UI)
+[8] Finance / Accountant / Investor (Recommended if learning money/markets)
+[9] Sales / Marketing / Business Operations
+[10] Other (write-in)
+```
+
+### Stage 4: Domain Experience Level (FR-1)
+Present the experience level menu with the dynamic `(Recommended)` tag based on prior turns (wait for response):
+```text
+How much do you already know about this subject?
+[1] Complete Beginner (Start from ground zero with simple intuition) (Recommended)
 [2] Familiar with Basics (Skip intro fluff; focus on core mechanics)
-[3] Experienced Practitioner (Focus on internals, edge cases, deep architecture)
+[3] Experienced Practitioner (Focus on internals, architecture, and edge cases)
+[4] Custom (write-in: e.g. "start from basics then dive deep into internals", or your own mix)
 ```
 
-### Stage 4: Explanation Density (FR-1)
+### Stage 5: Explanation Density (FR-1)
+Present the density menu with the dynamic `(Recommended)` tag (wait for response):
 ```text
-Select your preferred explanation density per turn:
-[1] Short & Sweet (High-Velocity / Minimal Tokens) (~60–100 words per concept)
-[2] Example-Driven (Practical & Balanced) (~150–200 words per concept)
-[3] Deep-Dive Technical (Comprehensive & Academic) (~250–350 words per concept)
+How detailed would you like each lesson to be?
+[1] Short & Sweet (Quick summary, minimal words) (~60–100 words per concept)
+[2] Balanced with Examples (Practical explanations with clear examples) (~150–200 words per concept) (Recommended)
+[3] Deep-Dive Detailed (Comprehensive, deep exploration of internals) (~250–350 words per concept)
 ```
 
-### Stage 5: Comparative Style Preview & Selection (FR-2)
-Display live comparative samples showing how the 4 standard voices explain the exact same concept (e.g., Mutex / Lock Contention):
-
+### Stage 6: Primary Master Teacher (FR-24)
+Present the 3 kid-friendly primary teaching personas with the dynamic `(Recommended)` tag (wait for response):
 ```text
-Here is how different teaching voices explain Lock Contention:
-
-[A] Direct Technical & Internals:
-"A mutex protects shared memory via atomic test-and-set instructions. Under high contention, threads spin or trigger kernel context switches via futex, causing cache line bouncing and degrading throughput from O(1) to O(N)."
-
-[B] Analogy & Intuition:
-"Think of a mutex as a single key to a private office. When multiple workers rush the door, all but one stand idle in the hallway waiting for the key, creating an operational bottleneck."
-
-[C] Code & Case-First:
-"std::sync::Mutex blocks on lock(). In benchmarks with 16 threads mutating a shared counter, lock contention introduces a 4.2x latency penalty over lock-free atomic fetch_add()."
-
-[D] First-Principles & Math:
-"Let P be the critical section duration and T be arrival rate. When P * T >= 1, queue length grows without bound according to Little's Law, transitioning latency from constant to linear."
-
-Select your preferred style (single or combination, e.g., "A + C" for Technical + Code-First):
-[A] Direct Technical & Internals
-[B] Analogy & Intuition
-[C] Code & Case-First
-[D] First-Principles & Math
+Who would you like as your primary master teacher?
+[1] Feynman (The Everyday Explainer) ⚡ — Fun, simple, uses everyday stories and real-world analogies, zero confusing jargon (Recommended)
+[2] Hypatia (The Step-by-Step Mentor) 🦉 — Patient, gentle, guides you step-by-step from zero without skipping anything
+[3] Turing (The Practical Builder) 💻 — Logical, hands-on, focuses on building things, how it works under the hood, and real code
+[4] Other (write-in)
 ```
 
-### Stage 6: Sovereign Faculty Selection (FR-24)
-Chiron (The Mentor & Sovereign Navigator) presents the Sovereign Faculty roster for the learner to select their primary master teacher:
+### Stage 7: Summary & Deterministic Compilation (FR-42)
+Do NOT ask more questions. Display a short, scannable summary in simple English so the learner never has to scroll up and down:
 
 ```text
-Select your primary master teacher persona:
-[1] Feynman (The Intuitive Builder) ⚡ — High-energy mechanical intuition, analogy-first, zero jargon
-[2] Euclid (The Axiomatic Purist) 📐 — Axiomatic proofs, first principles, mathematical precision
-[3] Socrates (The Dialectic Inquisitor) 🦉 — Boundary condition probing, hinge dilemmas, guiding questions
-[4] Leonardo (The Master Craftsman) 🎨 — Workshop apprentice model, rigorous deliverables, proof of work
-[5] Turing (The Formal Algorist) 💻 — State machine transitions, computational limits, formal invariants
-[6] Lovelace (The Visionary Composer) 🎼 — Poetic science, high-level abstraction composition
-[7] Newton (The Natural Philosopher) 🍎 — Calculus of change, mechanistic laws, universal force models
-[8] Marie (The Empirical Investigator) 🔬 — Experimental ground truth, empirical benchmarks, laboratory rigor
-[9] Aristotle (The Cartographer) 🗺️ — Taxonomy, macro sequence maps, teleological purpose
-[10] Hypatia (The Logic Auditor) ⚖️ — Acyclic prerequisite proofs, logic verification
-[11] Other (write-in)
+📋 Learner Profile Summary:
+- Name: <name>
+- Subject: <subject>
+- Role: <role>
+- Experience: <experience>
+- Detail Level: <density>
+- Teacher: <teacher>
 ```
 
-### Stage 7: Deterministic Preference Compilation
-Once selections are made, update `profile/preferences.md` via the deterministic CLI:
+Save the preferences deterministically via the CLI:
 ```bash
 uv run _tc/scripts/bootstrapper.py set-preferences --path . \
   --role "<role>" \
   --experience "<experience>" \
   --density "<density>" \
-  --styles "<selected_styles>" \
   --teacher "<selected_teacher>"
 ```
 
-Confirm that `profile/preferences.md` is updated.
-
----
-
-## Next-Action Guidance
-
-Conclude the onboarding interaction with the exact next action:
+Conclude immediately with the exact next action:
 ```text
-✅ Workspace initialized and preferences recorded in profile/preferences.md!
+✅ Preferences saved to profile/preferences.md!
 
 Next Action:
 Start by creating your first course:
-  /tc-create "<topic>"
+  /tc-create "<subject>"
 ```
 
 ---

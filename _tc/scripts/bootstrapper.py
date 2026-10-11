@@ -35,25 +35,51 @@ VALID_RECOMMENDATIONS = {
 }
 
 DEFAULT_ROLES = [
-    "Software Engineer (Backend / Systems / DevOps)",
-    "Frontend / Full-Stack Developer",
-    "Data Scientist / ML Engineer / Quant",
-    "Product Manager / Technical Business Analyst",
+    "Software Engineer / Developer",
+    "Product Manager / Business Analyst",
     "Student / Academic Researcher",
-    "Other",
+    "Lawyer / Legal Professional",
+    "Doctor / Healthcare / Medical",
+    "Teacher / Educator / Coach",
+    "Designer / Creative / Artist",
+    "Finance / Accountant / Investor",
+    "Sales / Marketing / Business Operations",
+    "Other (write-in)",
 ]
 
 DEFAULT_EXPERIENCE_LEVELS = [
-    "Complete Beginner (Start from ground zero; focus on intuition)",
+    "Complete Beginner (Start from ground zero with simple intuition)",
     "Familiar with Basics (Skip intro fluff; focus on core mechanics)",
-    "Experienced Practitioner (Focus on internals, edge cases, deep architecture)",
+    "Experienced Practitioner (Focus on internals, architecture, and edge cases)",
+    "Custom (write-in)",
 ]
 
 DEFAULT_DENSITIES = [
-    "Short & Sweet (High-Velocity / Minimal Tokens) (~60–100 words per concept)",
-    "Example-Driven (Practical & Balanced) (~150–200 words per concept)",
-    "Deep-Dive Technical (Comprehensive & Academic) (~250–350 words per concept)",
+    "Short & Sweet (Quick summary, minimal words) (~60–100 words per concept)",
+    "Balanced with Examples (Practical explanations with clear examples) (~150–200 words per concept)",
+    "Deep-Dive Detailed (Comprehensive, deep exploration of internals) (~250–350 words per concept)",
 ]
+
+PRIMARY_TEACHERS = {
+    "feynman": {
+        "name": "Feynman",
+        "title": "The Everyday Explainer",
+        "icon": "⚡",
+        "style": "Fun, simple, uses everyday stories and real-world analogies, zero confusing jargon",
+    },
+    "hypatia": {
+        "name": "Hypatia",
+        "title": "The Step-by-Step Mentor",
+        "icon": "🦉",
+        "style": "Patient, gentle, guides you step-by-step from zero without skipping anything",
+    },
+    "turing": {
+        "name": "Turing",
+        "title": "The Practical Builder",
+        "icon": "💻",
+        "style": "Logical, hands-on, focuses on building things, how it works under the hood, and real code",
+    },
+}
 
 STYLE_DEFINITIONS = {
     "direct_technical": {
@@ -212,9 +238,70 @@ def normalize_style_keys(styles: list[str] | str) -> list[str]:
     return list(dict.fromkeys(normalized))
 
 
+def get_recommendations(
+    target_domain: str = "",
+    role: str = "",
+    experience: str = "",
+) -> dict[str, str]:
+    """Dynamically determine recommended options based on prior intake answers."""
+    target_lower = target_domain.lower()
+    role_lower = role.lower()
+    exp_lower = experience.lower()
+
+    # 1. Recommend Role based on Target Domain
+    rec_role = DEFAULT_ROLES[0]  # Software Engineer / Developer
+    if any(k in target_lower for k in ["law", "legal", "compliance", "policy", "contract"]):
+        rec_role = DEFAULT_ROLES[3]
+    elif any(k in target_lower for k in ["med", "doctor", "health", "nurse", "bio", "clinical", "pharma"]):
+        rec_role = DEFAULT_ROLES[4]
+    elif any(k in target_lower for k in ["teach", "edu", "coach", "pedagogy", "school"]):
+        rec_role = DEFAULT_ROLES[5]
+    elif any(k in target_lower for k in ["design", "ui", "ux", "art", "creative", "graphic"]):
+        rec_role = DEFAULT_ROLES[6]
+    elif any(k in target_lower for k in ["finance", "money", "account", "invest", "stock", "tax"]):
+        rec_role = DEFAULT_ROLES[7]
+    elif any(k in target_lower for k in ["sales", "market", "ops", "business", "growth"]):
+        rec_role = DEFAULT_ROLES[8]
+    elif any(k in target_lower for k in ["product", "agile", "scrum", "analyst"]):
+        rec_role = DEFAULT_ROLES[1]
+    elif any(k in target_lower for k in ["student", "research", "academic", "math", "physics"]):
+        rec_role = DEFAULT_ROLES[2]
+
+    # 2. Recommend Experience based on Role / Domain
+    if "student" in role_lower or any(k in target_lower for k in ["beginner", "intro", "basics", "101", "scratch"]):
+        rec_experience = DEFAULT_EXPERIENCE_LEVELS[0]
+    elif "engineer" in role_lower or "developer" in role_lower:
+        rec_experience = DEFAULT_EXPERIENCE_LEVELS[1]
+    else:
+        rec_experience = DEFAULT_EXPERIENCE_LEVELS[0]
+
+    # 3. Recommend Density based on Experience
+    if "beginner" in exp_lower:
+        rec_density = DEFAULT_DENSITIES[1]  # Balanced with Examples
+    elif "practitioner" in exp_lower or "internals" in exp_lower:
+        rec_density = DEFAULT_DENSITIES[2]  # Deep-Dive Detailed
+    else:
+        rec_density = DEFAULT_DENSITIES[1]
+
+    # 4. Recommend Teacher based on Experience & Role
+    if "beginner" in exp_lower or "student" in role_lower:
+        rec_teacher = "feynman"
+    elif "engineer" in role_lower or "practitioner" in exp_lower:
+        rec_teacher = "turing"
+    else:
+        rec_teacher = "hypatia"
+
+    return {
+        "role": rec_role,
+        "experience": rec_experience,
+        "density": rec_density,
+        "teacher": rec_teacher,
+    }
+
+
 def compile_preferences_content(
     role: str = DEFAULT_ROLES[0],
-    domain_experience: str = DEFAULT_EXPERIENCE_LEVELS[2],
+    domain_experience: str = DEFAULT_EXPERIENCE_LEVELS[1],
     explanation_density: str = DEFAULT_DENSITIES[1],
     styles: list[str] | str | None = None,
     teacher: str = "feynman",
@@ -222,7 +309,20 @@ def compile_preferences_content(
 ) -> str:
     """Compile valid markdown frontmatter + body for profile/preferences.md."""
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    norm_styles = normalize_style_keys(styles or ["direct_technical", "code_first"])
+    if styles is None:
+        t_clean = (teacher or "").lower()
+        if "feynman" in t_clean:
+            derived_styles = ["analogy"]
+        elif "turing" in t_clean:
+            derived_styles = ["code_first", "direct_technical"]
+        elif "hypatia" in t_clean:
+            derived_styles = ["direct_technical", "analogy"]
+        else:
+            derived_styles = ["direct_technical", "code_first"]
+        norm_styles = normalize_style_keys(derived_styles)
+    else:
+        norm_styles = normalize_style_keys(styles)
+
     style_labels = [STYLE_DEFINITIONS[k]["label"] for k in norm_styles if k in STYLE_DEFINITIONS]
     style_profile_name = " + ".join(style_labels) if style_labels else "Direct Technical + Code-First"
 
@@ -746,6 +846,16 @@ def cmd_set_preferences(args: argparse.Namespace) -> None:
     }, exit_code=0)
 
 
+def cmd_recommend(args: argparse.Namespace) -> None:
+    """CLI handler for dynamic preference recommendation."""
+    rec = get_recommendations(
+        target_domain=getattr(args, "domain", ""),
+        role=getattr(args, "role", ""),
+        experience=getattr(args, "experience", ""),
+    )
+    output_json({"ok": True, "recommendations": rec}, exit_code=0)
+
+
 def main() -> None:
     """Main CLI entrypoint."""
     parser = argparse.ArgumentParser(
@@ -796,12 +906,19 @@ def main() -> None:
     p_set_pref = subparsers.add_parser("set-preferences", help="Set or update learner preferences in plan/preferences.md")
     p_set_pref.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
     p_set_pref.add_argument("--role", default=DEFAULT_ROLES[0], help="Learner role")
-    p_set_pref.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[2], help="Domain experience level")
+    p_set_pref.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[1], help="Domain experience level")
     p_set_pref.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
-    p_set_pref.add_argument("--styles", "--style", dest="styles", default="direct_technical,code_first", help="Pedagogical style profile(s)")
+    p_set_pref.add_argument("--styles", "--style", dest="styles", default=None, help="Pedagogical style profile(s)")
     p_set_pref.add_argument("--teacher", default=None, help="Primary faculty teacher persona")
     p_set_pref.add_argument("--notes", default="", help="Optional learner notes")
     p_set_pref.set_defaults(func=cmd_set_preferences)
+
+    # recommend subcommand
+    p_rec = subparsers.add_parser("recommend", help="Get dynamic recommendation for next preference option based on context")
+    p_rec.add_argument("--domain", default="", help="Learner target domain")
+    p_rec.add_argument("--role", default="", help="Selected learner role")
+    p_rec.add_argument("--experience", default="", help="Selected domain experience")
+    p_rec.set_defaults(func=cmd_recommend)
 
     args = parser.parse_args()
     args.func(args)

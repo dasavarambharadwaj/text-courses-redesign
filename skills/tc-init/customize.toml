@@ -7,26 +7,31 @@ icon = "🏛️"
 
 [roles]
 options = [
-  "Software Engineer (Backend / Systems / DevOps)",
-  "Frontend / Full-Stack Developer",
-  "Data Scientist / ML Engineer / Quant",
-  "Product Manager / Technical Business Analyst",
+  "Software Engineer / Developer",
+  "Product Manager / Business Analyst",
   "Student / Academic Researcher",
+  "Lawyer / Legal Professional",
+  "Doctor / Healthcare / Medical",
+  "Teacher / Educator / Coach",
+  "Designer / Creative / Artist",
+  "Finance / Accountant / Investor",
+  "Sales / Marketing / Business Operations",
 ]
 allow_custom = true
 
 [experience_levels]
 options = [
-  "Complete Beginner (Start from ground zero; focus on intuition)",
+  "Complete Beginner (Start from ground zero with simple intuition)",
   "Familiar with Basics (Skip intro fluff; focus on core mechanics)",
-  "Experienced Practitioner (Focus on internals, edge cases, deep architecture)",
+  "Experienced Practitioner (Focus on internals, architecture, and edge cases)",
 ]
+allow_custom = true
 
 [explanation_densities]
 options = [
-  "Short & Sweet (High-Velocity / Minimal Tokens) (~60–100 words per concept)",
-  "Example-Driven (Practical & Balanced) (~150–200 words per concept)",
-  "Deep-Dive Technical (Comprehensive & Academic) (~250–350 words per concept)",
+  "Short & Sweet (Quick summary, minimal words) (~60–100 words per concept)",
+  "Balanced with Examples (Practical explanations with clear examples) (~150–200 words per concept)",
+  "Deep-Dive Detailed (Comprehensive, deep exploration of internals) (~250–350 words per concept)",
 ]
 
 [styles]
@@ -35,14 +40,17 @@ analogy = { label = "Analogy & Intuition", directive = "Use conceptual and intui
 code_first = { label = "Code & Case-First", directive = "Ground explanations immediately in practical code implementations, concrete snippets, and edge-case execution traces." }
 math = { label = "First-Principles & Math", directive = "Derive concepts from first principles, formal definitions, invariants, and mathematical formulations." }
 
+[faculty]
+primary_teachers = ["feynman", "hypatia", "turing"]
+
 [faculty.personas]
-feynman = { name = "Feynman", title = "The Intuitive Builder", icon = "⚡", style = "High-energy mechanical intuition, analogy-first, zero jargon" }
+feynman = { name = "Feynman", title = "The Everyday Explainer", icon = "⚡", style = "Fun, simple, uses everyday stories and real-world analogies, zero confusing jargon" }
 euclid = { name = "Euclid", title = "The Axiomatic Purist", icon = "📐", style = "Axiomatic proofs, first principles, mathematical precision, code-first" }
 socrates = { name = "Socrates", title = "The Dialectic Inquisitor", icon = "🦉", style = "Boundary condition probing, hinge dilemmas, guiding questions" }
 leonardo = { name = "Leonardo", title = "The Master Craftsman", icon = "🎨", style = "Workshop apprentice model, rigorous deliverables, proof of work" }
-turing = { name = "Turing", title = "The Formal Algorist", icon = "💻", style = "State machine transitions, computational limits, formal invariants" }
+turing = { name = "Turing", title = "The Practical Builder", icon = "💻", style = "Logical, hands-on, focuses on building things, how it works under the hood, and real code" }
 lovelace = { name = "Lovelace", title = "The Visionary Composer", icon = "🎼", style = "Poetic science, high-level abstraction composition, elegant architecture" }
 newton = { name = "Newton", title = "The Natural Philosopher", icon = "🍎", style = "Calculus of change, mechanistic laws, universal force models" }
 marie = { name = "Marie", title = "The Empirical Investigator", icon = "🔬", style = "Experimental ground truth, empirical benchmarks, laboratory rigor" }
 aristotle = { name = "Aristotle", title = "The Cartographer", icon = "🗺️", style = "Taxonomy, macro sequence maps, teleological purpose" }
-hypatia = { name = "Hypatia", title = "The Logic Auditor", icon = "⚖️", style = "Acyclic prerequisite proofs, logic verification, cognitive leap audits" }
+hypatia = { name = "Hypatia", title = "The Step-by-Step Mentor", icon = "🦉", style = "Patient, gentle, guides you step-by-step from zero without skipping anything" }
