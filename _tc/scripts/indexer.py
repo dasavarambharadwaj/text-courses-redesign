@@ -119,7 +119,7 @@ def init_index_db(db_path: Path) -> sqlite3.Connection:
             );
         """)
 
-        # SQLite FTS5 Virtual Table using Porter Stemmer for English technical terminology
+        # SQLite FTS5 Virtual Table using Porter Stemmer with Unicode diacritic removal
         conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS fts_chunks USING fts5(
                 breadcrumb,
@@ -127,7 +127,7 @@ def init_index_db(db_path: Path) -> sqlite3.Connection:
                 content,
                 content='chunks',
                 content_rowid='id',
-                tokenize='porter unicode61'
+                tokenize='porter unicode61 remove_diacritics 2'
             );
         """)
 
@@ -166,7 +166,15 @@ def parse_markdown_into_breadcrumb_chunks(
 ) -> list[dict[str, Any]]:
     """Split markdown text into semantic chunks bounded by heading hierarchies and word targets."""
     text = file_path.read_text(encoding="utf-8", errors="replace")
-    lines = text.splitlines()
+    raw_lines = text.splitlines()
+    lines: list[str] = []
+    for rl in raw_lines:
+        words_in_line = rl.split()
+        if len(words_in_line) > target_chunk_words:
+            for i in range(0, len(words_in_line), target_chunk_words):
+                lines.append(" ".join(words_in_line[i : i + target_chunk_words]))
+        else:
+            lines.append(rl)
 
     chunks: list[dict[str, Any]] = []
     current_headings: list[str] = [doc_title]
@@ -215,8 +223,9 @@ def parse_markdown_into_breadcrumb_chunks(
             current_lines.append(line)
             current_word_count += len(line.split())
 
-            # Split if chunk grows beyond target size and line looks like a paragraph end
-            if current_word_count >= target_chunk_words and not line.strip():
+            # Split if chunk grows beyond target size and line looks like a paragraph end,
+            # or if hard ceiling is exceeded (for unformatted heading-less transcripts without blank lines)
+            if (current_word_count >= target_chunk_words and not line.strip()) or current_word_count >= int(target_chunk_words * 1.5):
                 flush_chunk(current_headings[-1])
 
     # Flush any remaining buffer
@@ -479,6 +488,12 @@ def run_build_index(
         rows = cur.fetchall()
         probe_latency_ms = (datetime.datetime.now() - start_time).total_seconds() * 1000.0
         probe_results_count = len(rows)
+
+    # Explicit WAL checkpoint to truncate wal file and flush B-tree pages cleanly
+    try:
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
+    except Exception:
+        pass
 
     conn.close()
     gate4_passed = True

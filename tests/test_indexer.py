@@ -310,3 +310,54 @@ def test_zero_bmad_invariant() -> None:
 
     assert "bmad" not in indexer_code, "Found 'bmad' in _tc/scripts/indexer.py"
     assert "bmad" not in skill_code, "Found 'bmad' in skills/tc-index/SKILL.md"
+
+
+def test_diacritic_normalization(tmp_path: Path) -> None:
+    """Verify that unicode remove_diacritics normalizes accented terms."""
+    db_file = tmp_path / "diacritic_test.db"
+    conn = init_index_db(db_file)
+    cur = conn.cursor()
+
+    cur.execute(
+        "INSERT INTO documents (rel_path, title, doc_type, source_group, file_size_bytes, sha256, created_at) "
+        "VALUES ('math.md', 'Math', 'md', 'grp', 50, 'sha', '2026-01-01');"
+    )
+    doc_id = cur.lastrowid
+    conn.execute(
+        "INSERT INTO chunks (doc_id, chunk_index, breadcrumb, heading, content, token_count, metadata_json) "
+        "VALUES (?, 0, 'Math > Topology', 'Topology', 'Henri Poincaré introduced the fundamental group in a naïve formulation.', 10, '{}');",
+        (doc_id,),
+    )
+    conn.commit()
+
+    # Search with unaccented "poincare" should match "Poincaré"
+    cur.execute("SELECT rowid FROM fts_chunks WHERE fts_chunks MATCH 'poincare*';")
+    hits = cur.fetchall()
+    assert len(hits) == 1
+
+    # Search with unaccented "naive" should match "naïve"
+    cur.execute("SELECT rowid FROM fts_chunks WHERE fts_chunks MATCH 'naive*';")
+    hits = cur.fetchall()
+    assert len(hits) == 1
+    conn.close()
+
+
+def test_unformatted_raw_text_chunking_fallback(tmp_path: Path) -> None:
+    """Verify that unformatted raw text without headings splits reliably using the ceiling fallback."""
+    raw_file = tmp_path / "raw_transcript.txt"
+    # Create 900 words without any headings or empty lines
+    words = ["word" + str(i) for i in range(900)]
+    raw_file.write_text(" ".join(words), encoding="utf-8")
+
+    chunks = parse_markdown_into_breadcrumb_chunks(
+        file_path=raw_file,
+        rel_path="raw_transcript.txt",
+        doc_title="Raw Transcript",
+        target_chunk_words=300,
+    )
+
+    # Must be split into multiple chunks due to the ceiling fallback
+    assert len(chunks) >= 2
+    for c in chunks:
+        assert c["token_count"] > 0
+
