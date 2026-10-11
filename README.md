@@ -81,11 +81,11 @@ Learners do **not** need to clone this repository. TextCourses skills are packag
 2. **Add TextCourses Skills**:
    In any project workspace or learning directory, install all 9 skills:
    ```bash
-   npx skills add <repository-url-or-slug> --skill '*'
+   npx skills add dasavarambharadwaj/text-courses-redesign --skill '*'
    ```
    Or install only the onboarding navigator to get started:
    ```bash
-   npx skills add <repository-url-or-slug> --skill tc-init
+   npx skills add dasavarambharadwaj/text-courses-redesign --skill tc-init
    ```
 
 3. **Initialize Sovereign Workspace**:
@@ -103,7 +103,7 @@ If you are developing the deterministic runtime engine or contributing new skill
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/your-org/text-courses-redesign.git
+   git clone https://github.com/dasavarambharadwaj/text-courses-redesign.git
    cd text-courses-redesign
    ```
 
