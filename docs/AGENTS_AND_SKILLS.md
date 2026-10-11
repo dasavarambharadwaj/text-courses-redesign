@@ -71,6 +71,19 @@ classDiagram
 
 ## 2. The 10 TextCourses Skills
 
+TextCourses skills follow the open agent skills specification. Install all 10 skills directly into your AI coding assistant (Antigravity, Cursor, Claude Code, Codex, Windsurf, OpenCode, Amp, etc.):
+
+```bash
+# Project installation (current workspace)
+npx skills add dasavarambharadwaj/text-courses-redesign --all
+
+# Or global installation across all projects
+npx skills add dasavarambharadwaj/text-courses-redesign --all -g
+
+# Or using the repository URL explicitly
+npx skills add https://github.com/dasavarambharadwaj/text-courses-redesign --skill '*' --agent '*'
+```
+
 ```mermaid
 flowchart LR
     subgraph Setup & Research

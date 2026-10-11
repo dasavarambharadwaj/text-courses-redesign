@@ -19,15 +19,28 @@ TextCourses is an open-source, filesystem-native learning framework designed for
 
 ## Quickstart: Zero to First Lesson in 60 Seconds
 
-### 1. Prerequisites
+### 1. Install TextCourses Skills
+Install all 10 TextCourses skills into your AI coding agent (Antigravity, Claude Code, Cursor, Codex, OpenCode, Amp, etc.):
+```bash
+# Install all skills into your AI agent in this project
+npx skills add dasavarambharadwaj/text-courses-redesign --all
+
+# Or globally across all workspaces (-g)
+npx skills add dasavarambharadwaj/text-courses-redesign --all -g
+
+# Or explicitly using the GitHub repository URL:
+npx skills add https://github.com/dasavarambharadwaj/text-courses-redesign --skill '*' --agent '*'
+```
+
+### 2. Prerequisites
 - Python 3.11+
 - [`uv`](https://docs.astral.sh/uv/) (Fast Python package runner)
   ```bash
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-### 2. Initialize Your Workspace
-In your terminal or AI coding agent (Antigravity, Claude Code, Cursor, Codex):
+### 3. Initialize Your Workspace
+In your AI coding agent chat or terminal:
 ```bash
 # Via Slash Command in Chat
 /tc-init
@@ -37,21 +50,21 @@ uv run _tc/scripts/tc.py init --workspace .
 ```
 This sets up your `profile/preferences.md` (role, experience level, preferred tutor, and hands-on practical focus).
 
-### 3. Research Any Topic Autonomously
+### 4. Research Any Topic Autonomously
 Before creating a course, let **Marie Curie** research official docs, specifications, and modern practices:
 ```bash
 /tc-research distributed-systems
 ```
 This generates an authoritative dossier in `research/distributed-systems/dossier.md` stress-tested through 5 critical hats.
 
-### 4. Create Your Personalized Course
+### 5. Create Your Personalized Course
 Let the Faculty Triad (Daedalus, Marie, Hypatia) autonomously debate and scaffold your curriculum:
 ```bash
 /tc-create "Distributed Consensus & Raft"
 ```
 TextCourses synthesizes 4 distinct curricular paradigms and scaffolds `courses/distributed-consensus/` with zero stalling.
 
-### 5. Begin Conversational Socratic Learning
+### 6. Begin Conversational Socratic Learning
 ```bash
 /tc-teach
 ```
@@ -61,7 +74,7 @@ Your faculty tutor will deliver one concept at a time, check off concepts in `le
 
 ## The 10 TextCourses Skills
 
-Use these skills directly in your AI assistant:
+Installed via `npx skills add dasavarambharadwaj/text-courses-redesign --all` and ready to trigger directly in chat:
 
 | Skill Command | Lead Persona | What It Does |
 | :--- | :--- | :--- |
