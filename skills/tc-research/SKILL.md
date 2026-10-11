@@ -20,6 +20,18 @@ description: "Scout technical documentation and extract structured ToC, API inde
 
 ---
 
+## Conventions
+
+- `{project-root}` is the nearest folder containing `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
+- `{skill-root}` is this skill's own directory (e.g. `skills/tc-research` or `.agents/skills/tc-research`).
+
+## On Activation
+
+Verify workspace initialization: check if `{project-root}/_tc/scripts/scout.py` exists.
+- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first (installing it via `npx skills add <repo> --skill tc-init` if needed), then re-run this command.
+
+---
+
 ## Workflow
 
 ### 1. Ingest Documentation Sources

@@ -26,6 +26,18 @@ Conducts targeted, 100% question-based conceptual diagnostic evaluations of lear
 
 ---
 
+## Conventions
+
+- `{project-root}` is the nearest folder containing `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
+- `{skill-root}` is this skill's own directory (e.g. `skills/tc-test-me` or `.agents/skills/tc-test-me`).
+
+## On Activation
+
+Verify workspace initialization: check if `{project-root}/_tc/scripts/diagnostic_tester.py` exists.
+- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first (installing it via `npx skills add <repo> --skill tc-init` if needed), then re-run this command.
+
+---
+
 ## Execution Workflow
 
 ### Step 1: Prepare Context & Verify Eligible Boundaries

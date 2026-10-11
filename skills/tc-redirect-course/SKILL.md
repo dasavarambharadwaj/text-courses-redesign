@@ -16,6 +16,18 @@ description: "Inspect documentation source drift and manage non-destructive cour
 
 ---
 
+## Conventions
+
+- `{project-root}` is the nearest folder containing `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
+- `{skill-root}` is this skill's own directory (e.g. `skills/tc-redirect-course` or `.agents/skills/tc-redirect-course`).
+
+## On Activation
+
+Verify workspace initialization: check if `{project-root}/_tc/scripts/redirector.py` exists.
+- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first (installing it via `npx skills add <repo> --skill tc-init` if needed), then re-run this command.
+
+---
+
 ## Workflow
 
 ### 1. Detect Source Drift

@@ -402,3 +402,38 @@ def test_python_api_functions(tmp_path: Path):
     )
     assert "Frontend / Full-Stack Developer" in pref_text
     assert "Code & Case-First + Analogy & Intuition" in pref_text
+
+
+def test_bootstrap_from_skill_bundled_runtime(tmp_path: Path):
+    """Verify bootstrapping via skills/tc-init/scripts/bootstrapper.py deploys all 16 runtime scripts."""
+    ws = tmp_path / "standalone_ws"
+    cmd = [sys.executable, str(SKILL_BOOTSTRAPPER_SCRIPT), "bootstrap", "--path", str(ws)]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    assert res.returncode == 0
+    data = json.loads(res.stdout)
+    assert data["ok"] is True
+    assert data["status"] == "bootstrapped"
+
+    expected_scripts = [
+        "auditor.py",
+        "bootstrapper.py",
+        "context.py",
+        "course_builder.py",
+        "dag.py",
+        "diagnostic_tester.py",
+        "hash_tracker.py",
+        "ledger.py",
+        "lesson_tracker.py",
+        "manifest.py",
+        "migrator.py",
+        "notes_compiler.py",
+        "practical_evaluator.py",
+        "redirector.py",
+        "scout.py",
+        "teach_engine.py",
+    ]
+    scripts_dir = ws / "_tc" / "scripts"
+    assert scripts_dir.is_dir()
+    for s in expected_scripts:
+        assert (scripts_dir / s).is_file(), f"Missing deployed script: {s}"
+

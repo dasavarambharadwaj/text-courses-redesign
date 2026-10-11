@@ -17,6 +17,18 @@ description: "Architect comprehensive courses across 5 Universal Archetypes reco
 
 ---
 
+## Conventions
+
+- `{project-root}` is the nearest folder containing `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
+- `{skill-root}` is this skill's own directory (e.g. `skills/tc-create` or `.agents/skills/tc-create`).
+
+## On Activation
+
+Verify workspace initialization: check if `{project-root}/_tc/scripts/course_builder.py` exists.
+- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first (installing it via `npx skills add <repo> --skill tc-init` if needed), then re-run this command.
+
+---
+
 ## Workflow
 
 ### 1. Intake Learner Intent

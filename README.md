@@ -69,55 +69,72 @@ TextCourses pairs an AI Socratic tutor with a deterministic, local-first filesys
 - **[uv](https://docs.astral.sh/uv/)** (Fast Python package and tool runner)
 - **Git**
 
-### Quickstart Installation
+### Quickstart Installation for Learners (Zero Repo Cloning)
+
+Learners do **not** need to clone this repository. TextCourses skills are packaged as standard agent skills and can be installed into any project workspace using the open skills CLI (`npx skills`):
 
 1. **Install `uv`** (if not already installed):
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
-   Or via Homebrew / package manager:
+
+2. **Add TextCourses Skills**:
+   In any project workspace or learning directory, install all 9 skills:
    ```bash
-   brew install uv
+   npx skills add <repository-url-or-slug> --skill '*'
+   ```
+   Or install only the onboarding navigator to get started:
+   ```bash
+   npx skills add <repository-url-or-slug> --skill tc-init
    ```
 
-2. **Clone the Repository**:
+3. **Initialize Sovereign Workspace**:
+   Launch your preferred AI assistant in your project and run:
+   ```text
+   /tc-init
+   ```
+   The `tc-init` skill automatically initializes `.tc/`, `plan/`, `courses/`, `portfolio/`, deploys the 16 canonical deterministic runtime scripts into `_tc/scripts/`, and configures your personalized pedagogical profile.
+
+---
+
+### Developing & Testing TextCourses (Engine Developers)
+
+If you are developing the deterministic runtime engine or contributing new skills:
+
+1. **Clone the Repository**:
    ```bash
    git clone https://github.com/your-org/text-courses-redesign.git
    cd text-courses-redesign
    ```
 
-3. **Install Dependencies**:
+2. **Install Dependencies**:
    `uv` manages the virtual environment and dependencies automatically. Install dev/test packages:
    ```bash
    uv sync
    ```
 
-4. **Verify the Installation**:
-   Execute the automated test suite to verify that all 16 runtime scripts and integration suites are functional:
+3. **Verify the Installation**:
+   Execute the automated test suite to verify all runtime scripts and integration suites:
    ```bash
    uv run pytest
    ```
-   You should see **167 tests passing cleanly (100% pass rate)**.
+   You should see **168 tests passing cleanly (100% pass rate)**.
 
 ### Configuring AI Agent Assistants
 
-TextCourses skills adhere to standard agent skill definitions (`SKILL.md` frontmatter) and can be used directly with modern agent frameworks:
+TextCourses skills adhere to standard agent skill definitions (`SKILL.md` frontmatter) and are immediately discoverable by modern agent frameworks:
 
 #### Google Antigravity CLI / Gemini CLI
-The skills in `skills/` are immediately discoverable. Point your workspace to the repository root:
+Skills installed into `.agents/skills/` or `skills/` are automatically discovered:
 ```bash
 agy --workspace .
 ```
 
 #### Claude Code / Anthropic Agent
-Copy or symlink the `skills/` directory into your project's `.claude/skills/` or `.agents/skills/` directory:
-```bash
-mkdir -p .agents/skills
-cp -r skills/* .agents/skills/
-```
+Installed automatically by `npx skills add` into `.agents/skills/` or `.claude/skills/`.
 
-#### Cursor / Windsurf / Custom Agents
-Point the assistant to `.tc/` and instruct it to read `SKILL.md` for skill triggers, or call the deterministic scripts under `_tc/scripts/` via terminal tool executions.
+#### Cursor / Windsurf / Codex / OpenCode
+Discoverable directly via `npx skills add` or points directly to `.agents/skills/` with terminal tool execution of deterministic scripts in `_tc/scripts/`.
 
 ---
 

@@ -1,0 +1,719 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "tomli-w>=1.0.0",
+# ]
+# ///
+"""bootstrapper.py — Deterministic workspace bootstrapper and scanner for TextCourses.
+
+Initializes sovereign local filesystem workspaces (FR-1, FR-2, FR-3, AD-6):
+- Creates directory structure: .tc/, plan/, courses/, portfolio/, _tc/scripts/
+- Deploys canonical runtime scripts to workspace
+- Manages learner preferences (plan/preferences.md) without overwriting existing data
+- Deterministically scans workspace progress manifests and outputs recommended next commands
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import json
+import os
+import re
+import shutil
+import sys
+import tomllib
+from pathlib import Path
+from typing import Any
+
+VALID_RECOMMENDATIONS = {
+    "/tc-create",
+    "/tc-teach",
+    "/tc-test-me",
+    "/tc-practicals",
+}
+
+DEFAULT_ROLES = [
+    "Software Engineer (Backend / Systems / DevOps)",
+    "Frontend / Full-Stack Developer",
+    "Data Scientist / ML Engineer / Quant",
+    "Product Manager / Technical Business Analyst",
+    "Student / Academic Researcher",
+    "Other",
+]
+
+DEFAULT_EXPERIENCE_LEVELS = [
+    "Complete Beginner (Start from ground zero; focus on intuition)",
+    "Familiar with Basics (Skip intro fluff; focus on core mechanics)",
+    "Experienced Practitioner (Focus on internals, edge cases, deep architecture)",
+]
+
+DEFAULT_DENSITIES = [
+    "Short & Sweet (High-Velocity / Minimal Tokens) (~60–100 words per concept)",
+    "Example-Driven (Practical & Balanced) (~150–200 words per concept)",
+    "Deep-Dive Technical (Comprehensive & Academic) (~250–350 words per concept)",
+]
+
+STYLE_DEFINITIONS = {
+    "direct_technical": {
+        "label": "Direct Technical & Internals",
+        "directive": "Focus on systems internals, runtime execution models, Big-O mechanics, and failure modes. Avoid introductory analogies.",
+    },
+    "analogy": {
+        "label": "Analogy & Intuition",
+        "directive": "Use conceptual and intuitive analogies as bridging mechanisms before introducing formal technical details.",
+    },
+    "code_first": {
+        "label": "Code & Case-First",
+        "directive": "Ground explanations immediately in practical code implementations, concrete snippets, and edge-case execution traces.",
+    },
+    "math": {
+        "label": "First-Principles & Math",
+        "directive": "Derive concepts from first principles, formal definitions, invariants, and mathematical formulations.",
+    },
+}
+
+
+def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
+    """Print structured JSON to stdout (exit 0) or stderr (exit 1) and terminate."""
+    if exit_code == 0:
+        print(json.dumps(data, indent=2))
+        sys.exit(0)
+    else:
+        print(json.dumps(data, indent=2), file=sys.stderr)
+        sys.exit(exit_code)
+
+
+def atomic_write_json(filepath: Path, data: dict[str, Any]) -> None:
+    """Write JSON data atomically using a temp file, fsync, and os.replace."""
+    filepath = Path(filepath)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = filepath.with_suffix(filepath.suffix + ".tmp")
+    try:
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_file, filepath)
+    except Exception as e:
+        if temp_file.exists():
+            temp_file.unlink(missing_ok=True)
+        raise RuntimeError(f"Atomic JSON write failed for {filepath}: {e}") from e
+
+
+def atomic_write_text(filepath: Path, content: str) -> None:
+    """Write text data atomically using a temp file, fsync, and os.replace."""
+    filepath = Path(filepath)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = filepath.with_suffix(filepath.suffix + ".tmp")
+    try:
+        with open(temp_file, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_file, filepath)
+    except Exception as e:
+        if temp_file.exists():
+            temp_file.unlink(missing_ok=True)
+        raise RuntimeError(f"Atomic text write failed for {filepath}: {e}") from e
+
+
+def find_canonical_scripts_dir() -> Path | None:
+    """Locate the canonical runtime scripts directory (_tc/scripts/)."""
+    env_dir = os.environ.get("TC_SCRIPTS_DIR")
+    if env_dir:
+        p = Path(env_dir).resolve()
+        if p.is_dir() and (p / "manifest.py").is_file():
+            return p
+
+    current = Path(__file__).resolve()
+
+    # Bundled runtime/ directory beside this script (e.g. in skills/tc-init/scripts/runtime/)
+    runtime_dir = current.parent / "runtime"
+    if runtime_dir.is_dir() and (runtime_dir / "manifest.py").is_file():
+        return runtime_dir.resolve()
+
+    # If running from _tc/scripts/
+    if current.parent.name == "scripts" and current.parent.parent.name == "_tc":
+        if (current.parent / "manifest.py").is_file():
+            return current.parent
+
+    # If running from a directory that already contains the engine scripts
+    if (current.parent / "manifest.py").is_file():
+        return current.parent.resolve()
+
+    # Search upwards from installation location
+    search_roots = [
+        current.parents[2] / "_tc" / "scripts",
+        current.parents[1] / "_tc" / "scripts",
+        current.parents[3] / "_tc" / "scripts",
+        Path.cwd() / "_tc" / "scripts",
+    ]
+    for candidate in search_roots:
+        if candidate.is_dir() and (candidate / "manifest.py").is_file():
+            return candidate.resolve()
+
+    return None
+
+
+def normalize_style_keys(styles: list[str] | str) -> list[str]:
+    """Normalize style identifiers to canonical keys."""
+    if isinstance(styles, str):
+        styles = [s.strip() for s in re.split(r"[,+/\s]+", styles) if s.strip()]
+
+    normalized: list[str] = []
+    for s in styles:
+        clean = s.lower().replace("-", "_")
+        if clean in {"a", "direct", "technical", "direct_technical"}:
+            normalized.append("direct_technical")
+        elif clean in {"b", "analogy", "intuition"}:
+            normalized.append("analogy")
+        elif clean in {"c", "code", "code_first", "case_first"}:
+            normalized.append("code_first")
+        elif clean in {"d", "math", "first_principles"}:
+            normalized.append("math")
+        elif clean in STYLE_DEFINITIONS:
+            normalized.append(clean)
+    if not normalized:
+        normalized = ["direct_technical", "code_first"]
+    # Deduplicate preserving order
+    return list(dict.fromkeys(normalized))
+
+
+def compile_preferences_content(
+    role: str = DEFAULT_ROLES[0],
+    domain_experience: str = DEFAULT_EXPERIENCE_LEVELS[2],
+    explanation_density: str = DEFAULT_DENSITIES[1],
+    styles: list[str] | str | None = None,
+    extra_notes: str = "",
+) -> str:
+    """Compile valid markdown frontmatter + body for plan/preferences.md."""
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    norm_styles = normalize_style_keys(styles or ["direct_technical", "code_first"])
+    style_labels = [STYLE_DEFINITIONS[k]["label"] for k in norm_styles if k in STYLE_DEFINITIONS]
+    style_profile_name = " + ".join(style_labels) if style_labels else "Direct Technical + Code-First"
+
+    directives = [
+        STYLE_DEFINITIONS[k]["directive"]
+        for k in norm_styles
+        if k in STYLE_DEFINITIONS and "directive" in STYLE_DEFINITIONS[k]
+    ]
+    compound_directive = " ".join(directives)
+
+    yaml_styles = "\n".join(f'  - "{s}"' for s in norm_styles)
+
+    content = f"""---
+role: "{role}"
+domain_experience: "{domain_experience}"
+explanation_density: "{explanation_density}"
+style_profile: "{style_profile_name}"
+styles_selected:
+{yaml_styles}
+created: "{now_iso}"
+updated: "{now_iso}"
+---
+
+# Learner Preferences & Style Profile
+
+## Learner Profile
+- **Role**: {role}
+- **Domain Experience**: {domain_experience}
+- **Explanation Density**: {explanation_density}
+
+## Active Style Directive
+- **Style Profile**: {style_profile_name}
+- **Pedagogical Directive**: {compound_directive}
+"""
+    if extra_notes.strip():
+        content += f"\n## Learner Notes\n{extra_notes.strip()}\n"
+
+    return content
+
+
+def parse_preferences_file(filepath: Path) -> dict[str, Any]:
+    """Parse frontmatter attributes from plan/preferences.md."""
+    if not filepath.is_file():
+        return {}
+
+    text = filepath.read_text(encoding="utf-8")
+    result: dict[str, Any] = {}
+
+    match = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.DOTALL)
+    if match:
+        fm_text = match.group(1)
+        for line in fm_text.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if ":" in line:
+                key, val = line.split(":", 1)
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                if key in {"role", "domain_experience", "explanation_density", "style_profile", "created", "updated"}:
+                    result[key] = val
+    return result
+
+
+def bootstrap_workspace(
+    path: Path | str,
+    source_scripts_dir: Path | str | None = None,
+    role: str = DEFAULT_ROLES[0],
+    domain_experience: str = DEFAULT_EXPERIENCE_LEVELS[2],
+    explanation_density: str = DEFAULT_DENSITIES[1],
+    styles: list[str] | str | None = None,
+    extra_notes: str = "",
+) -> dict[str, Any]:
+    """Initialize a sovereign TextCourses workspace directory."""
+    target_path = Path(path).resolve()
+    target_path.mkdir(parents=True, exist_ok=True)
+
+    created_dirs: list[str] = []
+    created_files: list[str] = []
+    preserved_files: list[str] = []
+
+    # Required directories
+    dirs_to_create = [
+        target_path / ".tc",
+        target_path / ".tc" / "cache",
+        target_path / ".tc" / "research",
+        target_path / "_tc" / "scripts",
+        target_path / "plan",
+        target_path / "plan" / "sources",
+        target_path / "courses",
+        target_path / "portfolio",
+    ]
+
+    for d in dirs_to_create:
+        if not d.exists():
+            d.mkdir(parents=True, exist_ok=True)
+            created_dirs.append(str(d.relative_to(target_path)))
+
+    # .tc/config.json
+    config_file = target_path / ".tc" / "config.json"
+    if not config_file.exists():
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        config_data = {
+            "version": "0.1.0",
+            "framework": "TextCourses",
+            "created_at": now_iso,
+            "updated_at": now_iso,
+            "settings": {
+                "default_archetype": "applied_creation",
+                "default_style": "direct_technical",
+                "density": "example_driven",
+            },
+        }
+        atomic_write_json(config_file, config_data)
+        created_files.append(str(config_file.relative_to(target_path)))
+    else:
+        preserved_files.append(str(config_file.relative_to(target_path)))
+
+    # Copy engine scripts
+    src_dir = Path(source_scripts_dir).resolve() if source_scripts_dir else find_canonical_scripts_dir()
+    dest_scripts_dir = target_path / "_tc" / "scripts"
+
+    if src_dir and src_dir.is_dir() and src_dir != dest_scripts_dir:
+        for py_file in src_dir.glob("*.py"):
+            target_script = dest_scripts_dir / py_file.name
+            shutil.copy2(py_file, target_script)
+            try:
+                target_script.chmod(0o755)
+            except OSError:
+                pass
+            created_files.append(str(target_script.relative_to(target_path)))
+
+    # Ensure bootstrapper itself is present in dest_scripts_dir
+    this_script = Path(__file__).resolve()
+    target_bootstrapper = dest_scripts_dir / "bootstrapper.py"
+    if not target_bootstrapper.exists() and this_script.is_file():
+        shutil.copy2(this_script, target_bootstrapper)
+        try:
+            target_bootstrapper.chmod(0o755)
+        except OSError:
+            pass
+        created_files.append(str(target_bootstrapper.relative_to(target_path)))
+
+    # plan/preferences.md
+    pref_file = target_path / "plan" / "preferences.md"
+    if not pref_file.exists():
+        pref_content = compile_preferences_content(
+            role=role,
+            domain_experience=domain_experience,
+            explanation_density=explanation_density,
+            styles=styles,
+            extra_notes=extra_notes,
+        )
+        atomic_write_text(pref_file, pref_content)
+        created_files.append(str(pref_file.relative_to(target_path)))
+    else:
+        preserved_files.append(str(pref_file.relative_to(target_path)))
+
+    return {
+        "ok": True,
+        "status": "bootstrapped",
+        "path": str(target_path),
+        "created_directories": sorted(list(set(created_dirs))),
+        "created_files": sorted(list(set(created_files))),
+        "preserved_files": sorted(list(set(preserved_files))),
+        "message": f"Successfully bootstrapped TextCourses workspace at {target_path}",
+    }
+
+
+def scan_workspace(path: Path | str) -> dict[str, Any]:
+    """Inspect workspace manifests and output structured progress with next action."""
+    target_path = Path(path).resolve()
+    if not target_path.exists():
+        raise FileNotFoundError(f"Directory does not exist: {target_path}")
+
+    # Locate all course manifests
+    course_files: list[Path] = []
+    if (target_path / "course.toml").is_file():
+        course_files.append(target_path / "course.toml")
+
+    courses_dir = target_path / "courses"
+    if courses_dir.is_dir():
+        for item in sorted(courses_dir.iterdir()):
+            if item.is_dir() and (item / "course.toml").is_file():
+                course_files.append(item / "course.toml")
+            elif item.is_file() and item.name == "course.toml":
+                course_files.append(item)
+
+        if not course_files:
+            course_files.extend(sorted(courses_dir.glob("**/course.toml")))
+
+    # Remove duplicates
+    course_files = sorted(list(dict.fromkeys(course_files)))
+
+    # If no course manifests found, check roadmap or return empty
+    if not course_files:
+        roadmap_file = target_path / "plan" / "roadmap.toml"
+        if not roadmap_file.is_file():
+            roadmap_file = target_path / "roadmap.toml"
+
+        return {
+            "ok": True,
+            "status": "empty",
+            "recommendation": "/tc-create",
+            "message": "No courses found. Start by creating a course with /tc-create.",
+            "courses": [],
+        }
+
+    courses_summary: list[dict[str, Any]] = []
+
+    for cpath in course_files:
+        try:
+            with open(cpath, "rb") as f:
+                cdata = tomllib.load(f)
+        except Exception:
+            continue
+
+        c_info = cdata.get("course", {})
+        slug = c_info.get("slug", cpath.parent.name)
+        title = c_info.get("title", slug)
+        course_status = c_info.get("status", "not_started")
+        chapters = cdata.get("chapters", [])
+
+        total_sections = 0
+        completed_sections = 0
+        in_progress_sections: list[dict[str, Any]] = []
+        review_sections: list[dict[str, Any]] = []
+        not_started_sections: list[dict[str, Any]] = []
+        review_chapters: list[dict[str, Any]] = []
+
+        for ch in chapters:
+            sections = ch.get("sections", [])
+            total_sections += len(sections)
+            ch_review_count = 0
+
+            for sec in sections:
+                s_stat = sec.get("status", "not_started")
+                sec_ref = {
+                    "course_slug": slug,
+                    "chapter_id": ch.get("id"),
+                    "chapter_slug": ch.get("slug"),
+                    "section_id": sec.get("id"),
+                    "section_slug": sec.get("slug"),
+                    "title": sec.get("title"),
+                    "status": s_stat,
+                }
+                if s_stat == "completed":
+                    completed_sections += 1
+                elif s_stat == "in_progress":
+                    in_progress_sections.append(sec_ref)
+                elif s_stat == "review":
+                    review_sections.append(sec_ref)
+                    ch_review_count += 1
+                else:
+                    not_started_sections.append(sec_ref)
+
+            # A review chapter is one where all sections are in review
+            if sections and ch_review_count == len(sections):
+                review_chapters.append(ch)
+
+        courses_summary.append({
+            "path": str(cpath),
+            "slug": slug,
+            "title": title,
+            "status": course_status,
+            "total_chapters": len(chapters),
+            "total_sections": total_sections,
+            "completed_sections": completed_sections,
+            "in_progress_sections": in_progress_sections,
+            "review_sections": review_sections,
+            "not_started_sections": not_started_sections,
+            "review_chapters": review_chapters,
+        })
+
+    if not courses_summary:
+        return {
+            "ok": True,
+            "status": "empty",
+            "recommendation": "/tc-create",
+            "message": "No courses found. Start by creating a course with /tc-create.",
+            "courses": [],
+        }
+
+    # Evaluate overall workspace recommendation
+    # Priority 1: In-progress section -> /tc-teach
+    for c in courses_summary:
+        if c["in_progress_sections"]:
+            active_sec = c["in_progress_sections"][0]
+            return {
+                "ok": True,
+                "status": "in_progress",
+                "recommendation": "/tc-teach",
+                "active_course": c["slug"],
+                "active_chapter": active_sec["chapter_id"],
+                "active_section": active_sec,
+                "message": f"Section in progress in course '{c['slug']}'. Resume teaching with /tc-teach.",
+                "courses": courses_summary,
+            }
+
+    # Priority 2: Review chapter (all chapter sections in review) -> /tc-test-me
+    for c in courses_summary:
+        if c["review_chapters"]:
+            rev_ch = c["review_chapters"][0]
+            return {
+                "ok": True,
+                "status": "review",
+                "recommendation": "/tc-test-me",
+                "active_course": c["slug"],
+                "active_chapter": rev_ch.get("id"),
+                "chapter_slug": rev_ch.get("slug"),
+                "message": f"All sections in chapter '{rev_ch.get('slug')}' are in review. Verify understanding with /tc-test-me.",
+                "courses": courses_summary,
+            }
+
+    # Priority 3: Completed course -> /tc-practicals
+    # If all sections completed or course marked completed
+    for c in courses_summary:
+        is_completed = (
+            c["status"] == "completed"
+            or (c["total_sections"] > 0 and c["completed_sections"] == c["total_sections"])
+        )
+        if is_completed:
+            return {
+                "ok": True,
+                "status": "completed",
+                "recommendation": "/tc-practicals",
+                "active_course": c["slug"],
+                "message": f"Course '{c['slug']}' is completed. Build and verify a capstone project with /tc-practicals.",
+                "courses": courses_summary,
+            }
+
+    # Priority 4: Section ready to be started (not_started) -> /tc-teach
+    for c in courses_summary:
+        if c["not_started_sections"]:
+            next_sec = c["not_started_sections"][0]
+            return {
+                "ok": True,
+                "status": "in_progress",
+                "recommendation": "/tc-teach",
+                "active_course": c["slug"],
+                "active_chapter": next_sec["chapter_id"],
+                "active_section": next_sec,
+                "message": f"Next topic ready in course '{c['slug']}'. Begin teaching with /tc-teach.",
+                "courses": courses_summary,
+            }
+
+    # Priority 5: Fallback to review if any individual sections are in review
+    for c in courses_summary:
+        if c["review_sections"]:
+            rev_sec = c["review_sections"][0]
+            return {
+                "ok": True,
+                "status": "review",
+                "recommendation": "/tc-test-me",
+                "active_course": c["slug"],
+                "active_chapter": rev_sec["chapter_id"],
+                "active_section": rev_sec,
+                "message": f"Section ready for assessment in course '{c['slug']}'. Run /tc-test-me.",
+                "courses": courses_summary,
+            }
+
+    return {
+        "ok": True,
+        "status": "empty",
+        "recommendation": "/tc-create",
+        "message": "No active tasks. Start by creating a course with /tc-create.",
+        "courses": courses_summary,
+    }
+
+
+def cmd_bootstrap(args: argparse.Namespace) -> None:
+    """CLI handler for workspace bootstrapping."""
+    try:
+        styles = getattr(args, "styles", None) or getattr(args, "style", None)
+        result = bootstrap_workspace(
+            path=args.path,
+            source_scripts_dir=getattr(args, "source_scripts", None),
+            role=getattr(args, "role", DEFAULT_ROLES[0]),
+            domain_experience=getattr(args, "experience", DEFAULT_EXPERIENCE_LEVELS[2]),
+            explanation_density=getattr(args, "density", DEFAULT_DENSITIES[1]),
+            styles=styles,
+            extra_notes=getattr(args, "notes", ""),
+        )
+        output_json(result, exit_code=0)
+    except Exception as e:
+        output_json({"ok": False, "error": str(e)}, exit_code=1)
+
+
+def cmd_scan(args: argparse.Namespace) -> None:
+    """CLI handler for progress scanning and next action recommendation."""
+    try:
+        result = scan_workspace(args.path)
+        output_json(result, exit_code=0)
+    except FileNotFoundError as e:
+        output_json({"ok": False, "error": str(e)}, exit_code=1)
+    except Exception as e:
+        output_json({"ok": False, "error": f"Failed to scan workspace: {e}"}, exit_code=1)
+
+
+def cmd_status(args: argparse.Namespace) -> None:
+    """CLI handler for comprehensive workspace status summary."""
+    target_path = Path(args.path).resolve()
+    if not target_path.exists():
+        output_json({"ok": False, "error": f"Directory does not exist: {target_path}"}, exit_code=1)
+
+    try:
+        scan_res = scan_workspace(target_path)
+    except Exception as e:
+        output_json({"ok": False, "error": f"Failed to inspect workspace: {e}"}, exit_code=1)
+
+    pref_file = target_path / "plan" / "preferences.md"
+    pref_data = parse_preferences_file(pref_file) if pref_file.is_file() else {}
+
+    is_bootstrapped = (
+        (target_path / ".tc").is_dir()
+        and (target_path / "plan").is_dir()
+        and (target_path / "courses").is_dir()
+    )
+
+    output_json({
+        "ok": True,
+        "workspace_path": str(target_path),
+        "is_bootstrapped": is_bootstrapped,
+        "status": scan_res.get("status"),
+        "recommendation": scan_res.get("recommendation"),
+        "preferences": pref_data,
+        "active_section": scan_res.get("active_section"),
+        "message": scan_res.get("message"),
+        "courses": scan_res.get("courses", []),
+    }, exit_code=0)
+
+
+def cmd_preferences(args: argparse.Namespace) -> None:
+    """CLI handler to read preferences from plan/preferences.md."""
+    target_path = Path(args.path).resolve()
+    pref_file = target_path / "plan" / "preferences.md"
+    if not pref_file.is_file():
+        output_json({"ok": False, "error": f"Preferences not found: {pref_file}"}, exit_code=1)
+
+    prefs = parse_preferences_file(pref_file)
+    output_json({"ok": True, "path": str(pref_file), "preferences": prefs}, exit_code=0)
+
+
+def cmd_set_preferences(args: argparse.Namespace) -> None:
+    """CLI handler to write or update plan/preferences.md."""
+    target_path = Path(args.path).resolve()
+    pref_file = target_path / "plan" / "preferences.md"
+    pref_file.parent.mkdir(parents=True, exist_ok=True)
+
+    styles = getattr(args, "styles", None) or getattr(args, "style", None)
+    content = compile_preferences_content(
+        role=getattr(args, "role", DEFAULT_ROLES[0]),
+        domain_experience=getattr(args, "experience", DEFAULT_EXPERIENCE_LEVELS[2]),
+        explanation_density=getattr(args, "density", DEFAULT_DENSITIES[1]),
+        styles=styles,
+        extra_notes=getattr(args, "notes", ""),
+    )
+    atomic_write_text(pref_file, content)
+    output_json({
+        "ok": True,
+        "message": f"Updated preferences at {pref_file}",
+        "path": str(pref_file),
+    }, exit_code=0)
+
+
+def main() -> None:
+    """Main CLI entrypoint."""
+    parser = argparse.ArgumentParser(
+        description="bootstrapper.py — Deterministic workspace bootstrapper and scanner for TextCourses",
+    )
+    subparsers = parser.add_subparsers(dest="subcommand", required=True)
+
+    # bootstrap subcommand
+    p_boot = subparsers.add_parser("bootstrap", help="Initialize workspace folder layout and deploy runtime scripts")
+    p_boot.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_boot.add_argument("--source-scripts", default=None, help="Explicit path to canonical runtime scripts directory")
+    p_boot.add_argument("--role", default=DEFAULT_ROLES[0], help="Learner role")
+    p_boot.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[2], help="Domain experience level")
+    p_boot.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
+    p_boot.add_argument("--styles", "--style", dest="styles", default="direct_technical,code_first", help="Pedagogical style profile(s)")
+    p_boot.add_argument("--notes", default="", help="Optional learner notes")
+    p_boot.set_defaults(func=cmd_bootstrap)
+
+    # init alias for bootstrap
+    p_init = subparsers.add_parser("init", help="Alias for bootstrap")
+    p_init.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_init.add_argument("--source-scripts", default=None, help="Explicit path to canonical runtime scripts directory")
+    p_init.add_argument("--role", default=DEFAULT_ROLES[0], help="Learner role")
+    p_init.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[2], help="Domain experience level")
+    p_init.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
+    p_init.add_argument("--styles", "--style", dest="styles", default="direct_technical,code_first", help="Pedagogical style profile(s)")
+    p_init.add_argument("--notes", default="", help="Optional learner notes")
+    p_init.set_defaults(func=cmd_bootstrap)
+
+    # scan subcommand
+    p_scan = subparsers.add_parser("scan", help="Scan workspace progress and recommend next action")
+    p_scan.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_scan.set_defaults(func=cmd_scan)
+
+    # status subcommand
+    p_stat = subparsers.add_parser("status", help="Get comprehensive workspace status report")
+    p_stat.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_stat.set_defaults(func=cmd_status)
+
+    # preferences subcommand
+    p_pref = subparsers.add_parser("preferences", help="Read learner preferences from plan/preferences.md")
+    p_pref.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_pref.set_defaults(func=cmd_preferences)
+
+    # set-preferences subcommand
+    p_set_pref = subparsers.add_parser("set-preferences", help="Set or update learner preferences in plan/preferences.md")
+    p_set_pref.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_set_pref.add_argument("--role", default=DEFAULT_ROLES[0], help="Learner role")
+    p_set_pref.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[2], help="Domain experience level")
+    p_set_pref.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
+    p_set_pref.add_argument("--styles", "--style", dest="styles", default="direct_technical,code_first", help="Pedagogical style profile(s)")
+    p_set_pref.add_argument("--notes", default="", help="Optional learner notes")
+    p_set_pref.set_defaults(func=cmd_set_preferences)
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

@@ -33,6 +33,18 @@ Guides the learner through authentic proof-of-work project creation. Formulates 
 
 ---
 
+## Conventions
+
+- `{project-root}` is the nearest folder containing `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
+- `{skill-root}` is this skill's own directory (e.g. `skills/tc-practicals` or `.agents/skills/tc-practicals`).
+
+## On Activation
+
+Verify workspace initialization: check if `{project-root}/_tc/scripts/practical_evaluator.py` exists.
+- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first (installing it via `npx skills add <repo> --skill tc-init` if needed), then re-run this command.
+
+---
+
 ## Execution Workflow
 
 ### Step 1: Intake & Brief Initialization

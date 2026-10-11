@@ -130,16 +130,26 @@ def find_canonical_scripts_dir() -> Path | None:
 
     current = Path(__file__).resolve()
 
+    # Bundled runtime/ directory beside this script (e.g. in skills/tc-init/scripts/runtime/)
+    runtime_dir = current.parent / "runtime"
+    if runtime_dir.is_dir() and (runtime_dir / "manifest.py").is_file():
+        return runtime_dir.resolve()
+
     # If running from _tc/scripts/
     if current.parent.name == "scripts" and current.parent.parent.name == "_tc":
         if (current.parent / "manifest.py").is_file():
             return current.parent
 
-    # If running from skills/tc-init/scripts/
+    # If running from a directory that already contains the engine scripts
+    if (current.parent / "manifest.py").is_file():
+        return current.parent.resolve()
+
+    # Search upwards from installation location
     search_roots = [
         current.parents[2] / "_tc" / "scripts",
         current.parents[1] / "_tc" / "scripts",
         current.parents[3] / "_tc" / "scripts",
+        Path.cwd() / "_tc" / "scripts",
     ]
     for candidate in search_roots:
         if candidate.is_dir() and (candidate / "manifest.py").is_file():
