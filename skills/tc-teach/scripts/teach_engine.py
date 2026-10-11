@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 import tomllib
@@ -31,14 +30,14 @@ for p in [str(SCRIPT_DIR), str(PROJECT_ROOT)]:
         sys.path.insert(0, p)
 
 try:
-    from lesson_tracker import get_current_concept, get_status, tick_concept
+    from lesson_tracker import get_current_concept, tick_concept
 except ImportError:
-    from _tc.scripts.lesson_tracker import get_current_concept, get_status, tick_concept
+    from _tc.scripts.lesson_tracker import get_current_concept, tick_concept
 
 try:
-    from notes_compiler import compile_notes, inspect_notes
+    from notes_compiler import compile_notes
 except ImportError:
-    from _tc.scripts.notes_compiler import compile_notes, inspect_notes
+    from _tc.scripts.notes_compiler import compile_notes
 
 
 NEXT_ACTION_FORK_TEXT = """---
@@ -115,6 +114,7 @@ def find_section_directory(course_dir: Path, chapter_id: str, section_id: str) -
             if s_m and sec_num is not None and int(s_m.group(1)) == sec_num:
                 return sec_path
 
+    # Fallback to direct name match
     for ch_path in course_dir.glob("*"):
         if ch_path.is_dir():
             for sec_path in ch_path.glob("*"):
@@ -138,6 +138,7 @@ def resolve_active_section(course_dir: Path, explicit_section: str | None = None
     target_sec: dict[str, Any] | None = None
     target_ch: dict[str, Any] | None = None
 
+    # 1. Check explicit section
     if explicit_section:
         for ch in chapters:
             for sec in ch.get("sections", []):
@@ -148,6 +149,7 @@ def resolve_active_section(course_dir: Path, explicit_section: str | None = None
             if target_sec:
                 break
 
+    # 2. Find in_progress section
     if not target_sec:
         for ch in chapters:
             for sec in ch.get("sections", []):
@@ -158,6 +160,7 @@ def resolve_active_section(course_dir: Path, explicit_section: str | None = None
             if target_sec:
                 break
 
+    # 3. Find first not_started section
     if not target_sec:
         for ch in chapters:
             for sec in ch.get("sections", []):
@@ -168,6 +171,7 @@ def resolve_active_section(course_dir: Path, explicit_section: str | None = None
             if target_sec:
                 break
 
+    # Default to very first section
     if not target_sec:
         target_ch = chapters[0]
         target_sec = target_ch["sections"][0]
@@ -177,7 +181,8 @@ def resolve_active_section(course_dir: Path, explicit_section: str | None = None
 
     sec_dir = find_section_directory(course_dir, ch_id, sec_id)
     if not sec_dir:
-        sec_dir = course_dir / f"chapter-01" / f"section-01"
+        # Fallback to creating / assuming path
+        sec_dir = course_dir / "chapter-01" / "section-01"
 
     return {
         "chapter_id": ch_id,
@@ -243,11 +248,14 @@ def advance_lesson_concept(
     active_info = resolve_active_section(course_dir, explicit_section)
     sec_dir = Path(active_info["section_dir"])
 
+    # Tick active concept
     tick_result = tick_concept(sec_dir)
+
     is_section_completed = tick_result.get("section_fully_completed", False)
     notes_compilation = None
 
     if is_section_completed:
+        # Final concept completed: automatically compile notes.md
         recap_bullets = recap or [
             f"Mastered core mechanics of {active_info['section_title']}.",
             "Enforced key architectural constraints and memory invariants.",

@@ -22,7 +22,6 @@ import json
 import os
 import re
 import sys
-import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -385,7 +384,7 @@ def scaffold_course_files(
         f"- **Course Slug**: `{slug}`",
         f"- **Archetype**: `{archetype_info['title']}`",
         f"- **Description**: {archetype_info['description']}",
-        f"- **Status**: In Progress",
+        "- **Status**: In Progress",
         "",
         "## Curriculum Outline",
         "",

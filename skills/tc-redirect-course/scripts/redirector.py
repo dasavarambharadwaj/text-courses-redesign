@@ -293,6 +293,7 @@ def diff_course_sources(
             if sec_status == "completed":
                 completed_sections.append(sec_info)
             else:
+                # If sources drifted, check if this section references changed files or if any source changed
                 has_changed_source = any(s in modified or s in added or s in deleted for s in sec_sources)
                 if drift_detected and (not sec_sources or has_changed_source):
                     sec_info["affected"] = True

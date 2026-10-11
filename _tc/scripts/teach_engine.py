@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 import tomllib
@@ -31,14 +30,14 @@ for p in [str(SCRIPT_DIR), str(PROJECT_ROOT)]:
         sys.path.insert(0, p)
 
 try:
-    from lesson_tracker import get_current_concept, get_status, tick_concept
+    from lesson_tracker import get_current_concept, tick_concept
 except ImportError:
-    from _tc.scripts.lesson_tracker import get_current_concept, get_status, tick_concept
+    from _tc.scripts.lesson_tracker import get_current_concept, tick_concept
 
 try:
-    from notes_compiler import compile_notes, inspect_notes
+    from notes_compiler import compile_notes
 except ImportError:
-    from _tc.scripts.notes_compiler import compile_notes, inspect_notes
+    from _tc.scripts.notes_compiler import compile_notes
 
 
 NEXT_ACTION_FORK_TEXT = """---
@@ -183,7 +182,7 @@ def resolve_active_section(course_dir: Path, explicit_section: str | None = None
     sec_dir = find_section_directory(course_dir, ch_id, sec_id)
     if not sec_dir:
         # Fallback to creating / assuming path
-        sec_dir = course_dir / f"chapter-01" / f"section-01"
+        sec_dir = course_dir / "chapter-01" / "section-01"
 
     return {
         "chapter_id": ch_id,

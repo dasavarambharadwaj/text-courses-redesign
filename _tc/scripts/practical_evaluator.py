@@ -207,6 +207,7 @@ No recurring diagnostic misconceptions detected in `test-ledger.jsonl`. Project 
 project_id: "{project_id}"
 title: "{title}"
 course: "{course_slug}"
+archetype: "{archetype}"
 complexity: "{complexity}"
 time_budget: "{time_budget}"
 depth_breadth: "{depth_breadth}"

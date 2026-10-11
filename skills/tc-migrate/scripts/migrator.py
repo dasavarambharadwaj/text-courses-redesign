@@ -24,8 +24,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import tomli_w
-
 CURRENT_SCHEMA_VERSION = "0.2.0"
 CONFIRM_TOKEN = "APPLY"
 
