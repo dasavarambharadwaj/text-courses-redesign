@@ -1,0 +1,41 @@
+next_id = 5
+
+[[entry]]
+id = 1
+type = "story"
+title = "Root-Level Research Substrate & Workspace Transparency"
+after = []
+risk = "low"
+covers = ["FR-33"]
+description = "Scaffold visible research/ directory at workspace root in bootstrapper.py and deploy welcoming WORKSPACE_GUIDE.md detailing directory roles and files."
+verify = "bootstrapper.py creates research/ and WORKSPACE_GUIDE.md; unit tests pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Autonomous 5-Hat Deep Research Engine (scout.py & tc-research)"
+after = [1]
+risk = "high"
+covers = ["FR-30"]
+description = "Implement multi-round targeted search, web scraping, and 5-hat critical reflection (Industry, Academic, Beginner, Edge-Case, Modern Ecosystem) in scout.py and tc-research, writing to research/<slug>/."
+verify = "scout.py and tc-research generate research/<slug>/dossier.md, sources.json, and five-hats-critique.md; zero BMad references; unit tests pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "Adversarial Triad Consensus Dialectic with Live Fact-Checking (course_builder.py & tc-create)"
+after = [2]
+risk = "high"
+covers = ["FR-31"]
+description = "Upgrade course_builder.py and tc-create with multi-round adversarial debate between Daedalus, Marie (live web search fact-checking), and Hypatia (boundary auditing), achieving convergence before disk writes and bridging research gaps to learner intent."
+verify = "course_builder.py runs multi-round adversarial consensus with live fact-checking; logs to consensus-trace.jsonl; unit tests pass."
+
+[[entry]]
+id = 4
+type = "story"
+title = "Human-First Notes & Token-Minimal AI Memlog Engine"
+after = [1, 3]
+risk = "medium"
+covers = ["FR-32"]
+description = "Enforce dual-register writing: human-first clear plain English textbook notes with teacher attribution in notes_compiler.py, and ultra-dense token-minimal AI memlog entries in memlog.py, teach_engine.py, and diagnostic_tester.py, closing turn tracing."
+verify = "notes_compiler.py generates human-first notes; teach_engine.py and diagnostic_tester.py log ultra-dense concept/misconception entries to memlog.md; unit tests pass."

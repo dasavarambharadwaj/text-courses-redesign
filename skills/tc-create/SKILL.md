@@ -1,11 +1,15 @@
 ---
 name: tc-create
-description: "Architect comprehensive courses across 5 Universal Archetypes reconciled through the Triad Consensus Loop."
+description: "Architect comprehensive courses across 5 Universal Archetypes reconciled through the Adversarial Triad Consensus Dialectic."
 ---
 
 # `tc-create`: Autonomous Curriculum Architect & Course Scaffolder
 
-`tc-create` acts as the Architect in the Triad Consensus Loop. It translates learner goals, reference URLs, or raw syllabus outlines into pedagogical roadmaps across the **5 Universal Archetypes**, reconciled against documentation ground truth and pre-flight DAG checks.
+`tc-create` acts as **🏛️ Daedalus (The Curriculum Architect)** in the Adversarial Triad Consensus Dialectic. It translates learner goals, reference URLs, or raw syllabus outlines into personalized pedagogical roadmaps across the **5 Universal Archetypes**, reconciled through a multi-round debate with **🔬 Marie Curie (Empirical Investigator & Fact-Checker)** and **⚖️ Hypatia of Alexandria (Logic & Prerequisite Auditor)**.
+
+No course files are ever committed to disk until all three critics unanimously approve the curriculum.
+
+---
 
 ## The 5 Universal Archetypes (FR-4)
 
@@ -17,28 +21,46 @@ description: "Architect comprehensive courses across 5 Universal Archetypes reco
 
 ---
 
+## The Adversarial Triad Consensus Dialectic (FR-31)
+
+Course creation is not a rubber stamp; it is a rigorous, adversarial debate where each participant wears a distinct hat:
+
+| Participant | Persona & Hat | Core Responsibility in Debate |
+| :--- | :--- | :--- |
+| 🏛️ **Daedalus** | **Curriculum Architect** | Proposes chapter structure grounded in learner intent (`profile/preferences.md`) and pre-course research dossiers (`research/<slug>/dossier.md`). Identifies and bridges gaps missed by general research. |
+| 🔬 **Marie Curie** | **Empirical Investigator** | Challenges proposals against official documentation and executes live web search queries to verify latest version APIs, idiomatic standards, and deprecation warnings. |
+| ⚖️ **Hypatia** | **Logic & Prerequisite Auditor** | Ruthlessly audits prerequisite DAG acyclicity, vocabulary introduction contracts, and cognitive gradient leaps. Rejects any untaught terminology. |
+
+### Dialectic Flow
+1. **Round 1 (Opening Inception & Challenges)**: Daedalus proposes candidate chapter and section trees. Marie fact-checks the concepts online and challenges controversial or deprecated patterns. Hypatia runs topological audits and flags cognitive leaps.
+2. **Round 2 (Reconciliation & Gap Bridging)**: Daedalus adjusts prerequisites, incorporates modern idioms, and explicitly injects learner-personalized modules covering topics missed by broad research. Marie verifies updated primitives. Hypatia confirms DAG acyclicity.
+3. **Unanimous Consensus Accord**: Once all three critics cast an affirmative vote (`APPROVE`), the complete deliberation transcript is recorded and course scaffolding proceeds. If any critic dissents, disk write is blocked.
+
+---
+
 ## Conventions
 
-- `{project-root}` is the nearest folder containing `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
-- `{skill-root}` is this skill's own directory (e.g. `skills/tc-create` or `.agents/skills/tc-create`).
+- `{project-root}` is the nearest folder containing `.tc/` or `_tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
+- `{skill-root}` is this skill's own directory (e.g. `skills/tc-create`).
 
 ## On Activation
 
 Verify workspace initialization: check if `{project-root}/_tc/scripts/course_builder.py` exists.
-- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first (installing it via `npx skills add <repo> --skill tc-init` if needed), then re-run this command.
+- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first, then re-run this command.
 
 ---
 
 ## Workflow
 
-### 1. Intake Learner Intent
+### 1. Intake Learner Intent & Pre-Course Research Check
 
 When the learner invokes `/tc-create`:
-1. Ask for course topic, domain, or target skill.
-2. Present the 5 Universal Archetypes with quick descriptions, or detect from intent.
-3. Accept optional reference course links, documentation URLs, or raw syllabus outlines.
+1. Check if research dossier exists in `research/<slug>/dossier.md`. If absent and the domain is broad, suggest running `/tc-research "<topic>"` first to harvest verified material.
+2. Ingest learner preferences from `profile/preferences.md` (active teacher persona, technical depth, and domain experience).
+3. Present the 5 Universal Archetypes with concise descriptions, or recommend the best match based on learner intent.
+4. Accept optional reference course links, documentation URLs, or raw syllabus outlines.
 
-### 2. Execute Triad Consensus Course Generation
+### 2. Execute Adversarial Triad Consensus Course Generation
 
 Run the course builder CLI:
 
@@ -50,21 +72,24 @@ uv run _tc/scripts/course_builder.py create \
   --topic "Raft, LSM-Trees, and Raft-based Key-Value Store"
 ```
 
-The tool coordinates the Triad Consensus Loop:
-- **Scout (`tc-research`)**: Verifies documentation ToC, APIs, and vocabulary.
-- **Architect (`tc-create`)**: Scaffolds chapters, sections, and lesson plans.
-- **Auditor (`tc-verify-course`)**: Checks DAG acyclicity and vocabulary contracts.
-- **Trace Logger**: Records reconciliation attempts to `.tc/cache/consensus-trace.jsonl`.
+The tool coordinates the full Triad Consensus Loop:
+- Ingests `research/<slug>/dossier.md` and `profile/preferences.md`.
+- Formulates live verification search queries and validates modern ecosystem idioms.
+- Bridges domain gaps missed by broad research.
+- Audits prerequisite contracts and DAG topology.
+- Appends structured trace records to `_tc/cache/consensus-trace.jsonl`.
 
 ### 3. Generated Files
 
-Upon successful consensus, the course is written to disk:
+Upon verified unanimous consensus, the course is written to disk:
 - `courses/<slug>/course.toml`: Course manifest with prerequisites and status.
-- `courses/<slug>/overview.md`: Human-readable syllabus overview.
+- `courses/<slug>/overview.md`: Human-readable syllabus overview with archetype details.
+- `courses/<slug>/consensus-deliberation.md`: Full multi-round debate transcript between Daedalus, Marie, and Hypatia.
+- `courses/<slug>/memlog.md`: Initialized course pedagogical working memory.
+- `courses/<slug>/notes/chapter-XX.md`: Flat chapter textbook scaffolds (distilled upon section completion by `/tc-teach`).
 - `courses/<slug>/chapter-*/section-*/lesson-plan.md`: AI instructor lesson plans.
-*(Note: `notes.md` is strictly generated upon section completion by `/tc-teach`).*
 
 ### 4. Present Next Action
 
-Show the syllabus overview to the learner and recommend:
+Show the syllabus overview and deliberation summary to the learner, then recommend:
 - Start the first section: `/tc-teach`

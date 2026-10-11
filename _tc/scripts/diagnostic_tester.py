@@ -21,6 +21,7 @@ import datetime
 import fcntl
 import json
 import os
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -60,6 +61,29 @@ def atomic_write_toml(target_path: Path, data: dict[str, Any]) -> None:
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp_path, target_path)
+
+
+def append_course_memlog(
+    course_dir: Path,
+    entry_type: str,
+    text: str,
+    by: str | None = None,
+) -> None:
+    """Append a token-minimal entry directly into courses/<slug>/memlog.md."""
+    memlog_file = course_dir / "memlog.md"
+    if not memlog_file.exists():
+        return
+
+    prefix = f"- ({entry_type} by {by}) " if by else f"- ({entry_type}) "
+    clean_text = text.strip()
+    line = f"{prefix}{clean_text}\n"
+    try:
+        with open(memlog_file, "a", encoding="utf-8") as f:
+            f.write(line)
+            f.flush()
+            os.fsync(f.fileno())
+    except Exception:
+        pass
 
 
 def resolve_course_dir(course_arg: str | None) -> Path:
@@ -390,6 +414,17 @@ def cmd_record(args: argparse.Namespace) -> None:
                 "error": f"Record appended to ledger, but failed to update course.toml: {e}",
             }, exit_code=1)
 
+    # Mirror diagnostic outcome to courses/<slug>/memlog.md in token-minimal format
+    if normalized_outcome == "fail":
+        misc_clean = re.sub(r"[^a-zA-Z0-9_:-]", "_", misconception.lower())[:40].strip("_")
+        sec_clean = re.sub(r"[^a-zA-Z0-9_:-]", "_", target_sec.lower())[:30].strip("_")
+        append_course_memlog(course_dir, entry_type="misconception", text=f"misc:{misc_clean}:{sec_clean}")
+    elif normalized_outcome == "pass":
+        sec_clean = re.sub(r"[^a-zA-Z0-9_:-]", "_", target_sec.lower())[:30].strip("_")
+        append_course_memlog(course_dir, entry_type="milestone", text=f"test:passed:{sec_clean}:completed")
+        if all_completed:
+            append_course_memlog(course_dir, entry_type="milestone", text=f"course:completed:{course_slug}")
+
     output_json({
         "ok": True,
         "appended": True,
@@ -410,6 +445,7 @@ def main() -> None:
     # prepare
     p_prep = subparsers.add_parser("prepare", help="Prepare eligible test sections enforcing Cumulative Boundary Rule")
     p_prep.add_argument("--course", help="Course slug or path")
+    p_prep.add_argument("--json", action="store_true", help="Output in JSON format")
     p_prep.set_defaults(func=cmd_prepare)
 
     # record
@@ -424,6 +460,7 @@ def main() -> None:
     p_rec.add_argument("--misconception", default="", help="Diagnosed misconception category (e.g. CONFUSION_MUTATION)")
     p_rec.add_argument("--remediation", default="", help="Remediation explanation or feedback")
     p_rec.add_argument("--confidence", default="high", choices=["high", "medium", "low"], help="Confidence level")
+    p_rec.add_argument("--json", action="store_true", help="Output in JSON format")
     p_rec.set_defaults(func=cmd_record)
 
     args = parser.parse_args()

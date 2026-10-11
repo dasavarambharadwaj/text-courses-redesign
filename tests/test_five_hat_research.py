@@ -1,0 +1,99 @@
+"""tests/test_five_hat_research.py — Test suite for Autonomous 5-Hat Deep Research Engine."""
+
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SCOUT_SCRIPT = REPO_ROOT / "_tc" / "scripts" / "scout.py"
+SKILL_FILE = REPO_ROOT / "skills" / "tc-research" / "SKILL.md"
+
+
+def test_scout_generates_five_hats_and_dossier(tmp_path: Path):
+    """Verify scout generates full 5-hat reflection, dossier, and sources in research/."""
+    cmd = [
+        sys.executable,
+        str(SCOUT_SCRIPT),
+        "scout",
+        "--slug",
+        "distributed-consensus",
+        "--workspace",
+        str(tmp_path),
+        "--topic",
+        "Distributed Consensus and Raft Leader Election",
+        "--json",
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    assert res.returncode == 0
+    data = json.loads(res.stdout)
+    assert data["ok"] is True
+    assert data["slug"] == "distributed-consensus"
+
+    # Check visible research/ artifacts
+    research_dir = tmp_path / "research" / "distributed-consensus"
+    assert research_dir.is_dir()
+
+    dossier_file = research_dir / "dossier.md"
+    assert dossier_file.is_file()
+    dossier_text = dossier_file.read_text(encoding="utf-8")
+    assert "Domain Research Dossier: Distributed Consensus" in dossier_text
+    assert "Executive Summary & Domain Scope" in dossier_text
+    assert "Conceptual Taxonomy & Core Mental Models" in dossier_text
+    assert "Primitives & API Surface Index" in dossier_text
+    assert "Dangerous Pitfalls & Fatal Traps" in dossier_text
+
+    critique_file = research_dir / "five-hats-critique.md"
+    assert critique_file.is_file()
+    critique_text = critique_file.read_text(encoding="utf-8")
+    assert "5-Hat Critical Reflection" in critique_text
+    assert "Hat 1: Industry Practitioner" in critique_text
+    assert "Hat 2: Academic Purist" in critique_text
+    assert "Hat 3: Beginner Friction Hunter" in critique_text
+    assert "Hat 4: Edge-Case Systems Engineer" in critique_text
+    assert "Hat 5: Modern Ecosystem Reviewer" in critique_text
+    assert "Tree of Thought" in critique_text
+
+    sources_json_file = research_dir / "sources.json"
+    assert sources_json_file.is_file()
+    sources_data = json.loads(sources_json_file.read_text(encoding="utf-8"))
+    assert sources_data["slug"] == "distributed-consensus"
+    assert len(sources_data["sources"]) >= 1
+
+    digest_file = research_dir / "digest.json"
+    assert digest_file.is_file()
+
+    # Test CLI dossier and critique subcommands
+    cmd_dos = [
+        sys.executable,
+        str(SCOUT_SCRIPT),
+        "dossier",
+        "--slug",
+        "distributed-consensus",
+        "--workspace",
+        str(tmp_path),
+    ]
+    res_dos = subprocess.run(cmd_dos, capture_output=True, text=True)
+    assert res_dos.returncode == 0
+    assert "Domain Research Dossier" in res_dos.stdout
+
+    cmd_crit = [
+        sys.executable,
+        str(SCOUT_SCRIPT),
+        "critique",
+        "--slug",
+        "distributed-consensus",
+        "--workspace",
+        str(tmp_path),
+    ]
+    res_crit = subprocess.run(cmd_crit, capture_output=True, text=True)
+    assert res_crit.returncode == 0
+    assert "5-Hat Critical Reflection" in res_crit.stdout
+
+
+def test_zero_bmad_references_in_tc_research():
+    """Verify zero BMad references across scout script and tc-research skill prompt."""
+    for path in [SCOUT_SCRIPT, SKILL_FILE]:
+        text = path.read_text(encoding="utf-8")
+        assert not re.search(r"\bbmad\b", text, re.IGNORECASE), f"Found BMad in {path}"

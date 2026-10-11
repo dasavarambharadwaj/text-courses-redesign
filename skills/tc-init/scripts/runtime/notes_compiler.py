@@ -5,11 +5,12 @@
 #     "tomli-w>=1.0.0",
 # ]
 # ///
-"""notes_compiler.py — Textbook notes compiler and section transition manager for TextCourses.
+"""notes_compiler.py — Human-first textbook notes compiler and section transition manager for TextCourses.
 
-Distills completed section concepts into permanent, sovereign notes.md with 3-bullet recap,
-technical mechanics, worked examples, and fatal mistakes, atomically transitioning
-section status in course.toml to 'review' without breaking flow state (FR-11, AD-3).
+Distills completed section concepts into permanent, human-first notes.md with 3-bullet recap,
+plain English intuitive mental models, step-by-step mechanics, concrete examples, and common traps.
+Atomically transitions section status in course.toml to 'review', updates flat chapter textbook
+notes/chapter-XX.md, and mirrors token-minimal milestones to courses/<slug>/memlog.md (FR-11, FR-32, AD-3).
 """
 
 from __future__ import annotations
@@ -90,27 +91,46 @@ def format_textbook_notes(
     content: str = "",
     examples: str = "",
     pitfalls: str = "",
+    teacher: str | None = None,
+    analogy: str | None = None,
 ) -> str:
-    """Format structured textbook markdown with 3-bullet recap and mechanics."""
+    """Format structured, human-first textbook markdown in accessible plain English."""
     lines = [
         f"# {title.strip()}",
         "",
-        "## 3-Bullet Recap",
     ]
+    if teacher:
+        lines.extend([
+            f"*Distilled by {teacher.strip()}*",
+            "",
+        ])
+
+    lines.extend([
+        "## 3-Bullet Recap (In Plain English)",
+    ])
     for bullet in recap_bullets:
         clean_bullet = bullet.strip().lstrip("-* ").strip()
         lines.append(f"- {clean_bullet}")
 
-    lines.append("")
-    lines.append("## Core Mechanics & Architecture")
-    lines.append(content.strip() or "Foundational mechanics, constraints, and system design principles.")
-    lines.append("")
-    lines.append("## Worked Examples & Concrete Implementation")
-    lines.append(examples.strip() or "Standard idioms, implementation patterns, and code walkthroughs.")
-    lines.append("")
-    lines.append("## Common Pitfalls & Fatal Mistakes")
-    lines.append(pitfalls.strip() or "Crucial invariants, edge cases, and architectural anti-patterns to avoid.")
-    lines.append("")
+    if analogy:
+        lines.extend([
+            "",
+            "## Intuitive Mental Model & Analogy",
+            analogy.strip(),
+        ])
+
+    lines.extend([
+        "",
+        "## Core Mechanics & Architecture",
+        content.strip() or "Foundational mechanics, constraints, and system design principles explained step-by-step.",
+        "",
+        "## Worked Examples & Concrete Implementation",
+        examples.strip() or "Standard idioms, implementation patterns, and code walkthroughs.",
+        "",
+        "## Common Pitfalls & Fatal Mistakes",
+        pitfalls.strip() or "Crucial invariants, edge cases, and architectural anti-patterns to avoid.",
+        "",
+    ])
 
     return "\n".join(lines)
 
@@ -194,6 +214,23 @@ def update_course_manifest_section_status(
     return False, f"Could not match section '{section_dir_name}' in {manifest_path}"
 
 
+def append_memlog_milestone(course_dir: Path, sec_name: str, status: str) -> None:
+    """Mirror token-minimal milestone entry into course memlog.md."""
+    memlog_path = course_dir / "memlog.md"
+    if not memlog_path.exists():
+        return
+
+    sec_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", sec_name.lower()).strip("-")
+    entry_line = f"- (milestone) sec:{sec_slug}:status={status}:notes_compiled\n"
+    try:
+        with open(memlog_path, "a", encoding="utf-8") as f:
+            f.write(entry_line)
+            f.flush()
+            os.fsync(f.fileno())
+    except Exception:
+        pass
+
+
 def compile_notes(
     section_dir: Path | str,
     title: str,
@@ -204,8 +241,10 @@ def compile_notes(
     force: bool = False,
     target_status: str = "review",
     chapter_dir_name: str | None = None,
+    teacher: str | None = None,
+    analogy: str | None = None,
 ) -> dict[str, Any]:
-    """Compile section notes into notes.md and transition course.toml status to review."""
+    """Compile human-first section notes into notes.md, update chapter textbook, and mirror to memlog."""
     sec_path = Path(section_dir).resolve()
     if not sec_path.is_dir():
         raise NotADirectoryError(f"Target section path is not a directory: {sec_path}")
@@ -225,12 +264,14 @@ def compile_notes(
         content=content,
         examples=examples,
         pitfalls=pitfalls,
+        teacher=teacher,
+        analogy=analogy,
     )
 
-    # Atomically write notes.md
+    # Atomically write section notes.md
     atomic_write_text(notes_file, notes_text)
 
-    # Locate and update course.toml and flat chapter textbook notes
+    # Locate and update course.toml, flat chapter textbook, and memlog
     manifest_file = find_enclosing_manifest(sec_path)
     manifest_updated = False
     warning = None
@@ -249,8 +290,9 @@ def compile_notes(
         else:
             warning = err
 
-        # Write or append to flat chapter textbook at courses/<slug>/notes/chapter-XX.md
         course_dir = manifest_file.parent
+
+        # 1. Update flat chapter textbook notes at courses/<slug>/notes/chapter-XX.md
         notes_dir = course_dir / "notes"
         notes_dir.mkdir(parents=True, exist_ok=True)
 
@@ -268,6 +310,9 @@ def compile_notes(
             existing = ch_notes_path.read_text(encoding="utf-8")
             if f"# {title.strip()}" not in existing:
                 atomic_write_text(ch_notes_path, existing.rstrip() + f"\n\n---\n\n{notes_text}\n")
+
+        # 2. Mirror token-minimal milestone to courses/<slug>/memlog.md
+        append_memlog_milestone(course_dir, sec_path.name, target_status)
     else:
         warning = f"No enclosing course.toml found above {sec_path}"
 
@@ -281,6 +326,7 @@ def compile_notes(
         "course_manifest_updated": manifest_updated,
         "manifest_path": str(manifest_file) if manifest_file else None,
         "section_status": target_status,
+        "teacher": teacher,
         "warning": warning,
     }
 
@@ -320,7 +366,7 @@ def inspect_notes(section_dir: Path | str) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="notes_compiler.py",
-        description="TextCourses textbook notes compiler and section transition manager.",
+        description="TextCourses human-first textbook notes compiler and section transition manager.",
     )
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
@@ -334,6 +380,8 @@ def main() -> None:
     p_comp.add_argument("--pitfalls", default="", help="Common pitfalls content.")
     p_comp.add_argument("--chapter", default=None, help="Optional chapter identifier or directory name.")
     p_comp.add_argument("--status", default="review", help="Target status for section in course.toml (default: review).")
+    p_comp.add_argument("--teacher", default=None, help="Active teacher persona attribution.")
+    p_comp.add_argument("--analogy", default=None, help="Intuitive plain-English mental model or analogy.")
     p_comp.add_argument("--force", action="store_true", help="Force overwrite existing notes.")
     p_comp.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
@@ -356,6 +404,8 @@ def main() -> None:
                 force=args.force,
                 target_status=args.status,
                 chapter_dir_name=args.chapter,
+                teacher=args.teacher,
+                analogy=args.analogy,
             )
             output_json(result, 0)
 

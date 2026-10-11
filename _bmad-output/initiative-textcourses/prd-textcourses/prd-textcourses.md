@@ -390,6 +390,47 @@ The system SHALL enforce a unified, human-navigable filesystem layout and full B
   - Equips all 10 skills with `bmod.toml` manifests and 3-tier `customize.toml` override support.
   - Eliminates triplicate script redundancy by routing all skills exclusively to `_tc/scripts/`.
 
+#### FR-30: Autonomous 5-Hat Deep Research Engine (`tc-research` / `scout.py`)
+The system SHALL provide a dedicated pre-course autonomous research agent orchestrated by **🔬 Marie (The Empirical Investigator)** to harvest, evaluate, and synthesize comprehensive domain knowledge before course creation. Realizes UJ-4, UJ-5.
+- **Consequences (testable):**
+  - Executes multi-round targeted web searches and scrapes authoritative official documentation and specifications.
+  - Applies **5-Hat Critical Reflection (Tree-of-Thought Dialectic)**:
+    1. *Industry Practitioner Hat*: Real-world production patterns and industry standards.
+    2. *Academic Purist Hat*: Formal foundational models, mathematical proofs, and core invariants.
+    3. *Beginner Friction Hunter Hat*: Hidden assumed knowledge, confusing syntax, and common mental blocks.
+    4. *Edge-Case Systems Engineer Hat*: Concurrency hazards, resource leaks, failure modes, and performance cliffs.
+    5. *Modern Ecosystem Reviewer Hat*: Deprecated patterns, breaking changes in latest versions, and modern idiomatic tooling.
+  - Formulates secondary and tertiary search queries based on identified gaps across the 5 perspectives.
+  - Synthesizes findings into a visible root-level dossier directory `research/<topic-slug>/`:
+    - `dossier.md`: Comprehensive topic taxonomy, core mental models, code patterns, and verified pitfalls.
+    - `sources.json`: Provenance citations, URLs, scraped titles, and retrieval timestamps.
+    - `five-hats-critique.md`: The 5-perspective dialectic review highlighting gaps and production realities.
+
+#### FR-31: Adversarial Triad Consensus Dialectic with Live Fact-Checking (`tc-create`)
+Course creation SHALL be governed by a rigorous adversarial debate between **Daedalus (Curriculum Architect)**, **Marie (Empirical Investigator)**, and **Hypatia (Logic Auditor)**, requiring verified consensus before course files can be committed to disk. Realizes UJ-1, UJ-4.
+- **Consequences (testable):**
+  - Daedalus proposes candidate chapter/section structures grounded in learner intent (`profile/preferences.md`) and pre-existing research dossiers (`research/<topic-slug>/dossier.md`).
+  - Marie actively challenges proposed topics against empirical documentation, performing live web search queries to verify latest version APIs or dispute controversial claims.
+  - Hypatia ruthlessly audits cognitive leaps, prerequisite ordering, and vocabulary contracts, rejecting any section that uses untaught concepts.
+  - The Triad deliberates across critique rounds until full consensus is reached; a course cannot be created if any critic dissents.
+  - Daedalus personalizes the curriculum to the learner's profile, explicitly filling any pedagogical or practical gaps missed by the broad research dossier.
+  - Full deliberation rounds and arguments are preserved in `_tc/cache/consensus-trace.jsonl`.
+
+#### FR-32: Human-First Textbook Notes vs AI-First Token-Minimal Memlog Engine
+The system SHALL maintain a strict linguistic register separation between human learner notes and AI pedagogical working memory. Realizes UJ-2, UJ-3, UJ-6.
+- **Consequences (testable):**
+  - **Human-First Notes (`notes/chapter-XX.md`)**: Compiled strictly for human learners. Written in clear, accessible, intuitive English with clear mental models, relatable analogies, annotated code implementations, and instructor attribution. Free of technical shorthand or prompt metadata.
+  - **AI-First Memlog (`memlog.md`)**: Compiled strictly for AI agents. Employs ultra-dense, token-minimal notation (e.g. key-value shorthand, compact concept tags, error signatures) conveying complete semantic context with minimal token overhead.
+  - **Closed Conversation Tracing Loop**: `/tc-teach` automatically appends taught concepts (`- (concept by <Teacher>) <slug>:<invariant>`) and learner custom inquiries (`- (question) <query>`) to `courses/<slug>/memlog.md`.
+  - `/tc-test-me` mirrors diagnostic outcomes (`- (misconception) <category>`) and milestones (`- (milestone) <section-completed>`) directly to `courses/<slug>/memlog.md`.
+
+#### FR-33: Root-Level Research Substrate & Workspace Transparency
+The workspace SHALL expose all research materials in a visible root-level directory and provide an automated human-readable orientation guide upon initialization. Realizes UJ-1.
+- **Consequences (testable):**
+  - Scaffolds visible `research/` at workspace root alongside `courses/`, `roadmap/`, `profile/`, `portfolio/`, and `_tc/`.
+  - Bootstrapping automatically deploys `WORKSPACE_GUIDE.md` (and `README.md` if absent) at the workspace root describing the exact purpose, files, and editability of every directory.
+  - Ensures a newcomer or collaborator inspecting the workspace instantly understands the complete layout.
+
 ---
 
 ## 5. Non-Goals (Explicit)

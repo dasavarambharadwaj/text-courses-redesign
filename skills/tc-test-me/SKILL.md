@@ -1,11 +1,13 @@
 ---
 name: tc-test-me
-description: Pure question-based diagnostic testing of learner mental models without code copy-pasting into chat. Enforces Cumulative Boundary Rule, logs results atomically to test-ledger.jsonl, and updates section completion status.
+description: Pure question-based diagnostic testing of learner mental models without code copy-pasting into chat. Enforces Cumulative Boundary Rule, logs results atomically to test-ledger.jsonl, and mirrors token-minimal outcomes to memlog.md.
 ---
 
 # Diagnostic Assessment Skill (`tc-test-me`)
 
-Conducts targeted, 100% question-based conceptual diagnostic evaluations of learner mental models without requiring code copy-pasting into chat. Evaluates boundary conditions, failure modes, and architectural implications, logging outcomes to a persistent ledger.
+Conducts targeted, 100% question-based conceptual diagnostic evaluations of learner mental models without requiring code copy-pasting into chat. Evaluates boundary conditions, failure modes, and architectural implications, logging outcomes to a persistent ledger and mirroring token-minimal events to course memory.
+
+---
 
 ## Core Rules & Invariants
 
@@ -24,17 +26,23 @@ Conducts targeted, 100% question-based conceptual diagnostic evaluations of lear
 - Categorize identified misconceptions (e.g., `CONFUSION_MUTATION_TIMING`, `CONFUSION_OWNERSHIP_LIFETIME`, `CONFUSION_CONCURRENCY_ORDERING`).
 - Passing a section test automatically marks its status as `completed` in `course.toml`.
 
+### 4. Dual-Register Memlog Mirroring (FR-32)
+- Diagnostic evaluations automatically mirror into `courses/<slug>/memlog.md` in token-minimal key-value shorthand:
+  - Misconceptions: `- (misconception) misc:<category>:<section>`
+  - Milestones: `- (milestone) test:passed:<section>:completed`
+  - Course completion: `- (milestone) course:completed:<slug>`
+
 ---
 
 ## Conventions
 
-- `{project-root}` is the nearest folder containing `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
-- `{skill-root}` is this skill's own directory (e.g. `skills/tc-test-me` or `.agents/skills/tc-test-me`).
+- `{project-root}` is the nearest folder containing `.tc/` or `_tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
+- `{skill-root}` is this skill's own directory (e.g. `skills/tc-test-me`).
 
 ## On Activation
 
 Verify workspace initialization: check if `{project-root}/_tc/scripts/diagnostic_tester.py` exists.
-- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first (installing it via `npx skills add <repo> --skill tc-init` if needed), then re-run this command.
+- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first, then re-run this command.
 
 ---
 
@@ -82,7 +90,7 @@ Pose a single, intellectually stimulating scenario question:
   - Determine outcome: `fail`.
 
 ### Step 4: Record Outcome Atomically
-Execute `diagnostic_tester.py record` to persist the result to `test-ledger.jsonl` and update `course.toml`:
+Execute `diagnostic_tester.py record` to persist the result to `test-ledger.jsonl`, update `course.toml`, and mirror to `memlog.md`:
 
 ```bash
 uv run _tc/scripts/diagnostic_tester.py record \

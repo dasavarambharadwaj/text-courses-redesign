@@ -16,11 +16,18 @@ import argparse
 import datetime
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
 DEFAULT_MEMLOG_NAME = "memlog.md"
+
+
+def compress_to_token_minimal(text: str) -> str:
+    """Format text into token-minimal, compact representation for AI context efficiency."""
+    clean = re.sub(r"\s+", " ", text).strip()
+    return clean
 
 
 def now_iso() -> str:
@@ -151,6 +158,8 @@ def cmd_append(args: argparse.Namespace) -> None:
     entry_type = getattr(args, "type", None)
     entry_by = getattr(args, "by", None)
     text = args.text.strip()
+    if getattr(args, "compact", False) or getattr(args, "token_minimal", False):
+        text = compress_to_token_minimal(text)
 
     if entry_type and entry_by:
         prefix = f"- ({entry_type} by {entry_by}) "
@@ -258,6 +267,8 @@ def main() -> None:
     p_app.add_argument("--text", required=True, help="Entry text")
     p_app.add_argument("--type", help="Entry tag: concept, question, insight, misconception, analogy, handoff, milestone, decision")
     p_app.add_argument("--by", help="Origin author: user, teacher, coach, examiner")
+    p_app.add_argument("--compact", action="store_true", help="Compress entry to token-minimal format")
+    p_app.add_argument("--token-minimal", action="store_true", help="Compress entry to token-minimal format")
     p_app.set_defaults(func=cmd_append)
 
     # set

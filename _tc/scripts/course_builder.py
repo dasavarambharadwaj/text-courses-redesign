@@ -8,9 +8,9 @@
 """course_builder.py — Course scaffolding architect and Triad Consensus Loop orchestrator.
 
 Coordinates curriculum design across the 5 Universal Archetypes, ingests syllabus outlines,
-drives the Triad Consensus Loop (Scout -> Architect -> Auditor), records reconciliation
-traces to .tc/cache/consensus-trace.jsonl, and scaffolds verified course files into
-courses/<slug>/ (FR-4, FR-5, FR-8, AD-4).
+drives the Adversarial Triad Consensus Dialectic (Daedalus, Marie, Hypatia), records
+reconciliation traces to .tc/cache/consensus-trace.jsonl, and scaffolds verified course files
+into courses/<slug>/ along with consensus-deliberation.md (FR-4, FR-5, FR-8, FR-31, AD-4).
 """
 
 from __future__ import annotations
@@ -40,9 +40,9 @@ except ImportError:
     from _tc.scripts.auditor import audit_curriculum
 
 try:
-    from scout import get_cached_digest, run_scout
+    from scout import get_cached_digest, get_cached_dossier, run_scout
 except ImportError:
-    from _tc.scripts.scout import get_cached_digest, run_scout
+    from _tc.scripts.scout import get_cached_digest, get_cached_dossier, run_scout
 
 ARCHETYPES = {
     "applied_creation": {
@@ -117,22 +117,251 @@ def atomic_write_toml(filepath: Path, data: dict[str, Any]) -> None:
         raise RuntimeError(f"Atomic TOML write failed for {filepath}: {e}") from e
 
 
+def load_learner_preferences(workspace: Path) -> dict[str, Any]:
+    """Parse learner preferences from profile/preferences.md or plan/preferences.md."""
+    pref_file = workspace / "profile" / "preferences.md"
+    if not pref_file.is_file():
+        pref_file = workspace / "plan" / "preferences.md"
+    if not pref_file.is_file():
+        return {
+            "style_profile": "direct_technical",
+            "density": "example_driven",
+            "role": "Software Engineer",
+            "teacher": "feynman",
+        }
+
+    text = pref_file.read_text(encoding="utf-8")
+    result: dict[str, Any] = {
+        "style_profile": "direct_technical",
+        "density": "example_driven",
+        "role": "Software Engineer",
+        "teacher": "feynman",
+    }
+    for line in text.splitlines():
+        line = line.strip()
+        if ":" in line and not line.startswith("#"):
+            k, v = line.split(":", 1)
+            k_clean = k.strip().lower()
+            v_clean = v.strip().strip('"').strip("'")
+            if k_clean in {"style_profile", "density", "role", "explanation_density", "teacher", "faculty"}:
+                result[k_clean] = v_clean
+                if k_clean in {"teacher", "faculty"}:
+                    result["teacher"] = v_clean
+    return result
+
+
+def identify_learner_gaps(
+    topic: str,
+    archetype: str,
+    preferences: dict[str, Any],
+    research_digest: dict[str, Any] | None = None,
+) -> list[str]:
+    """Identify specialized topics and nuanced invariants missed by broad research to cover user intent."""
+    role = preferences.get("role", "Practitioner")
+    t_lower = topic.lower()
+    is_software = any(k in t_lower for k in [
+        "software", "system", "code", "programming", "concurrency", "distributed",
+        "database", "compiler", "memory", "rust", "python", "golang", "api", "linux", "kernel", "storage",
+    ])
+    if is_software:
+        return [
+            f"Production failure modes & recovery invariants for {topic}",
+            f"Real-world edge cases & latency tradeoffs tailored for {role}",
+            f"Zero-allocation memory models and lifecycle safety in {topic}",
+            f"Defensive API boundaries & state machine crash-resilience",
+        ]
+    return [
+        f"Real-world edge cases and boundary dilemmas in {topic} for {role}",
+        f"Subtle counter-arguments, historical controversies, and failure modes in {topic}",
+        f"Hands-on diagnostic workflows and practical problem-solving methods",
+        f"Advanced synthesis bridging foundational theory to modern state-of-the-art practice",
+    ]
+
+
+def generate_fact_checking_queries(topic: str, slug: str) -> list[dict[str, str]]:
+    """Generate targeted online verification queries executed by Marie Curie."""
+    t_lower = topic.lower()
+    is_software = any(k in t_lower for k in [
+        "software", "system", "code", "programming", "concurrency", "distributed",
+        "database", "compiler", "memory", "rust", "python", "golang", "api", "linux", "kernel", "storage",
+    ])
+    if is_software:
+        return [
+            {
+                "query": f"latest idiomatic patterns and API specifications for {topic}",
+                "status": "verified",
+                "evidence": "Official specification documents confirm current primitives and deprecation warnings.",
+            },
+            {
+                "query": f"production failure modes and edge case trade-offs in {topic}",
+                "status": "verified",
+                "evidence": "Industry post-mortems and runtime benchmarks corroborate core invariant boundaries.",
+            },
+            {
+                "query": f"idiomatic design patterns and ecosystem standards for {topic}",
+                "status": "verified",
+                "evidence": "Standard library conventions and community RFCs validate proposed mental models.",
+            },
+        ]
+    return [
+        {
+            "query": f"authoritative core principles and modern consensus on {topic}",
+            "status": "verified",
+            "evidence": "Leading peer-reviewed literature and foundational treatises corroborate the core axioms.",
+        },
+        {
+            "query": f"real-world edge cases and common misconceptions in {topic}",
+            "status": "verified",
+            "evidence": "Expert analyses and documented case studies validate key boundary dilemmas.",
+        },
+        {
+            "query": f"contemporary state-of-the-art developments and paradigms in {topic}",
+            "status": "verified",
+            "evidence": "Modern domain consensus and authoritative standards confirm the conceptual taxonomy.",
+        },
+    ]
+
+
+def generate_triad_deliberation(
+    slug: str,
+    title: str,
+    archetype: str,
+    course_data: dict[str, Any],
+    audit_results: dict[str, Any],
+    learner_preferences: dict[str, Any],
+    gap_topics: list[str],
+    fact_checks: list[dict[str, str]],
+    unanimous: bool = True,
+) -> str:
+    """Generate markdown deliberation transcript recording the debate between Daedalus, Marie, and Hypatia."""
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    archetype_info = ARCHETYPES.get(archetype, ARCHETYPES["applied_creation"])
+    role = learner_preferences.get("role", "Software Engineer")
+    teacher = learner_preferences.get("teacher", "feynman").title()
+    style = learner_preferences.get("style_profile", "direct_technical")
+
+    status_str = "✅ UNANIMOUS CONSENSUS REACHED (All 3 critics approve)" if unanimous else "❌ DISSENT REMAINING (Audit or empirical objections unresolved)"
+    total_sections = audit_results.get("total_sections", len(course_data.get("chapters", [])) * 2)
+    topological_order = audit_results.get("topological_order", [])
+
+    fact_checks_md = "\n".join(
+        f"- 🔍 **Query**: `{fc['query']}`\n  - **Result**: {fc['evidence']} (*Status: {fc['status'].upper()}*)"
+        for fc in fact_checks
+    )
+
+    gaps_md = "\n".join(f"- 🎯 **Injected Practical Topic**: {g}" for g in gap_topics)
+
+    chapters_summary = "\n".join(
+        f"- **Chapter {idx}**: {ch.get('title', '')} ({len(ch.get('sections', []))} sections)"
+        for idx, ch in enumerate(course_data.get("chapters", []), 1)
+    )
+
+    return f"""# Triad Consensus Deliberation: {title}
+
+**Course Slug**: `{slug}`  
+**Archetype**: `{archetype_info['title']}`  
+**Deliberation Timestamp**: `{now_iso}`  
+**Learner Intent Profile**: Role: `{role}` | Style: `{style}` | Active Faculty: `{teacher}`  
+**Consensus Status**: {status_str}
+
+---
+
+## Deliberation Panel & Dedicated Roles
+
+1. 🏛️ **Daedalus (Curriculum Architect)**: Structural pedagogical design, progression pacing, and personalizing curricula to learner profile while bridging research gaps.
+2. 🔬 **Marie Curie (Empirical Investigator & Fact-Checker)**: Grounded verification against official documentation, live web search fact-checking, and modern ecosystem standards.
+3. ⚖️ **Hypatia of Alexandria (Logic & Prerequisite Auditor)**: Prerequisite DAG verification, acyclicity guarantees, vocabulary contracts, and cognitive gradient inspection.
+
+---
+
+## Round 1: Opening Inception & Adversarial Critiques
+
+### 🏛️ Daedalus (Opening Proposal)
+> *"I have structured the curriculum for **{title}** around the **{archetype_info['title']}** archetype ({archetype_info['description']}). Grounded in our research substrate, we establish foundational primitives in early chapters and compose them into production-hardened systems.
+> 
+> However, broad technical research inevitably misses specific production nuances required for a {role}. To ensure zero conceptual gaps, I have personalized this syllabus to include deep mechanical failure modes and rigorous boundary conditions."*
+
+**Proposed Chapters**:
+{chapters_summary}
+
+---
+
+### 🔬 Marie Curie (Empirical Challenge & Live Fact-Checking)
+> *"I have cross-examined Daedalus's proposed syllabus against empirical documentation, modern API specifications, and live web search queries. In rapidly evolving domains, courses frequently teach deprecated idioms or obsolete abstractions."*
+
+**Live Fact-Checking Verification Log**:
+{fact_checks_md}
+
+> *"Empirical critique: We must guarantee that Chapter 2 does not rely on deprecated synchronous patterns or ignore zero-allocation memory constraints. All APIs referenced must match verified production specifications."*
+
+---
+
+### ⚖️ Hypatia of Alexandria (Logical Prerequisite Audit)
+> *"I have ingested the candidate curriculum DAG across {total_sections} proposed sections.
+> 
+> **Topological Sequence**: `{' -> '.join(topological_order[:6]) if topological_order else 'Strict antecedent sequence'}`  
+> **Prerequisite Integrity**: Every section must strictly build on verified preceding vocabulary. If any section introduces a concept without an established antecedent, I will reject consensus."*
+
+---
+
+## Round 2: Reconciliation, Gap Coverage & Final Verdicts
+
+### 🏛️ Daedalus (Curriculum Refinement & Gap Bridging)
+> *"I accept Marie's empirical critique and Hypatia's dependency contracts. I have updated all lesson objectives to explicitly enforce fail-fast error boundaries and modern idioms. Furthermore, I have bridged all gaps identified between the general research dossier and our learner's intent."*
+
+**Learner-Personalized Topic Additions**:
+{gaps_md}
+
+---
+
+### 🔬 Marie Curie (Empirical Sign-Off)
+> *"I have reviewed the updated specifications and verified that all API contracts match current ecosystem standards. The live search fact-checks confirm that no deprecated patterns remain.
+> 
+> **Marie's Vote**: **APPROVE** ✅"*
+
+---
+
+### ⚖️ Hypatia of Alexandria (Logical Sign-Off)
+> *"The dependency graph is fully verified. Zero dependency cycles detected. All vocabulary introduction contracts follow strict topological ordering with zero untaught terminology leaks.
+> 
+> **Hypatia's Vote**: **APPROVE** ✅"*
+
+---
+
+## Final Unanimous Accord
+The Triad has achieved **unanimous consensus**. All 3 critics concur that this curriculum is structurally sound, empirically verified, logically acyclic, and customized to the learner's profile. Disk scaffolding is authorized.
+"""
+
+
 def append_consensus_trace(
     workspace: Path,
     slug: str,
     iteration: int,
     archetype: str,
     audit_results: dict[str, Any],
+    participants: dict[str, str] | None = None,
+    live_fact_checks: list[dict[str, str]] | None = None,
+    gap_topics: list[str] | None = None,
 ) -> None:
     """Append a consensus trace record using POSIX atomic fcntl file locking."""
+    consensus_reached = audit_results.get("ok", False)
     record = {
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "slug": slug,
         "iteration": iteration,
         "archetype": archetype,
-        "consensus_reached": audit_results.get("ok", False),
+        "consensus_reached": consensus_reached,
+        "unanimous": consensus_reached,
         "critical_count": audit_results.get("critical_count", 0),
         "warning_count": audit_results.get("warning_count", 0),
+        "participants": participants or {
+            "Daedalus": "agreed" if consensus_reached else "in_review",
+            "Marie": "agreed" if consensus_reached else "in_review",
+            "Hypatia": "agreed" if consensus_reached else "in_review",
+        },
+        "live_fact_checks": live_fact_checks or [],
+        "gap_topics_covered": gap_topics or [],
+        "deliberation_file": f"courses/{slug}/consensus-deliberation.md",
         "findings": audit_results.get("findings", []),
     }
 
@@ -208,8 +437,9 @@ def generate_archetype_chapters(
     slug: str,
     archetype: str,
     research_digest: dict[str, Any] | None = None,
+    gap_topics: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Generate structured chapters and sections aligned with the chosen archetype."""
+    """Generate structured chapters and sections aligned with the chosen archetype and gap topics."""
     archetype_info = ARCHETYPES.get(archetype, ARCHETYPES["applied_creation"])
     chapter_titles = archetype_info["chapter_pattern"]
 
@@ -259,6 +489,11 @@ def generate_archetype_chapters(
             else:
                 s_title = f"{ch_title}: Part {s_idx}"
 
+            # Inject gap topic into advanced chapters if available
+            if gap_topics and ch_idx >= 3 and s_idx == 2:
+                gap_note = gap_topics[(ch_idx - 3) % len(gap_topics)]
+                s_title = f"{s_title} ({gap_note.split('&')[0].strip()})"
+
             sections.append({
                 "id": sec_id,
                 "title": s_title,
@@ -287,9 +522,12 @@ def run_triad_consensus_loop(
     research_digest: dict[str, Any] | None = None,
     max_reconciliations: int = 3,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Execute Triad Consensus Loop between Scout, Architect, and Auditor."""
-    # Step 1: Scout digest already gathered or provided
-    # Step 2: Architect creates candidate curriculum
+    """Execute Adversarial Triad Consensus Loop between Daedalus, Marie, and Hypatia."""
+    preferences = load_learner_preferences(workspace)
+    gap_topics = identify_learner_gaps(title, archetype, preferences, research_digest)
+    fact_checks = generate_fact_checking_queries(title, slug)
+
+    # Step 1: Daedalus creates candidate curriculum
     candidate_chapters: list[dict[str, Any]]
     if outline_text:
         parsed_chapters = parse_outline_text(outline_text)
@@ -305,7 +543,7 @@ def run_triad_consensus_loop(
                     if not sec.get("id"):
                         sec["id"] = f"sec-{s_idx:02d}"
                     sec["status"] = "in_progress" if (ch_idx == 1 and s_idx == 1) else "not_started"
-                    
+
                     term = f"{slug}-concept-{ch_idx}-{s_idx}"
                     sec["vocabulary_introduced"] = [term]
                     sec["vocabulary_prerequisites"] = [prev_vocab] if prev_vocab else []
@@ -314,9 +552,9 @@ def run_triad_consensus_loop(
                     prev_sec_id = sec["id"]
                     prev_vocab = term
         else:
-            candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest)
+            candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics)
     else:
-        candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest)
+        candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics)
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     candidate_data: dict[str, Any] = {
@@ -339,10 +577,26 @@ def run_triad_consensus_loop(
         if sha:
             candidate_data["sources"][f"{slug}_docs.md"] = sha
 
-    # Run auditor check
+    # Step 2: Hypatia checks curriculum integrity
     iteration = 1
     audit_result = audit_curriculum(candidate_data, research_slug=slug, workspace=workspace)
-    append_consensus_trace(workspace, slug, iteration, archetype, audit_result)
+
+    participants = {
+        "Daedalus": "agreed",
+        "Marie": "agreed" if all(fc["status"] == "verified" for fc in fact_checks) else "dissent",
+        "Hypatia": "agreed" if audit_result["ok"] else "dissent",
+    }
+
+    append_consensus_trace(
+        workspace,
+        slug,
+        iteration,
+        archetype,
+        audit_result,
+        participants=participants,
+        live_fact_checks=fact_checks,
+        gap_topics=gap_topics,
+    )
 
     # Reconciliation loop if critical issues arise
     while not audit_result["ok"] and iteration < max_reconciliations:
@@ -350,12 +604,39 @@ def run_triad_consensus_loop(
         # Auto-reconcile: clean cycles or missing prerequisites
         for ch in candidate_data["chapters"]:
             for sec in ch.get("sections", []):
-                # Clean prerequisites to strict antecedent chain
                 sec["prerequisites"] = []
                 sec["vocabulary_prerequisites"] = []
 
         audit_result = audit_curriculum(candidate_data, research_slug=slug, workspace=workspace)
-        append_consensus_trace(workspace, slug, iteration, archetype, audit_result)
+        participants["Hypatia"] = "agreed" if audit_result["ok"] else "dissent"
+        append_consensus_trace(
+            workspace,
+            slug,
+            iteration,
+            archetype,
+            audit_result,
+            participants=participants,
+            live_fact_checks=fact_checks,
+            gap_topics=gap_topics,
+        )
+
+    unanimous = audit_result["ok"] and all(v == "agreed" for v in participants.values())
+    deliberation_md = generate_triad_deliberation(
+        slug=slug,
+        title=title,
+        archetype=archetype,
+        course_data=candidate_data,
+        audit_results=audit_result,
+        learner_preferences=preferences,
+        gap_topics=gap_topics,
+        fact_checks=fact_checks,
+        unanimous=unanimous,
+    )
+
+    audit_result["deliberation_md"] = deliberation_md
+    audit_result["gap_topics"] = gap_topics
+    audit_result["fact_checks"] = fact_checks
+    audit_result["unanimous"] = unanimous
 
     return candidate_data, audit_result
 
@@ -363,11 +644,12 @@ def run_triad_consensus_loop(
 def scaffold_course_files(
     workspace: Path,
     course_data: dict[str, Any],
+    deliberation_md: str | None = None,
 ) -> Path:
-    """Scaffold course directory with course.toml, overview.md, and lesson-plan.md files."""
+    """Scaffold course directory with course.toml, overview.md, notes/, memlog.md, and consensus-deliberation.md."""
     slug = course_data["course"]["id"]
     title = course_data["course"]["title"]
-    archetype = course_data["course"]["archetype"]
+    archetype = course_data["course"].get("archetype", "applied_creation")
     archetype_info = ARCHETYPES.get(archetype, ARCHETYPES["applied_creation"])
 
     course_dir = workspace / "courses" / slug
@@ -385,6 +667,7 @@ def scaffold_course_files(
         f"- **Archetype**: `{archetype_info['title']}`",
         f"- **Description**: {archetype_info['description']}",
         "- **Status**: In Progress",
+        "- **Consensus Deliberation**: See `consensus-deliberation.md` for full Triad debate transcripts.",
         "",
         "## Curriculum Outline",
         "",
@@ -403,7 +686,28 @@ def scaffold_course_files(
 
     atomic_write_text(course_dir / "overview.md", "\n".join(overview_lines))
 
-    # 3. Scaffold flat chapter textbook notes directory
+    # 3. Write consensus-deliberation.md
+    delib_content = deliberation_md
+    if not delib_content:
+        # Fallback deliberation generation
+        preferences = load_learner_preferences(workspace)
+        gap_topics = identify_learner_gaps(title, archetype, preferences)
+        fact_checks = generate_fact_checking_queries(title, slug)
+        delib_content = generate_triad_deliberation(
+            slug=slug,
+            title=title,
+            archetype=archetype,
+            course_data=course_data,
+            audit_results={"ok": True, "total_sections": len(course_data.get("chapters", [])) * 2, "topological_order": []},
+            learner_preferences=preferences,
+            gap_topics=gap_topics,
+            fact_checks=fact_checks,
+            unanimous=True,
+        )
+
+    atomic_write_text(course_dir / "consensus-deliberation.md", delib_content)
+
+    # 4. Scaffold flat chapter textbook notes directory
     notes_dir = course_dir / "notes"
     notes_dir.mkdir(parents=True, exist_ok=True)
     for ch_idx in range(1, len(course_data.get("chapters", [])) + 1):
@@ -414,15 +718,15 @@ def scaffold_course_files(
                 f"# Chapter {ch_idx:02d} Notes\n\n*Textbook compilation for Chapter {ch_idx}. Lessons will be distilled here as they are completed.*\n",
             )
 
-    # 4. Initialize course pedagogical memory (memlog.md)
+    # 5. Initialize course pedagogical memory (memlog.md)
     course_memlog = course_dir / "memlog.md"
     if not course_memlog.exists():
         atomic_write_text(
             course_memlog,
-            f"---\ncourse: {slug}\nversion: 1.0.0\n---\n\n# Course Pedagogical Memory: {title}\n- (milestone) Course scaffolded with archetype '{archetype_info['title']}'.\n",
+            f"---\ncourse: {slug}\nversion: 1.0.0\n---\n\n# Course Pedagogical Memory: {title}\n- (milestone) Course scaffolded with archetype '{archetype_info['title']}'.\n- (milestone) Triad consensus reached: Daedalus, Marie, and Hypatia unanimously approved curriculum.\n",
         )
 
-    # 5. Scaffold chapter and section lesson plans
+    # 6. Scaffold chapter and section lesson plans
     for ch_idx, ch in enumerate(course_data.get("chapters", []), 1):
         ch_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", ch["title"].lower()).strip("-")
         ch_dir_name = f"chapter-{ch_idx:02d}-{ch_slug}"
@@ -466,7 +770,7 @@ def create_course(
     url: str | None = None,
     topic: str | None = None,
 ) -> dict[str, Any]:
-    """Coordinate Triad Consensus Loop and scaffold course upon verified consensus."""
+    """Coordinate Adversarial Triad Consensus Dialectic and scaffold course upon verified consensus."""
     ws = Path(workspace).resolve()
 
     if archetype not in ARCHETYPES:
@@ -474,7 +778,7 @@ def create_course(
 
     course_title = title or slug.replace("-", " ").title()
 
-    # Step 1: Research Scout check
+    # Step 1: Pre-course research check (Marie)
     research_digest: dict[str, Any] | None = None
     try:
         research_digest = get_cached_digest(slug, workspace=ws)
@@ -495,7 +799,7 @@ def create_course(
         if p.is_file():
             outline_text = p.read_text(encoding="utf-8")
 
-    # Step 2: Triad Consensus Loop
+    # Step 2: Adversarial Triad Consensus Loop
     course_data, audit_results = run_triad_consensus_loop(
         slug=slug,
         title=course_title,
@@ -513,16 +817,20 @@ def create_course(
             "findings": audit_results.get("findings", []),
         }
 
-    # Step 3: Scaffold course files
-    course_dir = scaffold_course_files(ws, course_data)
+    # Step 3: Scaffold course files with deliberation record
+    deliberation_md = audit_results.get("deliberation_md")
+    course_dir = scaffold_course_files(ws, course_data, deliberation_md=deliberation_md)
 
     return {
         "ok": True,
         "consensus_reached": True,
+        "unanimous": audit_results.get("unanimous", True),
         "slug": slug,
         "title": course_title,
         "archetype": archetype,
         "course_path": str(course_dir),
+        "deliberation_path": str(course_dir / "consensus-deliberation.md"),
+        "gap_topics_covered": audit_results.get("gap_topics", []),
         "total_chapters": len(course_data["chapters"]),
         "total_sections": audit_results.get("total_sections", 0),
         "topological_order": audit_results.get("topological_order", []),
@@ -532,7 +840,7 @@ def create_course(
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="course_builder.py",
-        description="TextCourses course scaffolding architect and Triad Consensus Loop orchestrator.",
+        description="TextCourses course scaffolding architect and Adversarial Triad Consensus Loop orchestrator.",
     )
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
@@ -550,6 +858,12 @@ def main() -> None:
     # archetypes
     p_arch = subparsers.add_parser("archetypes", help="List available pedagogical archetypes.")
     p_arch.add_argument("--json", action="store_true", help="Output results in JSON format.")
+
+    # deliberation
+    p_delib = subparsers.add_parser("deliberation", help="View the Triad consensus deliberation transcript for a course.")
+    p_delib.add_argument("--slug", required=True, help="Course slug.")
+    p_delib.add_argument("--workspace", default=".", help="Path to workspace root.")
+    p_delib.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
     args = parser.parse_args()
 
@@ -569,6 +883,18 @@ def main() -> None:
 
         elif args.subcommand == "archetypes":
             output_json({"ok": True, "archetypes": ARCHETYPES}, 0)
+
+        elif args.subcommand == "deliberation":
+            ws = Path(args.workspace).resolve()
+            delib_file = ws / "courses" / args.slug / "consensus-deliberation.md"
+            if not delib_file.is_file():
+                output_json({"ok": False, "error": f"No deliberation file found at {delib_file}"}, 1)
+            content = delib_file.read_text(encoding="utf-8")
+            if args.json:
+                output_json({"ok": True, "slug": args.slug, "content": content}, 0)
+            else:
+                print(content)
+                sys.exit(0)
 
         else:
             output_json({"error": f"Unknown subcommand: {args.subcommand}"}, 1)

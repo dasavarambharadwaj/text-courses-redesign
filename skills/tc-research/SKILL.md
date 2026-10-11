@@ -1,71 +1,95 @@
 ---
 name: tc-research
-description: "Scout technical documentation and extract structured ToC, API indexes, and vocabulary digests."
+description: "Autonomous pre-course deep research engine led by Marie Curie. Executes multi-round web search, universal multi-hat critical reflection, and generates comprehensive research dossiers in research/<slug>/."
 ---
 
-# `tc-research`: Technical Documentation Scout & Research Caching Engine
+# `tc-research`: Autonomous Universal Deep Research Engine
 
-`tc-research` serves as the Scout in the Triad Consensus Loop. It verifies factual technical ground truth against official documentation sources, preventing hallucinated APIs, deprecated patterns, and inaccurate prerequisites.
+`tc-research` is the autonomous pre-course research engine spearheaded by **🔬 Marie Curie (The Empirical Investigator)**. It harvests, stress-tests, and synthesizes authoritative domain knowledge **BEFORE course creation**, ensuring that every curriculum is built upon verified empirical ground truth rather than LLM assumptions.
+
+Research is stage 1 of course authoring: run `/tc-research` first to produce a visible research dossier, which `/tc-create` then ingests to build a personalized course.
+
+---
 
 ## Core Invariants
 
-1. **Grounded Source Research (FR-6)**: Curriculum topics must be grounded in verified documentation, API references, or authoritative source trees.
-2. **Confidence Scoring**: Every scouted digest must carry an explicit confidence rating:
-   - `high`: Verified against official documentation URLs or authoritative source files.
-   - `medium`: Inferred from secondary references or partial extracts.
-   - `low`: Incomplete or fragmented notes.
-   - `unverified`: Synthetic topic fallback without external documentation ground truth.
-3. **Deterministic Research Cache (AD-4)**: Scouted artifacts are persisted deterministically into `.tc/research/<slug>/digest.json` and `.tc/research/<slug>/sources.toml`.
-4. **Zero Course Directory Pollution**: `tc-research` strictly populates `.tc/research/` and never writes directly into `courses/`.
+1. **Pre-Course Research Primacy (FR-30)**: Research is conducted **first**, before course creation. Any learner exploring a new domain invokes `/tc-research "<topic>"`.
+2. **Universal Multi-Hat Critical Engine (Tree-of-Thought Dialectic)**: Marie maintains a library of 12+ universal critical hats spanning all human knowledge domains (sciences, humanities, business, arts, philosophy, engineering). She dynamically selects the 5 most appropriate hats for the domain:
+   - 🎯 **Applied Practitioner**: Real-world execution, practical workflows, field tools, and operational resilience.
+   - 🏛️ **Academic / First-Principles Purist**: Foundational axioms, formal proofs, structural laws, and ontological ground truth.
+   - 🧗 **Beginner Friction Hunter**: Cognitive stumbling blocks, hidden assumed knowledge, and confusing terminology.
+   - 🔬 **Empirical Skeptic & Stress-Tester**: Counter-examples, boundary limits, common myths/misconceptions, and conditions of invalidity.
+   - 🌐 **Contemporary Evolution Reviewer**: Modern consensus, recent breakthroughs, state-of-the-art standards, and obsolete dogmas to unlearn.
+   - ⚡ **Edge-Case Systems Engineer**: Concurrency hazards, race conditions, memory pressure, and cascading failure modes.
+   - 🔄 **Interdisciplinary Weaver**: Cross-domain analogies, systemic connections, and isomorphic principles bridging fields.
+   - ⚖️ **Ethical & Systemic Impact Auditor**: Second-order consequences, societal or organizational externalities, and responsible stewardship.
+   - 🎨 **Intuitive Metaphorist**: Visceral mental models, relatable physical analogies, and sticky visual intuition.
+   - 📜 **Historical Genealogist**: The problem-solving lineage, origins, and historical dilemmas that forced ideas into existence.
+   - 📊 **Pragmatic Resource & Trade-off Optimizer**: Pareto principle (80/20 leverage), time-to-mastery, and prioritization.
+3. **Tree-of-Thought Search Branches**: Gaps and edge cases surfaced by the chosen hats trigger iterative follow-up search queries to ensure comprehensive domain coverage.
+4. **Root-Level Research Substrate (FR-33)**: All research artifacts are written directly to the visible workspace directory `research/<topic-slug>/`:
+   - `dossier.md`: Comprehensive master knowledge map, primitives, mental models, and curriculum blueprint.
+   - `multi-hats-critique.md` (and `five-hats-critique.md`): Full multi-perspective dialectic review and follow-up branches.
+   - `sources.json`: Provenance citations, URLs, scraped snippets, and retrieval timestamps.
+   - `digest.json`: Extracted ToC, symbols/APIs, and prerequisite vocabulary terms for downstream compilation.
 
 ---
 
 ## Conventions
 
-- `{project-root}` is the nearest folder containing `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
-- `{skill-root}` is this skill's own directory (e.g. `skills/tc-research` or `.agents/skills/tc-research`).
+- `{project-root}` is the nearest folder containing `_tc/` or `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
+- `{skill-root}` is this skill's own directory (e.g. `skills/tc-research`).
 
 ## On Activation
 
 Verify workspace initialization: check if `{project-root}/_tc/scripts/scout.py` exists.
-- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first (installing it via `npx skills add <repo> --skill tc-init` if needed), then re-run this command.
+- If not found: TextCourses is not initialized in this workspace. Offer to run `/tc-init` first, then re-run this command.
 
 ---
 
 ## Workflow
 
-### 1. Ingest Documentation Sources
+### 1. Execute Autonomous Deep Research
 
-Run the scout against an official documentation URL, a local directory, or a source file:
+Run the deep research engine on target domain or topic:
 
 ```bash
-# Ingest local documentation tree
-uv run _tc/scripts/scout.py scout --slug tokio-async --source-path plan/sources/tokio_docs/
+# Research a broad topic autonomously (dynamically selects domain-tailored hats)
+uv run _tc/scripts/scout.py scout --slug stoic-philosophy --topic "Stoic Philosophy: Epictetus, Seneca, and Marcus Aurelius"
 
-# Ingest official documentation URL
-uv run _tc/scripts/scout.py scout --slug react-hooks --url https://react.dev/reference/react
+# Research with custom requested critical hats
+uv run _tc/scripts/scout.py scout --slug quantum-mechanics --topic "Quantum Mechanics" --hats "academic_purist,intuitive_metaphorist,empirical_skeptic"
 
-# Fallback topic exploration
-uv run _tc/scripts/scout.py scout --slug database-internals --topic "Database Storage Engines and B-Trees"
+# Research with an official documentation URL anchor
+uv run _tc/scripts/scout.py scout --slug tokio-async --url https://docs.rs/tokio/latest/tokio/
+
+# List all available hats in the registry
+uv run _tc/scripts/scout.py hats
 ```
 
-The scout extracts:
-- Table of Contents (`toc`): Headings, modules, chapters.
-- API Index (`api_index`): Functions, methods, classes, types, structs, signatures.
-- Vocabulary (`vocabulary`): Technical terms, keywords, and primitives.
+### 2. Inspect Generated Research Dossier
 
-### 2. Inspect Cached Digest
-
-Retrieve the scouted digest for review or pipeline consumption:
+Inspect the synthesized domain knowledge in `research/<topic-slug>/`:
 
 ```bash
-uv run _tc/scripts/scout.py get --slug tokio-async
+# Read master research dossier
+uv run _tc/scripts/scout.py dossier --slug stoic-philosophy
+
+# Read multi-hat critical reflection
+uv run _tc/scripts/scout.py critique --slug stoic-philosophy
+
+# Read machine digest (ToC, symbols, vocabulary)
+uv run _tc/scripts/scout.py get --slug stoic-philosophy
 ```
 
-### 3. List Research Topics
+### 3. Pipeline Hand-off to `/tc-create`
 
-List all cached research digests across the workspace:
+Once research is complete in `research/<topic-slug>/`, proceed directly to course creation. `/tc-create` will ingest this existing dossier without re-crawling:
 
-```bash
-uv run _tc/scripts/scout.py list
+```text
+Research complete! Comprehensive dossier compiled in research/<topic-slug>/dossier.md.
+
+Next Action:
+Create your personalized course using this research:
+  /tc-create "<topic>"
 ```
