@@ -431,6 +431,40 @@ The workspace SHALL expose all research materials in a visible root-level direct
   - Bootstrapping automatically deploys `WORKSPACE_GUIDE.md` (and `README.md` if absent) at the workspace root describing the exact purpose, files, and editability of every directory.
   - Ensures a newcomer or collaborator inspecting the workspace instantly understands the complete layout.
 
+#### FR-34: Beginner-to-Core Pedagogical Adaptation
+The system SHALL treat a beginner competency declaration (`beginner`, `novice`, or starting from scratch) as a foundational constraint across research, curriculum architecture, teaching, and diagnostic testing.
+- **Consequences (testable):**
+  - When profile (`profile/preferences.md`) or user prompt indicates beginner level, `course_builder.py` sets `competency_level = "beginner"`, enforces foundational prerequisite laddering, avoids jumping into complex patterns, and constructs smaller incremental learning steps.
+  - `scout.py` / `/tc-research` gives maximum priority to `beginner_friction_hunter` and `intuitive_metaphorist` critical hats, auditing all implicit assumptions and flagging potential cognitive overload points.
+  - `/tc-teach` assigns primary pedagogical leadership to **Hypatia (The Empathetic Tutor)** or Feynman, enforcing Socratic pacing and strictly forbidding unexplained abstractions.
+  - `/tc-test-me` begins diagnostic verification with intuitive conceptual understanding before advancing to mechanical stress tests.
+
+#### FR-35: Autonomous Multi-Path Curriculum Brainstorming & Hat Validation
+When creating a course (`/tc-create`), the system SHALL NOT prompt the learner with open-ended or stalling questions asking how to create the course. Instead, it SHALL autonomously generate multiple distinct curriculum architectures, stress-test them through the Universal Critical Hats, and converge via adversarial Triad debate.
+- **Consequences (testable):**
+  - `course_builder.py` automatically synthesizes four distinct pedagogical architectures:
+    1. *Foundational / First-Principles Path* (theory-first, axioms to application)
+    2. *Hands-on / Project-First Path* (build real artifacts from Day 1, introduce theory just-in-time)
+    3. *Problem-Driven / Diagnostic Path* (failure modes, root-cause debugging, crisis response)
+    4. *Intuitive / Metaphor-First Path* (mental models, visceral real-world analogies)
+  - The generated paths are evaluated and validated through the active Universal Critical Hats (Applied Practitioner, Academic Purist, Beginner Friction Hunter, Edge-Case Systems Engineer, Resource Tradeoff Optimizer).
+  - The Faculty Triad (Daedalus, Marie, Hypatia) debates the tradeoffs, synthesizes the optimal hybrid tailored to the learner's profile, and outputs `courses/<slug>/curriculum-brainstorm.md` alongside `consensus-deliberation.md`.
+
+#### FR-36: In-Loop Practical Instruction & AI Practical Evaluation
+When the learner indicates a desire to learn with practicals (`practical_focus = true`, hands-on exercises, or labs), the system SHALL embed the practicals agent into the active teaching loop and validate each lesson's practical challenge using AI.
+- **Consequences (testable):**
+  - `/tc-teach` includes **Daedalus (The Master Craftsman)** / `practical_evaluator.py` into every lesson turn, scaffolding a concrete, executable challenge in `courses/<slug>/lessons/lesson-XX/practical.md`.
+  - The learner submits their practical solution directly, and the AI practical evaluator analyzes execution, correctness invariants, edge cases, and code craft.
+  - The evaluator returns structured diagnostic feedback (status `pass`/`retry`, rubric score, specific corrections).
+  - Section mastery and progress advancement in `ledger.toml` require successful practical verification.
+
+#### FR-37: Zero-Unexplained-Jargon & Human-First Readability Guardrail
+All text intended for human reading (notes, explanations, guides) SHALL be written in clear, accessible, plain English and MUST NEVER introduce unexplained domain jargon.
+- **Consequences (testable):**
+  - Every technical or domain-specific term must either be established in an earlier chapter or explicitly explained in-depth with a relatable everyday analogy upon its first appearance.
+  - `notes_compiler.py` enforces a readability and jargon audit (`audit_jargon_and_readability`), ensuring all newly introduced technical terms feature an intuitive breakdown box before use.
+  - Faculty teaching prompts in `teach_engine.py` strictly forbid technical gatekeeping or ungrounded terminology, requiring visceral analogies before formal definitions.
+
 ---
 
 ## 5. Non-Goals (Explicit)

@@ -1,0 +1,41 @@
+next_id = 5
+
+[[entry]]
+id = 1
+type = "story"
+title = "Beginner-to-Core Pedagogical Adaptation"
+after = []
+risk = "medium"
+covers = ["FR-34"]
+description = "Infuse beginner competency declaration deeply into research (prioritizing friction hunter and intuitive metaphorist hats), course creation (foundational prerequisite laddering and pacing), teaching (Hypatia leadership and cognitive load pacing), and testing."
+verify = "course_builder.py, scout.py, teach_engine.py, and diagnostic_tester.py deeply adapt to beginner settings; unit tests pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Autonomous Multi-Path Curriculum Brainstorming & Hat Validation"
+after = [1]
+risk = "high"
+covers = ["FR-35"]
+description = "Eliminate interactive stalling in course creation. Autonomously generate 4 pedagogical architectures (Foundational First-Principles, Hands-on Project-First, Problem-Driven Diagnostic, Intuitive Metaphor-First), submit them to Universal Critical Hats for validation, debate tradeoffs in the Triad, and output curriculum-brainstorm.md."
+verify = "course_builder.py autonomously synthesizes 4 curriculum paths, stress-tests with critical hats, achieves Triad consensus without prompting user, and writes curriculum-brainstorm.md; unit tests pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "In-Loop Practical Instruction & AI Practical Evaluation"
+after = [1, 2]
+risk = "high"
+covers = ["FR-36"]
+description = "Embed practicals agent (Daedalus / practical_evaluator.py) directly into teach loop when practical focus is requested. Generate hands-on exercises in lessons/lesson-XX/practical.md, evaluate learner submissions via AI evaluator against correctness invariants and edge cases, and gate ledger completion."
+verify = "teach_engine.py scaffolds lesson practicals and triggers practical_evaluator.py; AI practical evaluation scores and provides actionable diagnostic feedback; unit tests pass."
+
+[[entry]]
+id = 4
+type = "story"
+title = "Zero-Unexplained-Jargon & Human-First Readability Guardrail"
+after = [1, 2]
+risk = "medium"
+covers = ["FR-37"]
+description = "Enforce human-readable, plain English writing across human-facing notes and explanations. Forbid ungrounded jargon by requiring prior-chapter grounding or immediate in-depth intuitive analogy demystification. Provide jargon audit in notes_compiler.py."
+verify = "notes_compiler.py and teach_engine.py enforce readability and audit jargon with intuitive breakdown demystification; unit tests pass."

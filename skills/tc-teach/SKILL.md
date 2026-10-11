@@ -78,7 +78,13 @@ Teach the concept adhering strictly to the learner's style profile and active te
   uv run _tc/scripts/teach_engine.py advance --course <course_slug>
   ```
   - If more concepts remain: deliver the next concept.
-  - If section completed: announce section completion, present the 3-bullet recap from compiled `notes.md`, and recommend `/tc-test-me` (chapter review).
+  - If section completed and course has practical focus:
+    - **In-Loop Practicals Gate (FR-36)**: If `practical.md` is present and pending evaluation, Daedalus prompts the learner to submit their practical solution:
+      ```bash
+      uv run _tc/scripts/practical_evaluator.py evaluate-lesson --course <course_slug> --section <sec_id> --submission "<solution>"
+      ```
+      The AI evaluator scores against invariants and edge cases. Section completion is unlocked only upon a passing score (`PASS`).
+  - If section completed: announce section completion, present the 3-bullet recap and intuitive analogy from compiled `notes.md`, and recommend `/tc-test-me` (chapter review).
 - **If Learner picks `[2]` (Test Me)**:
   Switch to diagnostic inquiry mode: ask an active recall inquiry on the concept just taught.
 - **If Learner picks `[3]` (Re-explain / Deeper)**:

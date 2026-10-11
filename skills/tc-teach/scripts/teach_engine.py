@@ -116,10 +116,26 @@ def load_preferences(workspace: Path) -> dict[str, Any]:
             k, v = line.split(":", 1)
             k_clean = k.strip().lower()
             v_clean = v.strip().strip('"').strip("'")
-            if k_clean in {"style_profile", "density", "role", "explanation_density", "teacher", "faculty"}:
+            if k_clean in {
+                "style_profile", "density", "role", "explanation_density", "teacher", "faculty",
+                "competency_level", "competency", "experience_level", "practical_focus", "practicals", "hands_on",
+            }:
                 result[k_clean] = v_clean
                 if k_clean in {"teacher", "faculty"}:
                     result["teacher"] = v_clean
+                if k_clean in {"competency", "experience_level"}:
+                    result["competency_level"] = v_clean
+                if k_clean in {"practicals", "hands_on"}:
+                    result["practical_focus"] = v_clean
+
+    role_lower = str(result.get("role", "")).lower()
+    if "beginner" in role_lower or result.get("competency_level") == "beginner":
+        result["competency_level"] = "beginner"
+        if "teacher" not in result or result["teacher"] == "feynman":
+            result["teacher"] = "hypatia"
+    if str(result.get("practical_focus", "")).lower() in {"true", "yes", "1"}:
+        result["practical_focus"] = "true"
+
     return result
 
 
@@ -288,12 +304,65 @@ def get_teaching_session(
     preferences = load_preferences(ws)
     fork_text, fork_options = render_fork(tag_team)
 
+    # Check course manifest for beginner or practical flags
+    course_toml_path = course_dir / "course.toml"
+    course_data: dict[str, Any] = {}
+    if course_toml_path.is_file():
+        try:
+            course_data = tomllib.loads(course_toml_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    is_beginner = (
+        preferences.get("competency_level") == "beginner"
+        or course_data.get("course", {}).get("competency_level") == "beginner"
+    )
+    is_practical = (
+        preferences.get("practical_focus") == "true"
+        or course_data.get("course", {}).get("practical_focus") is True
+    )
+
+    practical_info = None
+    if is_practical:
+        try:
+            from practical_evaluator import scaffold_lesson_practical
+            p_path = scaffold_lesson_practical(course_dir, active_info["section_id"], active_info["section_title"])
+            res_file = sec_dir / "practical-result.json"
+            p_status = "pending"
+            p_score = None
+            if res_file.is_file():
+                try:
+                    res_data = json.loads(res_file.read_text(encoding="utf-8"))
+                    p_status = "passed" if res_data.get("verdict") == "PASS" else "needs_work"
+                    p_score = res_data.get("score")
+                except Exception:
+                    pass
+            practical_info = {
+                "required": True,
+                "status": p_status,
+                "score": p_score,
+                "file": str(p_path),
+                "evaluator": "Daedalus (The Master Craftsman)",
+            }
+        except Exception:
+            pass
+
+    guidance = (
+        "Lead with Hypatia (The Empathetic Tutor). Use gentle Socratic stepping stones. Strictly zero unexplained jargon. Anchor in visceral real-world analogies."
+        if is_beginner
+        else "Deliver clear, idiom-driven instruction with concrete invariants."
+    )
+
     return {
         "ok": True,
         "course_slug": course_slug,
         "active_section": active_info,
         "active_concept": concept_info,
         "preferences": preferences,
+        "is_beginner": is_beginner,
+        "is_practical": is_practical,
+        "practical": practical_info,
+        "pedagogical_guidance": guidance,
         "fork_text": fork_text,
         "fork_options": fork_options,
     }
@@ -332,8 +401,50 @@ def advance_lesson_concept(
             text=f"{sec_token}:{concept_token}:mastered",
         )
 
-    is_section_completed = tick_result.get("section_fully_completed", False)
+    is_section_completed = (
+        tick_result.get("section_fully_completed", False)
+        or tick_result.get("already_all_completed", False)
+    )
     notes_compilation = None
+
+    # Check practical gate if practical focus is enabled
+    course_toml_path = course_dir / "course.toml"
+    course_data: dict[str, Any] = {}
+    if course_toml_path.is_file():
+        try:
+            course_data = tomllib.loads(course_toml_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    is_practical = (
+        preferences.get("practical_focus") == "true"
+        or course_data.get("course", {}).get("practical_focus") is True
+    )
+
+    if is_section_completed and is_practical:
+        res_file = sec_dir / "practical-result.json"
+        has_passed = False
+        if res_file.is_file():
+            try:
+                res_data = json.loads(res_file.read_text(encoding="utf-8"))
+                if res_data.get("verdict") == "PASS":
+                    has_passed = True
+            except Exception:
+                pass
+        if not has_passed:
+            return {
+                "ok": True,
+                "course_slug": course_slug,
+                "section_id": active_info["section_id"],
+                "section_title": active_info["section_title"],
+                "ticked_concept": ticked,
+                "remaining_concepts": 0,
+                "section_fully_completed": False,
+                "practical_pending": True,
+                "message": "All lesson concepts covered! Awaiting passing practical validation by Daedalus. Submit your solution for evaluation before section completion is locked.",
+                "notes_compiled": False,
+                "teacher": teacher,
+                "next_recommendation": f"Run practical evaluation: uv run _tc/scripts/practical_evaluator.py evaluate-lesson --course {course_slug} --section {active_info['section_id']}",
+            }
 
     if is_section_completed:
         # Final concept completed: automatically compile human-first notes.md

@@ -52,13 +52,15 @@ Verify workspace initialization: check if `{project-root}/_tc/scripts/course_bui
 
 ## Workflow
 
-### 1. Intake Learner Intent & Pre-Course Research Check
+### 1. Intake Learner Intent & Autonomous Multi-Path Brainstorming (FR-34, FR-35)
 
 When the learner invokes `/tc-create`:
-1. Check if research dossier exists in `research/<slug>/dossier.md`. If absent and the domain is broad, suggest running `/tc-research "<topic>"` first to harvest verified material.
-2. Ingest learner preferences from `profile/preferences.md` (active teacher persona, technical depth, and domain experience).
-3. Present the 5 Universal Archetypes with concise descriptions, or recommend the best match based on learner intent.
-4. Accept optional reference course links, documentation URLs, or raw syllabus outlines.
+1. Check if research dossier exists in `research/<slug>/dossier.md`. (If present, ingests without broad re-crawling).
+2. Ingest learner preferences from `profile/preferences.md` (active teacher persona, technical depth, beginner status, and practicals desire).
+3. **Zero-Stalling Rule**: Do NOT stall the user with open-ended questions like *"How do you want this course created?"*.
+   - Instead, `course_builder.py` autonomously synthesizes **4 distinct pedagogical architectures** across learning paradigms (Foundational First-Principles, Hands-on Project-First, Problem-Driven Diagnostic, and Intuitive Metaphor-First).
+   - Tests each architecture through the **Universal Critical Hats** (Applied Practitioner, Academic Purist, Beginner Friction Hunter, Edge-Case Systems Engineer, Resource Optimizer).
+   - The Triad debates and synthesizes the optimal hybrid tailored to the learner's profile (adapting beginner foundations, hands-on practicals, and pacing).
 
 ### 2. Execute Adversarial Triad Consensus Course Generation
 
@@ -74,6 +76,7 @@ uv run _tc/scripts/course_builder.py create \
 
 The tool coordinates the full Triad Consensus Loop:
 - Ingests `research/<slug>/dossier.md` and `profile/preferences.md`.
+- Triggers autonomous 4-paradigm brainstorming and Critical Hat scoring.
 - Formulates live verification search queries and validates modern ecosystem idioms.
 - Bridges domain gaps missed by broad research.
 - Audits prerequisite contracts and DAG topology.
@@ -82,14 +85,15 @@ The tool coordinates the full Triad Consensus Loop:
 ### 3. Generated Files
 
 Upon verified unanimous consensus, the course is written to disk:
-- `courses/<slug>/course.toml`: Course manifest with prerequisites and status.
-- `courses/<slug>/overview.md`: Human-readable syllabus overview with archetype details.
+- `courses/<slug>/course.toml`: Course manifest with prerequisites, `competency_level`, `practical_focus`, and status.
+- `courses/<slug>/overview.md`: Human-readable syllabus overview with archetype details and brainstorm links.
 - `courses/<slug>/consensus-deliberation.md`: Full multi-round debate transcript between Daedalus, Marie, and Hypatia.
+- `courses/<slug>/curriculum-brainstorm.md`: Full 4-paradigm analysis, Critical Hat stress-test matrix, and hybrid rationale.
 - `courses/<slug>/memlog.md`: Initialized course pedagogical working memory.
 - `courses/<slug>/notes/chapter-XX.md`: Flat chapter textbook scaffolds (distilled upon section completion by `/tc-teach`).
 - `courses/<slug>/chapter-*/section-*/lesson-plan.md`: AI instructor lesson plans.
 
 ### 4. Present Next Action
 
-Show the syllabus overview and deliberation summary to the learner, then recommend:
+Show the syllabus overview, brainstorm synthesis, and deliberation summary to the learner, then recommend:
 - Start the first section: `/tc-teach`

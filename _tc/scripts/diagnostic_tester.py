@@ -271,6 +271,7 @@ def cmd_prepare(args: argparse.Namespace) -> None:
 
     ledger_path = course_dir / "test-ledger.jsonl"
     misconceptions_info = read_misconceptions(ledger_path)
+    is_beginner = course_data.get("competency_level") == "beginner"
 
     output_json({
         "ok": True,
@@ -280,6 +281,11 @@ def cmd_prepare(args: argparse.Namespace) -> None:
         "eligible_sections": eligible_sections,
         "active_test_section": active_test_section,
         "misconceptions_summary": misconceptions_info,
+        "is_beginner": is_beginner,
+        "beginner_guidance": (
+            "Beginner Focus Active: Probe intuitive mental models and core definitions first using everyday analogies before testing edge-case stress or race conditions."
+            if is_beginner else None
+        ),
         "zero_code_pasting_rule": "Enforced: Questions must be hinge scenarios, failure-mode trade-offs, or conceptual dilemmas. Never ask learner to paste code into chat.",
         "cumulative_boundary_rule": "Enforced: Future concepts from uncompleted sections are strictly omitted.",
     })

@@ -63,4 +63,16 @@ after = [
   { epic = 6, needs = "memlog.py and streamlined layout" }
 ]
 
+[[epic]]
+id = 8
+slug = "epic-pedagogical-brainstorm-practicals-and-jargon-guardrail"
+title = "Pedagogical Empathy, Autonomous Multi-Path Brainstorming & AI Practical Verification"
+covers = ["FR-34", "FR-35", "FR-36", "FR-37"]
+after = [
+  { epic = 3, needs = "course_builder.py and triad consensus" },
+  { epic = 4, needs = "teach_engine.py and notes_compiler.py" },
+  { epic = 5, needs = "practical_evaluator.py and diagnostic_tester.py" },
+  { epic = 7, needs = "universal critical hats and dual-register knowledge" }
+]
+
 

@@ -93,6 +93,7 @@ def format_textbook_notes(
     pitfalls: str = "",
     teacher: str | None = None,
     analogy: str | None = None,
+    jargon_demystified: list[dict[str, str]] | None = None,
 ) -> str:
     """Format structured, human-first textbook markdown in accessible plain English."""
     lines = [
@@ -119,6 +120,26 @@ def format_textbook_notes(
             analogy.strip(),
         ])
 
+    # FR-37: Jargon Demystified & Everyday Analogies
+    demyst_entries = jargon_demystified or [
+        {
+            "term": title.strip(),
+            "definition": f"Core operational mechanism for {title.strip().lower()}.",
+            "analogy": "Like an everyday coordination rule that ensures predictable outcomes without confusion.",
+        }
+    ]
+    lines.extend([
+        "",
+        "## Jargon Demystified & Everyday Analogies",
+        "> *Radical Readability Rule: No technical jargon without an intuitive real-world explanation.*",
+        "",
+    ])
+    for entry in demyst_entries:
+        t = entry.get("term", title.strip())
+        d = entry.get("definition", "Core operational concept.")
+        a = entry.get("analogy", "Everyday practical mental model.")
+        lines.append(f"- **{t}**: {d} *Everyday Analogy*: {a}")
+
     lines.extend([
         "",
         "## Core Mechanics & Architecture",
@@ -133,6 +154,57 @@ def format_textbook_notes(
     ])
 
     return "\n".join(lines)
+
+
+def audit_jargon_and_readability(notes_text: str) -> dict[str, Any]:
+    """Audit human-first notes for readability and ensure technical jargon is grounded in intuitive analogies."""
+    warnings: list[str] = []
+    text_lower = notes_text.lower()
+
+    # Rule 1: Check for plain English recap
+    has_plain_recap = "recap (in plain english)" in text_lower or "plain english" in text_lower
+    if not has_plain_recap:
+        warnings.append("Missing explicit plain-English recap header.")
+
+    # Rule 2: Check for intuitive mental model & analogy
+    has_analogy = (
+        "mental model & analogy" in text_lower
+        or "analogy" in text_lower
+        or "think of" in text_lower
+        or "like a" in text_lower
+    )
+    if not has_analogy:
+        warnings.append("Missing visceral everyday analogy or mental model explanation.")
+
+    # Rule 3: Check for jargon demystification
+    has_demystification = "jargon demystified" in text_lower or "everyday analogies" in text_lower
+
+    # Check for raw ungrounded acronyms
+    found_acronyms = set(re.findall(r"\b[A-Z]{3,}\b", notes_text))
+    suspicious_acronyms = [
+        a for a in found_acronyms
+        if a not in {"DAG", "API", "RAM", "CPU", "HTTP", "JSON", "TOML", "HTML", "URL", "SQL", "FIFO", "LIFO"}
+    ]
+
+    demystified_terms = []
+    for line in notes_text.splitlines():
+        m = re.match(r"-\s+\*\*([^*]+)\*\*:\s+(.*)", line)
+        if m:
+            demystified_terms.append(m.group(1).strip())
+
+    ok = has_plain_recap and has_analogy
+    readability_level = "human_friendly" if ok else "dense_unexplained_jargon"
+
+    return {
+        "ok": ok,
+        "readability": readability_level,
+        "has_plain_recap": has_plain_recap,
+        "has_analogy": has_analogy,
+        "has_demystification": has_demystification,
+        "demystified_terms": demystified_terms,
+        "unexplained_acronyms": suspicious_acronyms,
+        "warnings": warnings,
+    }
 
 
 def update_course_manifest_section_status(
@@ -327,6 +399,7 @@ def compile_notes(
         "manifest_path": str(manifest_file) if manifest_file else None,
         "section_status": target_status,
         "teacher": teacher,
+        "readability_audit": audit_jargon_and_readability(notes_text),
         "warning": warning,
     }
 
@@ -350,7 +423,11 @@ def inspect_notes(section_dir: Path | str) -> dict[str, Any]:
         }
 
     text = notes_file.read_text(encoding="utf-8")
-    recap_items = re.findall(r"^-\s+(.+)$", text, re.MULTILINE)
+    recap_match = re.search(r"## (?:3-Bullet )?Recap.*?\n(.*?)(?=\n##|\Z)", text, re.DOTALL | re.IGNORECASE)
+    if recap_match:
+        recap_items = re.findall(r"^-\s+(.+)$", recap_match.group(1), re.MULTILINE)
+    else:
+        recap_items = re.findall(r"^-\s+(.+)$", text, re.MULTILINE)
 
     return {
         "ok": True,
@@ -390,6 +467,11 @@ def main() -> None:
     p_insp.add_argument("--section-dir", required=True, help="Path to section directory.")
     p_insp.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
+    # audit-readability
+    p_aud = subparsers.add_parser("audit-readability", help="Audit notes for readability and jargon demystification.")
+    p_aud.add_argument("--notes-file", required=True, help="Path to notes.md file to audit.")
+    p_aud.add_argument("--json", action="store_true", help="Output results in JSON format.")
+
     args = parser.parse_args()
 
     try:
@@ -411,6 +493,14 @@ def main() -> None:
 
         elif args.subcommand == "inspect":
             result = inspect_notes(args.section_dir)
+            output_json(result, 0)
+
+        elif args.subcommand == "audit-readability":
+            p = Path(args.notes_file).resolve()
+            if not p.is_file():
+                output_json({"error": f"File not found: {p}", "ok": False}, 1)
+            text = p.read_text(encoding="utf-8")
+            result = audit_jargon_and_readability(text)
             output_json(result, 0)
 
         else:

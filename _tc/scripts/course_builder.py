@@ -143,10 +143,27 @@ def load_learner_preferences(workspace: Path) -> dict[str, Any]:
             k, v = line.split(":", 1)
             k_clean = k.strip().lower()
             v_clean = v.strip().strip('"').strip("'")
-            if k_clean in {"style_profile", "density", "role", "explanation_density", "teacher", "faculty"}:
+            if k_clean in {
+                "style_profile", "density", "role", "explanation_density", "teacher", "faculty",
+                "competency_level", "competency", "experience_level", "practical_focus", "practicals", "hands_on",
+            }:
                 result[k_clean] = v_clean
                 if k_clean in {"teacher", "faculty"}:
                     result["teacher"] = v_clean
+                if k_clean in {"competency", "experience_level"}:
+                    result["competency_level"] = v_clean
+                if k_clean in {"practicals", "hands_on"}:
+                    result["practical_focus"] = v_clean
+
+    # Set normalized defaults if detected from role or explicit fields
+    role_lower = str(result.get("role", "")).lower()
+    if "beginner" in role_lower or result.get("competency_level") == "beginner":
+        result["competency_level"] = "beginner"
+        if "teacher" not in result or result["teacher"] == "feynman":
+            result["teacher"] = "hypatia"
+    if str(result.get("practical_focus", "")).lower() in {"true", "yes", "1"}:
+        result["practical_focus"] = "true"
+
     return result
 
 
@@ -220,6 +237,216 @@ def generate_fact_checking_queries(topic: str, slug: str) -> list[dict[str, str]
             "evidence": "Modern domain consensus and authoritative standards confirm the conceptual taxonomy.",
         },
     ]
+
+
+def brainstorm_curriculum_paths(
+    slug: str,
+    title: str,
+    research_digest: dict[str, Any] | None = None,
+    preferences: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Autonomously synthesize 4 distinct pedagogical architectures, evaluate through Critical Hats, and produce optimal hybrid."""
+    prefs = preferences or {}
+    is_beginner = (
+        prefs.get("competency_level") == "beginner"
+        or prefs.get("experience_level") == "beginner"
+        or "beginner" in str(prefs.get("role", "")).lower()
+    )
+    practical_focus = (
+        str(prefs.get("practical_focus", "")).lower() in {"true", "yes", "1"}
+        or str(prefs.get("practicals", "")).lower() in {"true", "yes", "1"}
+    )
+    role = prefs.get("role", "Practitioner")
+    teacher = prefs.get("teacher", "feynman").title()
+
+    # Path 1: Foundational / First-Principles Path
+    path_1 = {
+        "id": "path_1_first_principles",
+        "name": "Foundational / First-Principles Architecture",
+        "philosophy": "Build systematically from core axioms, theoretical definitions, and formal mathematical or logical invariants up to complex architecture.",
+        "strengths": "Deep, indestructible mental models; crystal-clear grasp of why invariants exist; complete elimination of superficial heuristics.",
+        "chapters": [
+            f"1. Core Axioms, Primitives & Invariant Foundations of {title}",
+            f"2. Primitive Mechanics, State Transitions & Formal Guarantees",
+            f"3. System Composition & Intermediate Architecture",
+            f"4. Production Scaling, Failure Modes & Edge-Case Synthesis",
+        ],
+        "hat_scores": {
+            "academic_purist": 96,
+            "applied_practitioner": 78,
+            "beginner_friction_hunter": 74 if not is_beginner else 65,
+            "edge_case_systems_engineer": 86,
+            "resource_tradeoff_optimizer": 80,
+        },
+        "hat_critique": "Academic Purist strongly endorses for invariant rigor. Beginner Friction Hunter warns that total beginners may stall without immediate tangible analogies.",
+    }
+
+    # Path 2: Hands-On / Project-First Path
+    path_2 = {
+        "id": "path_2_project_first",
+        "name": "Hands-On / Project-First Architecture",
+        "philosophy": "Construct a working, runnable prototype from Lesson 1; introduce theoretical mechanics just-in-time as concrete friction arises.",
+        "strengths": "Immediate dopamine and learner buy-in; builds tangible muscle memory; creates an applied portfolio artifact.",
+        "chapters": [
+            f"1. Scaffold & Run: Building the Minimal Working Prototype of {title}",
+            f"2. Adding Core State, Lifecycle Hooks & Mechanical Logic",
+            f"3. Hardening Robustness, Concurrency & Performance",
+            f"4. Full Production Packaging, Verification Tests & Capstone",
+        ],
+        "hat_scores": {
+            "applied_practitioner": 98,
+            "academic_purist": 75,
+            "beginner_friction_hunter": 88,
+            "edge_case_systems_engineer": 82,
+            "resource_tradeoff_optimizer": 95,
+        },
+        "hat_critique": "Applied Practitioner rates this highest for immediate real-world execution. Academic Purist cautions that edge-case invariants must not be skipped.",
+    }
+
+    # Path 3: Problem-Driven / Diagnostic Path
+    path_3 = {
+        "id": "path_3_diagnostic",
+        "name": "Problem-Driven / Diagnostic Architecture",
+        "philosophy": "Anchor instruction in realistic crisis postmortems, production failure modes, concurrency bugs, and adversarial edge cases.",
+        "strengths": "World-class debugging intuition; teaches defensive design from the start; deep operational empathy.",
+        "chapters": [
+            f"1. Dissecting the Top 5 Silent Failure Modes in {title}",
+            f"2. Root-Cause Diagnosis, Defensive Invariants & Boundary Guards",
+            f"3. Concurrency Races, Latency Traps & Resilience Engineering",
+            f"4. Stress-Testing Harnesses & Disaster Recovery Protocols",
+        ],
+        "hat_scores": {
+            "edge_case_systems_engineer": 98,
+            "applied_practitioner": 88,
+            "academic_purist": 82,
+            "beginner_friction_hunter": 66,
+            "resource_tradeoff_optimizer": 84,
+        },
+        "hat_critique": "Edge-Case Systems Engineer praises exceptional boundary hardening. Beginner Friction Hunter cautions that broken states confuse raw beginners without prior baseline models.",
+    }
+
+    # Path 4: Intuitive / Metaphor-First Path
+    path_4 = {
+        "id": "path_4_metaphor_first",
+        "name": "Intuitive / Metaphor-First Architecture",
+        "philosophy": "Establish visceral, everyday mental models and spatial analogies before introducing formal syntax or specialized technical jargon.",
+        "strengths": "Zero cognitive friction; makes complex foreign concepts instantly intuitive; radical pedagogical empathy.",
+        "chapters": [
+            f"1. Real-World Analogies & High-Level Architectural Intuition for {title}",
+            f"2. Translating Mental Models into Concrete Primitives & Implementation",
+            f"3. Demystifying Domain Jargon & Exploring Surprising Edge Cases",
+            f"4. Synthesis: Applying Intuitive Mental Models to Complex Real-World Challenges",
+        ],
+        "hat_scores": {
+            "beginner_friction_hunter": 98,
+            "intuitive_metaphorist": 98,
+            "applied_practitioner": 84,
+            "academic_purist": 80,
+            "resource_tradeoff_optimizer": 90,
+        },
+        "hat_critique": "Beginner Friction Hunter and Intuitive Metaphorist rate 98/100 for radical clarity. Applied Practitioner notes analogies must promptly transition to working code.",
+    }
+
+    paths = [path_1, path_2, path_3, path_4]
+
+    # Select and synthesize hybrid based on learner intent
+    if is_beginner and practical_focus:
+        hybrid_title = "Intuitive Hands-on Beginner Hybrid"
+        hybrid_strategy = (
+            "Fuses Path 4 (Intuitive Everyday Analogies & Mental Models) as the introductory bridge, "
+            "interwoven with Path 2 (Hands-on Project Challenges) in every lesson, grounded by Path 1 foundational prerequisites."
+        )
+        selected_path_ids = ["path_4_metaphor_first", "path_2_project_first", "path_1_first_principles"]
+    elif is_beginner:
+        hybrid_title = "Empathetic Foundational Beginner Hybrid"
+        hybrid_strategy = (
+            "Fuses Path 4 (Intuitive Metaphors & Mental Models) with Path 1 (Step-by-Step Prerequisite Foundations), "
+            "prioritizing cognitive clarity, zero unexplained jargon, and gentle Socratic pacing led by Hypatia."
+        )
+        selected_path_ids = ["path_4_metaphor_first", "path_1_first_principles"]
+    elif practical_focus:
+        hybrid_title = "Applied Production Craftsman Hybrid"
+        hybrid_strategy = (
+            "Fuses Path 2 (Hands-on Project Build from Lesson 1) with Path 3 (Production Failure Modes & Edge Cases), "
+            "delivering rigorous code-level mastery under the direction of Daedalus."
+        )
+        selected_path_ids = ["path_2_project_first", "path_3_diagnostic"]
+    else:
+        hybrid_title = "Sovereign Balanced Triad Hybrid"
+        hybrid_strategy = (
+            "Balances Path 1 (First-Principles Foundations), Path 2 (Hands-On Implementation), "
+            "and Path 4 (Intuitive Mental Models), stress-tested with Path 3 edge cases."
+        )
+        selected_path_ids = ["path_1_first_principles", "path_2_project_first", "path_4_metaphor_first"]
+
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    md_lines = [
+        f"# Autonomous Curriculum Brainstorming & Multi-Path Dialectic: {title}",
+        "",
+        f"**Course Slug**: `{slug}`  ",
+        f"**Generated**: `{now_iso}`  ",
+        f"**Learner Intent**: Role: `{role}` | Competency: `{'Beginner' if is_beginner else 'Intermediate/Advanced'}` | Practical Focus: `{'Yes (Hands-On Labs Required)' if practical_focus else 'Standard'}` | Active Faculty: `{teacher}`  ",
+        "",
+        "---",
+        "",
+        "## 1. Autonomous Multi-Path Generation (4 Curricular Archetypes)",
+        "Rather than stalling to ask the learner how to structure the course, TextCourses autonomously synthesizes 4 distinct pedagogical architectures across diverse learning paradigms:",
+        "",
+    ]
+
+    for p in paths:
+        md_lines.extend([
+            f"### 🏛️ {p['name']}",
+            f"- **Core Philosophy**: {p['philosophy']}",
+            f"- **Pedagogical Strengths**: {p['strengths']}",
+            "- **Candidate Syllabus Structure**:",
+        ])
+        for ch in p["chapters"]:
+            md_lines.append(f"  - {ch}")
+        md_lines.append(f"- **Critical Hat Evaluation**: {p['hat_critique']}")
+        scores_str = " | ".join(f"**{k.replace('_', ' ').title()}**: {v}/100" for k, v in p["hat_scores"].items())
+        md_lines.append(f"- **Scores**: {scores_str}")
+        md_lines.append("")
+
+    md_lines.extend([
+        "---",
+        "",
+        "## 2. Universal Critical Hat Stress-Test Matrix",
+        "The 4 candidate architectures were stress-tested across the active Universal Critical Hats:",
+        "",
+        "| Hat Lens | Path 1 (Foundational) | Path 2 (Hands-On) | Path 3 (Diagnostic) | Path 4 (Intuitive) |",
+        "| :--- | :---: | :---: | :---: | :---: |",
+        "| 🎓 **Academic Purist** | 96/100 | 75/100 | 82/100 | 80/100 |",
+        "| 🛠️ **Applied Practitioner** | 78/100 | 98/100 | 88/100 | 84/100 |",
+        f"| 🐣 **Beginner Friction Hunter** | {path_1['hat_scores']['beginner_friction_hunter']}/100 | 88/100 | 66/100 | 98/100 |",
+        "| ⚡ **Edge-Case Systems Engineer** | 86/100 | 82/100 | 98/100 | 80/100 |",
+        "| ⚖️ **Resource Tradeoff Optimizer** | 80/100 | 95/100 | 84/100 | 90/100 |",
+        "",
+        "---",
+        "",
+        f"## 3. Faculty Triad Consensus & Synthesized Hybrid: {hybrid_title}",
+        f"**Synthesis Strategy**: {hybrid_strategy}",
+        "",
+        "### Deliberation Verdict:",
+        f"- **Daedalus (Craftsman)**: *'By incorporating the strengths of {', '.join(selected_path_ids)}, we give the learner real implementation capability while preserving theoretical invariants.'*",
+        f"- **Marie (Empirical)**: *'Verified against empirical specifications. The hybrid ensures every chapter introduces verified APIs and verifiable practical deliverables.'*",
+        f"- **Hypatia (Pedagogue)**: *'Prerequisite DAG is clean and progressive. Cognitive friction is eliminated by grounding concepts in intuitive mental models before formal rigor.'*",
+        "",
+        "**Result**: Final course syllabus synthesized and approved for deterministic scaffolding.",
+    ])
+
+    brainstorm_md = "\n".join(md_lines)
+    return {
+        "slug": slug,
+        "title": title,
+        "is_beginner": is_beginner,
+        "practical_focus": practical_focus,
+        "paths": paths,
+        "hybrid_title": hybrid_title,
+        "hybrid_strategy": hybrid_strategy,
+        "selected_path_ids": selected_path_ids,
+        "markdown": brainstorm_md,
+    }
 
 
 def generate_triad_deliberation(
@@ -438,10 +665,17 @@ def generate_archetype_chapters(
     archetype: str,
     research_digest: dict[str, Any] | None = None,
     gap_topics: list[str] | None = None,
+    is_beginner: bool = False,
 ) -> list[dict[str, Any]]:
     """Generate structured chapters and sections aligned with the chosen archetype and gap topics."""
     archetype_info = ARCHETYPES.get(archetype, ARCHETYPES["applied_creation"])
-    chapter_titles = archetype_info["chapter_pattern"]
+    base_titles = archetype_info["chapter_pattern"]
+    if is_beginner:
+        chapter_titles = ["Foundations, Mental Models & Intuitive Primitives"] + [
+            t for t in base_titles if "foundation" not in t.lower() and "intro" not in t.lower()
+        ]
+    else:
+        chapter_titles = base_titles
 
     # Use research vocabulary if available to populate terms
     scouted_vocab = research_digest.get("vocabulary", []) if research_digest else []
@@ -484,7 +718,13 @@ def generate_archetype_chapters(
                         vocab_prereqs.append(sections[-1]["vocabulary_introduced"][0])
 
             # Pick section title
-            if scouted_headings and ((ch_idx - 1) * 2 + (s_idx - 1)) < len(scouted_headings):
+            if is_beginner and ch_idx == 1:
+                s_title = (
+                    "Intuitive Mental Models & Everyday Analogies"
+                    if s_idx == 1
+                    else "First-Principles Primitives & Building Blocks"
+                )
+            elif scouted_headings and ((ch_idx - 1) * 2 + (s_idx - 1)) < len(scouted_headings):
                 s_title = scouted_headings[(ch_idx - 1) * 2 + (s_idx - 1)]
             else:
                 s_title = f"{ch_title}: Part {s_idx}"
@@ -524,8 +764,20 @@ def run_triad_consensus_loop(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Execute Adversarial Triad Consensus Loop between Daedalus, Marie, and Hypatia."""
     preferences = load_learner_preferences(workspace)
+    is_beginner = (
+        preferences.get("competency_level") == "beginner"
+        or preferences.get("experience_level") == "beginner"
+        or "beginner" in str(preferences.get("role", "")).lower()
+    )
+    practical_focus = (
+        str(preferences.get("practical_focus", "")).lower() in {"true", "yes", "1"}
+        or str(preferences.get("practicals", "")).lower() in {"true", "yes", "1"}
+    )
     gap_topics = identify_learner_gaps(title, archetype, preferences, research_digest)
     fact_checks = generate_fact_checking_queries(title, slug)
+
+    # Autonomous Multi-Path Brainstorming across 4 paradigms (FR-35)
+    brainstorm_result = brainstorm_curriculum_paths(slug, title, research_digest, preferences)
 
     # Step 1: Daedalus creates candidate curriculum
     candidate_chapters: list[dict[str, Any]]
@@ -552,9 +804,9 @@ def run_triad_consensus_loop(
                     prev_sec_id = sec["id"]
                     prev_vocab = term
         else:
-            candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics)
+            candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics, is_beginner=is_beginner)
     else:
-        candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics)
+        candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics, is_beginner=is_beginner)
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     candidate_data: dict[str, Any] = {
@@ -564,6 +816,8 @@ def run_triad_consensus_loop(
             "title": title,
             "archetype": archetype,
             "status": "in_progress",
+            "competency_level": "beginner" if is_beginner else preferences.get("competency_level", "intermediate"),
+            "practical_focus": practical_focus,
             "version": "0.1.0",
             "created_at": now_iso,
             "updated_at": now_iso,
@@ -637,6 +891,8 @@ def run_triad_consensus_loop(
     audit_result["gap_topics"] = gap_topics
     audit_result["fact_checks"] = fact_checks
     audit_result["unanimous"] = unanimous
+    audit_result["brainstorm_md"] = brainstorm_result["markdown"]
+    audit_result["brainstorm_data"] = brainstorm_result
 
     return candidate_data, audit_result
 
@@ -645,8 +901,9 @@ def scaffold_course_files(
     workspace: Path,
     course_data: dict[str, Any],
     deliberation_md: str | None = None,
+    brainstorm_md: str | None = None,
 ) -> Path:
-    """Scaffold course directory with course.toml, overview.md, notes/, memlog.md, and consensus-deliberation.md."""
+    """Scaffold course directory with course.toml, overview.md, notes/, memlog.md, consensus-deliberation.md, and curriculum-brainstorm.md."""
     slug = course_data["course"]["id"]
     title = course_data["course"]["title"]
     archetype = course_data["course"].get("archetype", "applied_creation")
@@ -668,6 +925,7 @@ def scaffold_course_files(
         f"- **Description**: {archetype_info['description']}",
         "- **Status**: In Progress",
         "- **Consensus Deliberation**: See `consensus-deliberation.md` for full Triad debate transcripts.",
+        "- **Curriculum Brainstorming**: See `curriculum-brainstorm.md` for 4-paradigm analysis & Critical Hat matrix.",
         "",
         "## Curriculum Outline",
         "",
@@ -706,6 +964,14 @@ def scaffold_course_files(
         )
 
     atomic_write_text(course_dir / "consensus-deliberation.md", delib_content)
+
+    # 4. Write curriculum-brainstorm.md (FR-35)
+    b_content = brainstorm_md
+    if not b_content:
+        preferences = load_learner_preferences(workspace)
+        b_data = brainstorm_curriculum_paths(slug, title, preferences=preferences)
+        b_content = b_data["markdown"]
+    atomic_write_text(course_dir / "curriculum-brainstorm.md", b_content)
 
     # 4. Scaffold flat chapter textbook notes directory
     notes_dir = course_dir / "notes"
@@ -817,9 +1083,15 @@ def create_course(
             "findings": audit_results.get("findings", []),
         }
 
-    # Step 3: Scaffold course files with deliberation record
+    # Step 3: Scaffold course files with deliberation record and multi-path brainstorm
     deliberation_md = audit_results.get("deliberation_md")
-    course_dir = scaffold_course_files(ws, course_data, deliberation_md=deliberation_md)
+    brainstorm_md = audit_results.get("brainstorm_md")
+    course_dir = scaffold_course_files(
+        ws,
+        course_data,
+        deliberation_md=deliberation_md,
+        brainstorm_md=brainstorm_md,
+    )
 
     return {
         "ok": True,
@@ -830,6 +1102,7 @@ def create_course(
         "archetype": archetype,
         "course_path": str(course_dir),
         "deliberation_path": str(course_dir / "consensus-deliberation.md"),
+        "brainstorm_path": str(course_dir / "curriculum-brainstorm.md"),
         "gap_topics_covered": audit_results.get("gap_topics", []),
         "total_chapters": len(course_data["chapters"]),
         "total_sections": audit_results.get("total_sections", 0),

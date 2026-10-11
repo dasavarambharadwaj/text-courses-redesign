@@ -139,8 +139,20 @@ UNIVERSAL_HATS: dict[str, dict[str, str]] = {
 def select_hats_for_topic(
     topic_title: str,
     requested_hats: list[str] | str | None = None,
+    is_beginner: bool = False,
 ) -> list[tuple[str, dict[str, str]]]:
     """Dynamically select the 5 most relevant critical hats for the topic from the universal registry."""
+    if is_beginner:
+        # Prioritize beginner empathy and intuitive mental models
+        beginner_priority = [
+            "beginner_friction_hunter",
+            "intuitive_metaphorist",
+            "applied_practitioner",
+            "academic_purist",
+            "resource_tradeoff_optimizer",
+        ]
+        if not requested_hats:
+            return [(k, UNIVERSAL_HATS[k]) for k in beginner_priority]
     if requested_hats:
         if isinstance(requested_hats, str):
             requested_names = [h.strip().lower() for h in requested_hats.split(",") if h.strip()]
@@ -409,9 +421,10 @@ def generate_five_hats_critique(
     parsed: dict[str, Any],
     extracted_content: str,
     requested_hats: list[str] | str | None = None,
+    is_beginner: bool = False,
 ) -> str:
     """Generate universal multi-hat critical reflection markdown analyzing the topic through chosen critical lenses."""
-    hats = select_hats_for_topic(topic_title, requested_hats)
+    hats = select_hats_for_topic(topic_title, requested_hats, is_beginner=is_beginner)
     headings = [h.get("title", "") for h in parsed.get("toc", [])]
     apis = [a.get("name", "") for a in parsed.get("api_index", [])]
     vocab = sorted(list(parsed.get("vocabulary", [])))
@@ -528,6 +541,7 @@ def run_scout(
     topic: str | None = None,
     confidence_override: str | None = None,
     hats: str | list[str] | None = None,
+    beginner: bool = False,
 ) -> dict[str, Any]:
     """Execute research scouting for target slug and write structured cache files."""
     ws = Path(workspace).resolve()
@@ -636,6 +650,7 @@ def run_scout(
         parsed=parsed,
         extracted_content=extracted_content,
         requested_hats=hats,
+        is_beginner=beginner,
     )
 
     sources_data = {
@@ -815,6 +830,7 @@ def main() -> None:
     p_scout.add_argument("--topic", default=None, help="Topic description for fallback scaffolding.")
     p_scout.add_argument("--confidence", default=None, help="Explicit confidence override.")
     p_scout.add_argument("--hats", default=None, help="Optional comma-separated list of critical hats to wear.")
+    p_scout.add_argument("--beginner", action="store_true", help="Prioritize beginner empathy and intuitive mental model hats.")
     p_scout.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
     # dossier
@@ -856,6 +872,7 @@ def main() -> None:
                 topic=args.topic,
                 confidence_override=args.confidence,
                 hats=getattr(args, "hats", None),
+                beginner=getattr(args, "beginner", False),
             )
             output_json(result, 0)
 
