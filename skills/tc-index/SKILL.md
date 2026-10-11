@@ -26,15 +26,19 @@ By extracting high-consensus topics, vocabulary, and code identifiers across all
    - Sub-15ms local query latency on commodity laptop hardware.
 4. **Autonomous 5-Gate Pipeline with Deterministic Validation (FR-45.4)**:
    - **Gate 0: Auto-Bypass**: Automatically skips indexing when `sources/` contains zero files or falls below minimum word threshold, eliminating empty database overhead.
-   - **Gate 1: Scan**: Enumerate and hash all candidate markdown, text, and transcript files in `research/<slug>/sources/`.
-   - **Gate 2: Chunk**: Semantic breadcrumb chunking (400–800 words) preserving hierarchical heading trails (`[Book > Chapter > Section]`).
-   - **Gate 3: Index**: Write to sovereign `index.db` in WAL mode and atomically emit `catalog.json`.
+   - **Gate 1: Scan**: Enumerate and hash all candidate files across arbitrarily deep directories, accurately classifying them into source code, notebooks, transcripts, structured data, and documentation.
+   - **Gate 2: Chunk**: Semantic breadcrumb chunking (300–600 words) preserving full directory parent trails (`[TopFolder > Subfolder > ... > File.ext > Section/Symbol]`).
+   - **Gate 3: Index**: Write to sovereign `index.db` in WAL mode and atomically emit `catalog.json` and `manifest.json`.
    - **Gate 4: Verify**: Execute automated probe query to validate retrieval latency (<15ms) and recall.
 5. **Zero User-Installation Burden (FR-45.5)**:
    - Relies exclusively on standard library modules (`sqlite3`, `hashlib`, `json`, `re`, `pathlib`).
    - No external vector databases, no Docker containers, no background services.
 6. **Live Console Observability & Ground Truth Verification**:
    - Any RAG query prints transparent diagnostic search inspection into the console displaying the exact input query, latency, and retrieved excerpts with BM25 scores.
+7. **Deep Hierarchical Directory Traversal & Universal Multi-Format Support (FR-45.9)**:
+   - Traverses nested folder structures to arbitrary depths without truncating parent directory names.
+   - Ingests all technical formats: source code (`.py`, `.rs`, `.go`, `.ts`, `.js`, `.c`, `.cpp`, `.h`, `.java`, `.kt`, `.cs`, `.sh`, `.sql`), notebooks (`.ipynb`), subtitles/transcripts (`.vtt`, `.srt`), structured data (`.json`, `.toml`, `.yaml`, `.csv`, `.tsv`, `.xml`, `.proto`), and documentation (`.md`, `.txt`, `.rst`, `.adoc`, `.tex`).
+   - Strictly ignores non-text binaries, lockfiles, and build directories (`.git`, `node_modules`, `__pycache__`, `target`).
 
 ---
 

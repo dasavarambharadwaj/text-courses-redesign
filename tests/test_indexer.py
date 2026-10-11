@@ -502,4 +502,238 @@ It tolerates up to `f = (N - 1) / 3` malicious nodes through pre-prepare, prepar
     assert any("Byzantine" in h["heading"] or "PBFT" in h["full_content"] for h in search_res["hits"])
 
 
+def test_deep_folder_structure_traversal(tmp_path: Path) -> None:
+    """Verify that indexer traverses arbitrarily deep folder hierarchies and preserves the full directory path in breadcrumbs."""
+    slug = "deep-traversal-test"
+    sources_dir = tmp_path / "research" / slug / "sources"
+
+    # Deep hierarchy: 7 levels deep
+    code_dir = sources_dir / "repos" / "blockchain" / "crates" / "consensus" / "src" / "engine"
+    code_dir.mkdir(parents=True)
+    code_file = code_dir / "state_machine.rs"
+    code_file.write_text(
+        """// Deeply nested Rust source code
+pub struct StateMachineEngine {
+    current_height: u64,
+}
+
+impl StateMachineEngine {
+    pub fn apply_block(&mut self, block_hash: &str) -> bool {
+        // State transition logic
+        true
+    }
+}
+""",
+        encoding="utf-8",
+    )
+
+    # Deep book hierarchy: 6 levels deep
+    book_dir = sources_dir / "books" / "system-architecture" / "volume1" / "distributed" / "storage"
+    book_dir.mkdir(parents=True)
+    book_file = book_dir / "lsm_trees.md"
+    book_file.write_text(
+        """# Log-Structured Merge Trees
+## MemTable and Write Path
+Writes are first appended to a Write-Ahead Log (WAL) and stored in an in-memory MemTable.
+
+### Compaction Strategies and Amplification
+Leveled compaction bounds read amplification by enforcing non-overlapping key ranges across levels.
+Size-tiered compaction optimizes for write-heavy workloads with reduced write amplification.
+""",
+        encoding="utf-8",
+    )
+
+    # Build the index
+    build_res = run_build_index(slug=slug, workspace=tmp_path)
+    assert build_res["ok"] is True
+    assert build_res["total_documents"] == 2
+
+    # Verify state_machine search returns deep breadcrumb preserving all parent folders
+    rs_query = run_query_index(slug=slug, query="apply_block state_machine", workspace=tmp_path)
+    assert rs_query["ok"] is True
+    assert rs_query["total_hits"] >= 1
+    rs_hit = rs_query["hits"][0]
+    # Check that all deep directory levels are present in breadcrumb
+    assert "Repos" in rs_hit["breadcrumb"]
+    assert "Blockchain" in rs_hit["breadcrumb"]
+    assert "Crates" in rs_hit["breadcrumb"]
+    assert "Consensus" in rs_hit["breadcrumb"]
+    assert "Src" in rs_hit["breadcrumb"]
+    assert "Engine" in rs_hit["breadcrumb"]
+    assert "state_machine.rs" in rs_hit["breadcrumb"]
+
+    # Verify book search returns full book breadcrumb hierarchy
+    book_query = run_query_index(slug=slug, query="compaction amplification", workspace=tmp_path)
+    assert book_query["ok"] is True
+    assert book_query["total_hits"] >= 1
+    book_hit = book_query["hits"][0]
+    assert "Books" in book_hit["breadcrumb"]
+    assert "System Architecture" in book_hit["breadcrumb"]
+    assert "Volume1" in book_hit["breadcrumb"]
+    assert "Distributed" in book_hit["breadcrumb"]
+    assert "Storage" in book_hit["breadcrumb"]
+    assert "Lsm Trees" in book_hit["breadcrumb"]
+
+
+def test_multi_format_indexing_and_classification(tmp_path: Path) -> None:
+    """Verify that indexer supports and accurately classifies code, JSON, TOML, CSV, SRT, and IPYNB formats."""
+    slug = "multi-format-test"
+    sources_dir = tmp_path / "research" / slug / "sources"
+    sources_dir.mkdir(parents=True)
+
+    # 1. Python source file (.py)
+    py_file = sources_dir / "cluster_manager.py"
+    py_file.write_text(
+        """class ClusterOrchestrator:
+    def __init__(self, node_count: int):
+        self.node_count = node_count
+
+    def elect_coordinator(self) -> str:
+        \"\"\"Runs bully election protocol across cluster nodes.\"\"\"
+        return "node-1"
+""",
+        encoding="utf-8",
+    )
+
+    # 2. JSON structured data (.json)
+    json_file = sources_dir / "cluster_config.json"
+    json_file.write_text(
+        json.dumps({
+            "cluster_name": "alpha-mesh",
+            "heartbeat_interval_ms": 150,
+            "election_timeout_ms": 300,
+            "seed_nodes": ["10.0.0.1:8000", "10.0.0.2:8000", "10.0.0.3:8000"],
+        }, indent=2),
+        encoding="utf-8",
+    )
+
+    # 3. CSV benchmark table (.csv)
+    csv_file = sources_dir / "latency_benchmarks.csv"
+    csv_file.write_text(
+        """metric_id,throughput_qps,p99_latency_ms,concurrency
+bm_raft_small,12500,2.4,32
+bm_raft_large,48000,8.7,128
+bm_paxos_sync,9200,4.1,32
+""",
+        encoding="utf-8",
+    )
+
+    # 4. SRT subtitle transcript (.srt)
+    srt_file = sources_dir / "distributed_systems_lecture.srt"
+    srt_file.write_text(
+        """1
+00:01:10,000 --> 00:01:25,000
+In this segment, we discuss asynchronous consensus impossibility as proven by Fischer, Lynch, and Paterson (FLP).
+
+2
+00:01:26,000 --> 00:01:45,000
+The FLP theorem establishes that in an asynchronous network, no deterministic consensus protocol can guarantee liveness in the presence of even a single unannounced crash.
+""",
+        encoding="utf-8",
+    )
+
+    # 5. Jupyter Notebook (.ipynb)
+    ipynb_file = sources_dir / "consensus_sim.ipynb"
+    ipynb_file.write_text(
+        json.dumps({
+            "cells": [
+                {
+                    "cell_type": "markdown",
+                    "source": ["# Consensus Simulation Notebook\n", "## Gossip Protocol Analysis\n", "We model epidemic propagation across 50 simulated peers.\n"],
+                },
+                {
+                    "cell_type": "code",
+                    "source": ["def simulate_gossip(rounds=10):\n", "    infected = {0}\n", "    return len(infected)\n"],
+                },
+            ],
+            "metadata": {},
+            "nbformat": 4,
+            "nbformat_minor": 2,
+        }),
+        encoding="utf-8",
+    )
+
+    # Build index
+    build_res = run_build_index(slug=slug, workspace=tmp_path)
+    assert build_res["ok"] is True
+    assert build_res["total_documents"] == 5
+
+    # Check manifest tracks all formats with appropriate doc_types
+    manifest = get_sources_manifest(slug=slug, workspace=tmp_path)
+    files_meta = manifest["files"]
+    assert files_meta["cluster_manager.py"]["doc_type"] == "source_code"
+    assert files_meta["cluster_config.json"]["doc_type"] == "structured_data"
+    assert files_meta["latency_benchmarks.csv"]["doc_type"] == "structured_data"
+    assert files_meta["distributed_systems_lecture.srt"]["doc_type"] == "youtube_transcript"
+    assert files_meta["consensus_sim.ipynb"]["doc_type"] == "jupyter_notebook"
+
+    # Search Python code
+    py_search = run_query_index(slug=slug, query="ClusterOrchestrator elect_coordinator", workspace=tmp_path)
+    assert py_search["ok"] is True
+    assert py_search["total_hits"] >= 1
+    assert "cluster_manager.py" in py_search["hits"][0]["breadcrumb"]
+
+    # Search CSV data
+    csv_search = run_query_index(slug=slug, query="p99_latency_ms bm_raft_large", workspace=tmp_path)
+    assert csv_search["ok"] is True
+    assert csv_search["total_hits"] >= 1
+    assert "metric_id" in csv_search["hits"][0]["full_content"]
+
+    # Search SRT transcript
+    srt_search = run_query_index(slug=slug, query="Fischer Lynch Paterson FLP theorem", workspace=tmp_path)
+    assert srt_search["ok"] is True
+    assert srt_search["total_hits"] >= 1
+    assert "00:01:10" in srt_search["hits"][0]["heading"]
+
+    # Search Jupyter Notebook
+    nb_search = run_query_index(slug=slug, query="Gossip Protocol Analysis epidemic propagation", workspace=tmp_path)
+    assert nb_search["ok"] is True
+    assert nb_search["total_hits"] >= 1
+    assert "Consensus Simulation" in nb_search["hits"][0]["heading"]
+    assert "Gossip Protocol" in nb_search["hits"][0]["full_content"]
+
+
+def test_ignored_directories_and_binary_exclusion(tmp_path: Path) -> None:
+    """Verify that .git, node_modules, __pycache__, binary files, and lock files are strictly ignored."""
+    slug = "exclusion-test"
+    sources_dir = tmp_path / "research" / slug / "sources"
+
+    # Valid markdown file
+    (sources_dir / "valid_doc.md").parent.mkdir(parents=True, exist_ok=True)
+    (sources_dir / "valid_doc.md").write_text("# Valid Document\nThis is a legitimate source text.", encoding="utf-8")
+
+    # Ignored directory: .git
+    git_dir = sources_dir / ".git" / "refs"
+    git_dir.mkdir(parents=True)
+    (git_dir / "HEAD.txt").write_text("ref: refs/heads/main", encoding="utf-8")
+
+    # Ignored directory: node_modules
+    nm_dir = sources_dir / "node_modules" / "express"
+    nm_dir.mkdir(parents=True)
+    (nm_dir / "index.js").write_text("module.exports = {};", encoding="utf-8")
+
+    # Ignored directory: __pycache__
+    pyc_dir = sources_dir / "__pycache__"
+    pyc_dir.mkdir(parents=True)
+    (pyc_dir / "module.cpython-311.pyc").write_bytes(b"\x00\x01\x02\x03JUNK")
+
+    # Ignored lock files
+    (sources_dir / "package-lock.json").write_text('{"lockfileVersion": 2}', encoding="utf-8")
+    (sources_dir / "Cargo.lock").write_text('version = 3\n[[package]]\nname = "test"', encoding="utf-8")
+
+    # Ignored binary files (images, compiled)
+    (sources_dir / "diagram.png").write_bytes(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+    (sources_dir / "binary_without_ext").write_bytes(b"ELF\x00\x02\x01\x01\x00")
+
+    build_res = run_build_index(slug=slug, workspace=tmp_path)
+    assert build_res["ok"] is True
+    # MUST only index the 1 valid file
+    assert build_res["total_documents"] == 1
+
+    manifest = get_sources_manifest(slug=slug, workspace=tmp_path)
+    indexed_paths = list(manifest["files"].keys())
+    assert indexed_paths == ["valid_doc.md"]
+
+
+
 

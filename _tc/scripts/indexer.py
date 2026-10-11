@@ -232,12 +232,174 @@ def init_index_db(db_path: Path) -> sqlite3.Connection:
 
 
 # ---------------------------------------------------------------------------
-# 2. Source Scanning & Breadcrumb Chunking Engine
+# 2. Source Scanning, Format Classifiers & Breadcrumb Chunking Engine
 # ---------------------------------------------------------------------------
 
+ELIGIBLE_EXTENSIONS: set[str] = {
+    # Markdown & Documentation
+    ".md", ".markdown", ".mdown", ".mkd", ".txt", ".text", ".rst", ".adoc", ".asciidoc", ".tex", ".org", ".html", ".htm",
+    # Source Code (All major programming languages)
+    ".py", ".pyi",
+    ".rs",
+    ".go",
+    ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+    ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx",
+    ".java", ".kt", ".kts", ".scala",
+    ".cs", ".fs",
+    ".sh", ".bash", ".zsh", ".fish",
+    ".sql",
+    ".rb",
+    ".php",
+    ".swift",
+    ".zig",
+    ".lua",
+    ".r",
+    ".jl",
+    ".dart",
+    ".hs",
+    ".ex", ".exs", ".erl",
+    ".pl", ".pm",
+    ".asm", ".s",
+    ".css", ".scss", ".sass", ".less",
+    ".vue", ".svelte",
+    # Structured Data & Config
+    ".json", ".jsonl", ".json5",
+    ".yaml", ".yml",
+    ".toml",
+    ".csv", ".tsv",
+    ".xml",
+    ".graphql", ".gql",
+    ".proto",
+    ".diff", ".patch",
+    # Transcripts & Subtitles
+    ".vtt", ".srt",
+    # Interactive Notebooks
+    ".ipynb",
+}
+
+CODE_EXTENSIONS: set[str] = {
+    ".py", ".pyi", ".rs", ".go", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+    ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx", ".java", ".kt", ".kts",
+    ".scala", ".cs", ".fs", ".sh", ".bash", ".zsh", ".fish", ".sql", ".rb",
+    ".php", ".swift", ".zig", ".lua", ".r", ".jl", ".dart", ".hs", ".ex",
+    ".exs", ".erl", ".pl", ".pm", ".asm", ".s", ".css", ".scss", ".sass",
+    ".less", ".vue", ".svelte",
+}
+
+ELIGIBLE_FILENAMES: set[str] = {
+    "dockerfile", "makefile", "containerfile", "jenkinsfile", "cmakelists.txt"
+}
+
+IGNORED_DIRS: set[str] = {
+    ".git", ".github", ".gitlab", ".svn", ".hg",
+    ".venv", "venv", "env", ".env",
+    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox",
+    "node_modules", "bower_components",
+    "target", "build", "dist", "out", "bin", "obj",
+    "rag-db", ".cache",
+}
+
+IGNORED_FILENAMES: set[str] = {
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "cargo.lock",
+    "poetry.lock",
+    "composer.lock",
+    "gemfile.lock",
+    "mix.lock",
+    ".ds_store",
+    "thumbs.db",
+}
+
+IGNORED_EXTENSIONS: set[str] = {
+    # Images & Media
+    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".tiff", ".svg",
+    ".mp4", ".mkv", ".avi", ".mov", ".mp3", ".wav", ".ogg", ".flac", ".webm", ".m4a",
+    # Binaries & Compiled
+    ".pyc", ".pyo", ".pyd", ".so", ".dylib", ".dll", ".exe", ".bin", ".o", ".a", ".class", ".jar", ".war", ".wasm", ".node",
+    # Archives
+    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar", ".tgz",
+    # Binary Documents
+    ".pdf", ".docx", ".xlsx", ".pptx", ".epub", ".ods", ".odt",
+    # Fonts
+    ".ttf", ".otf", ".woff", ".woff2", ".eot",
+    # Lock files
+    ".lock",
+}
+
+
+def is_binary_file(file_path: Path) -> bool:
+    """Return True if file contains null bytes within the first 4096 bytes."""
+    try:
+        with open(file_path, "rb") as f:
+            chunk = f.read(4096)
+            return b"\x00" in chunk
+    except Exception:
+        return True
+
+
+def is_eligible_source_file(p: Path, sources_dir: Path) -> bool:
+    """Determine whether a file in sources_dir qualifies for indexing."""
+    if not p.is_file():
+        return False
+    # Check parts for ignored or hidden directories
+    for part in p.parts:
+        if part in IGNORED_DIRS or (part.startswith(".") and part != "."):
+            return False
+    name_lower = p.name.lower()
+    if name_lower in IGNORED_FILENAMES or name_lower in {"catalog.json", "manifest.json", "index.db", "index.db-wal", "index.db-shm"}:
+        return False
+    ext = p.suffix.lower()
+    if ext in IGNORED_EXTENSIONS:
+        return False
+    if ext not in ELIGIBLE_EXTENSIONS and name_lower not in ELIGIBLE_FILENAMES:
+        return False
+    if is_binary_file(p):
+        return False
+    return True
+
+
+def classify_document(rel_path: str, ext: str) -> tuple[str, str]:
+    """Classify document into semantic doc_type and source_group."""
+    parts_lower = [p.lower() for p in Path(rel_path).parts]
+    ext_lower = ext.lower()
+    name_lower = Path(rel_path).name.lower()
+
+    if ext_lower in {".vtt", ".srt"} or "transcripts" in parts_lower or "transcript" in parts_lower:
+        return "youtube_transcript", "video_lectures"
+    if ext_lower == ".ipynb" or "notebooks" in parts_lower:
+        return "jupyter_notebook", "interactive_notebooks"
+    if ext_lower in CODE_EXTENSIONS or name_lower in ELIGIBLE_FILENAMES:
+        return "source_code", "code_repositories"
+    if ext_lower in {".json", ".jsonl", ".json5", ".yaml", ".yml", ".toml", ".csv", ".tsv", ".xml", ".graphql", ".gql", ".proto"}:
+        return "structured_data", "data_specifications"
+    if "repos" in parts_lower or "repo" in parts_lower:
+        return "github_repo_content", "open_repos"
+    if "books" in parts_lower or "book" in parts_lower or "textbook" in parts_lower:
+        return "textbook_chapter", "textbooks"
+    return "markdown_file", "general"
+
+
 def clean_heading_text(heading: str) -> str:
-    """Normalize markdown heading syntax into clean title string."""
+    """Normalize heading syntax into clean title string."""
     return re.sub(r"^[#\s]+", "", heading).strip()
+
+
+def get_base_breadcrumbs(rel_path: str, doc_title: str = "") -> list[str]:
+    """Construct full hierarchical breadcrumbs preserving all parent directories.
+
+    Example: 'repos/k8s/pkg/kubelet/pod.go' -> ['Repos', 'K8s', 'Pkg', 'Kubelet', 'pod.go']
+    """
+    p = Path(rel_path)
+    breadcrumbs: list[str] = []
+    for part in p.parts[:-1]:
+        clean = part.replace("-", " ").replace("_", " ").strip()
+        breadcrumbs.append(clean.title() if clean.islower() else clean)
+
+    leaf_name = p.name if p.suffix.lower() in CODE_EXTENSIONS else (doc_title or p.stem.replace("-", " ").replace("_", " ").title())
+    breadcrumbs.append(leaf_name)
+    return breadcrumbs
 
 
 def parse_markdown_into_breadcrumb_chunks(
@@ -258,8 +420,10 @@ def parse_markdown_into_breadcrumb_chunks(
         else:
             lines.append(rl)
 
+    base_breadcrumbs = get_base_breadcrumbs(rel_path, doc_title)
+    base_depth = len(base_breadcrumbs)
     chunks: list[dict[str, Any]] = []
-    current_headings: list[str] = [doc_title]
+    current_headings: list[str] = list(base_breadcrumbs)
     current_lines: list[str] = []
     current_word_count = 0
 
@@ -292,10 +456,9 @@ def parse_markdown_into_breadcrumb_chunks(
             if current_word_count >= 150:
                 flush_chunk(current_headings[-1])
 
-            # Adjust hierarchy stack based on heading level
-            # doc_title is at index 0. Level 1 belongs at index 1, Level 2 at index 2, etc.
-            target_depth = min(level + 1, 5)
-            while len(current_headings) >= target_depth and len(current_headings) > 1:
+            # Adjust hierarchy stack based on heading level above base folder depth
+            target_depth = base_depth + min(level, 4)
+            while len(current_headings) >= target_depth and len(current_headings) > base_depth:
                 current_headings.pop()
             current_headings.append(h_text)
 
@@ -306,13 +469,316 @@ def parse_markdown_into_breadcrumb_chunks(
             current_word_count += len(line.split())
 
             # Split if chunk grows beyond target size and line looks like a paragraph end,
-            # or if hard ceiling is exceeded (for unformatted heading-less transcripts without blank lines)
+            # or if hard ceiling is exceeded
             if (current_word_count >= target_chunk_words and not line.strip()) or current_word_count >= int(target_chunk_words * 1.5):
                 flush_chunk(current_headings[-1])
 
     # Flush any remaining buffer
     flush_chunk(current_headings[-1])
     return chunks
+
+
+def parse_code_into_chunks(
+    file_path: Path,
+    rel_path: str,
+    doc_title: str,
+    target_chunk_words: int = 400,
+) -> list[dict[str, Any]]:
+    """Parse source code into logical chunks keyed by function, class, or struct declarations."""
+    base_breadcrumbs = get_base_breadcrumbs(rel_path, doc_title)
+    text = file_path.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+
+    decl_regex = re.compile(
+        r"^\s*(?:"
+        r"(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:def|fn|func|function|class|struct|enum|trait|impl|type|interface|record)\s+([a-zA-Z0-9_]+)"
+        r"|(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|class|interface|type|const|let|var)\s+([a-zA-Z0-9_]+)"
+        r"|(?:CREATE\s+(?:OR\s+REPLACE\s+)?(?:TABLE|VIEW|PROCEDURE|FUNCTION|INDEX|TRIGGER)|ALTER\s+TABLE)\s+([a-zA-Z0-9_]+)"
+        r")",
+        re.IGNORECASE,
+    )
+
+    chunks: list[dict[str, Any]] = []
+    current_heading = base_breadcrumbs[-1]
+    current_lines: list[str] = []
+    current_words = 0
+
+    def flush_code_chunk() -> None:
+        nonlocal current_lines, current_words, current_heading
+        if not current_lines:
+            return
+        content = "\n".join(current_lines).strip()
+        if not content:
+            return
+        bc_parts = list(base_breadcrumbs)
+        if current_heading != base_breadcrumbs[-1]:
+            bc_parts.append(current_heading)
+        breadcrumb = " > ".join(bc_parts)
+        chunks.append({
+            "breadcrumb": breadcrumb,
+            "heading": current_heading,
+            "content": content,
+            "token_count": len(content.split()),
+        })
+        current_lines = []
+        current_words = 0
+
+    for line in lines:
+        match = decl_regex.match(line)
+        if match:
+            ident = next((g for g in match.groups() if g), "")
+            decl_label = line.strip().split("{")[0].split(":")[0].strip()
+            if len(decl_label) > 60:
+                decl_label = decl_label[:57] + "..."
+
+            if current_words >= 100:
+                flush_code_chunk()
+
+            current_heading = decl_label or (ident if ident else base_breadcrumbs[-1])
+
+        current_lines.append(line)
+        current_words += len(line.split())
+
+        if (current_words >= target_chunk_words and not line.strip()) or current_words >= int(target_chunk_words * 1.5):
+            flush_code_chunk()
+
+    flush_code_chunk()
+    return chunks
+
+
+def parse_subtitle_into_chunks(
+    file_path: Path,
+    rel_path: str,
+    doc_title: str,
+    target_chunk_words: int = 300,
+) -> list[dict[str, Any]]:
+    """Parse subtitle/transcript files (.srt, .vtt) into spoken paragraph chunks with time-ranges."""
+    base_breadcrumbs = get_base_breadcrumbs(rel_path, doc_title)
+    text = file_path.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+
+    ts_regex = re.compile(r"(\d{2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,\.]\d{3})")
+    chunks: list[dict[str, Any]] = []
+
+    current_lines: list[str] = []
+    chunk_start_ts: str = ""
+    chunk_end_ts: str = ""
+    current_words = 0
+
+    def flush_sub_chunk() -> None:
+        nonlocal current_lines, chunk_start_ts, chunk_end_ts, current_words
+        if not current_lines:
+            return
+        content = " ".join(current_lines).strip()
+        if not content:
+            return
+        h_label = f"[{chunk_start_ts} - {chunk_end_ts}]" if chunk_start_ts else base_breadcrumbs[-1]
+        bc_parts = list(base_breadcrumbs)
+        if h_label != base_breadcrumbs[-1]:
+            bc_parts.append(h_label)
+        breadcrumb = " > ".join(bc_parts)
+        chunks.append({
+            "breadcrumb": breadcrumb,
+            "heading": h_label,
+            "content": content,
+            "token_count": len(content.split()),
+        })
+        current_lines = []
+        chunk_start_ts = ""
+        chunk_end_ts = ""
+        current_words = 0
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.isdigit() or stripped.startswith("WEBVTT") or stripped.startswith("NOTE"):
+            continue
+
+        ts_match = ts_regex.search(stripped)
+        if ts_match:
+            start_val = ts_match.group(1)[:8]
+            end_val = ts_match.group(2)[:8]
+            if not chunk_start_ts:
+                chunk_start_ts = start_val
+            chunk_end_ts = end_val
+            continue
+
+        current_lines.append(stripped)
+        current_words += len(stripped.split())
+
+        if current_words >= target_chunk_words:
+            flush_sub_chunk()
+
+    flush_sub_chunk()
+    return chunks
+
+
+def parse_ipynb_into_chunks(
+    file_path: Path,
+    rel_path: str,
+    doc_title: str,
+    target_chunk_words: int = 500,
+) -> list[dict[str, Any]]:
+    """Parse Jupyter Notebook (.ipynb) cells into indexed code and markdown chunks."""
+    base_breadcrumbs = get_base_breadcrumbs(rel_path, doc_title)
+    text = file_path.read_text(encoding="utf-8", errors="replace")
+    try:
+        nb_data = json.loads(text)
+    except Exception:
+        return parse_text_into_sliding_chunks(file_path, rel_path, doc_title, target_chunk_words)
+
+    chunks: list[dict[str, Any]] = []
+    cells = nb_data.get("cells", [])
+
+    for idx, cell in enumerate(cells):
+        cell_type = cell.get("cell_type", "")
+        source_lines = cell.get("source", [])
+        if isinstance(source_lines, list):
+            cell_content = "".join(source_lines).strip()
+        else:
+            cell_content = str(source_lines).strip()
+
+        if not cell_content:
+            continue
+
+        if cell_type == "markdown":
+            lines = cell_content.splitlines()
+            first_heading = next((l.lstrip("#").strip() for l in lines if l.strip().startswith("#")), None)
+            h_label = first_heading or f"Notebook Section {idx + 1}"
+            bc = " > ".join(base_breadcrumbs + [h_label])
+            chunks.append({
+                "breadcrumb": bc,
+                "heading": h_label,
+                "content": cell_content,
+                "token_count": len(cell_content.split()),
+            })
+        elif cell_type == "code":
+            lines = cell_content.splitlines()
+            decl = next((l.strip() for l in lines if re.match(r"^\s*(def|class)\s+([a-zA-Z0-9_]+)", l)), None)
+            h_label = decl[:50] if decl else f"Code Cell {idx + 1}"
+            bc = " > ".join(base_breadcrumbs + [h_label])
+            chunks.append({
+                "breadcrumb": bc,
+                "heading": h_label,
+                "content": cell_content,
+                "token_count": len(cell_content.split()),
+            })
+
+    if not chunks and text.strip():
+        chunks.append({
+            "breadcrumb": " > ".join(base_breadcrumbs),
+            "heading": base_breadcrumbs[-1],
+            "content": text[:2000],
+            "token_count": len(text[:2000].split()),
+        })
+    return chunks
+
+
+def parse_csv_into_chunks(
+    file_path: Path,
+    rel_path: str,
+    doc_title: str,
+    target_rows: int = 50,
+) -> list[dict[str, Any]]:
+    """Parse CSV / TSV files with sticky header preservation across row batches."""
+    base_breadcrumbs = get_base_breadcrumbs(rel_path, doc_title)
+    text = file_path.read_text(encoding="utf-8", errors="replace")
+    lines = [l for l in text.splitlines() if l.strip()]
+    if not lines:
+        return []
+
+    header = lines[0]
+    data_rows = lines[1:]
+    if not data_rows:
+        return [{
+            "breadcrumb": " > ".join(base_breadcrumbs),
+            "heading": base_breadcrumbs[-1],
+            "content": header,
+            "token_count": len(header.split()),
+        }]
+
+    chunks: list[dict[str, Any]] = []
+    for i in range(0, len(data_rows), target_rows):
+        batch = data_rows[i : i + target_rows]
+        content = header + "\n" + "\n".join(batch)
+        h_label = f"Rows {i + 1}-{i + len(batch)}"
+        bc = " > ".join(base_breadcrumbs + [h_label])
+        chunks.append({
+            "breadcrumb": bc,
+            "heading": h_label,
+            "content": content,
+            "token_count": len(content.split()),
+        })
+    return chunks
+
+
+def parse_text_into_sliding_chunks(
+    file_path: Path,
+    rel_path: str,
+    doc_title: str,
+    target_chunk_words: int = 500,
+) -> list[dict[str, Any]]:
+    """Sliding window fallback chunker for structured data, config, and plain text."""
+    base_breadcrumbs = get_base_breadcrumbs(rel_path, doc_title)
+    text = file_path.read_text(encoding="utf-8", errors="replace")
+    raw_lines = text.splitlines()
+
+    chunks: list[dict[str, Any]] = []
+    current_lines: list[str] = []
+    current_words = 0
+    chunk_idx = 1
+
+    def flush_text_chunk() -> None:
+        nonlocal current_lines, current_words, chunk_idx
+        if not current_lines:
+            return
+        content = "\n".join(current_lines).strip()
+        if not content:
+            return
+        h_label = f"Section {chunk_idx}" if chunk_idx > 1 else base_breadcrumbs[-1]
+        bc_parts = list(base_breadcrumbs)
+        if h_label != base_breadcrumbs[-1]:
+            bc_parts.append(h_label)
+        chunks.append({
+            "breadcrumb": " > ".join(bc_parts),
+            "heading": h_label,
+            "content": content,
+            "token_count": len(content.split()),
+        })
+        current_lines = []
+        current_words = 0
+        chunk_idx += 1
+
+    for line in raw_lines:
+        current_lines.append(line)
+        current_words += len(line.split())
+        if (current_words >= target_chunk_words and not line.strip()) or current_words >= int(target_chunk_words * 1.5):
+            flush_text_chunk()
+
+    flush_text_chunk()
+    return chunks
+
+
+def parse_source_file_into_chunks(
+    file_path: Path,
+    rel_path: str,
+    doc_title: str,
+    target_chunk_words: int = 500,
+) -> list[dict[str, Any]]:
+    """Dispatcher to parse any supported text source into semantic breadcrumb chunks."""
+    ext = file_path.suffix.lower()
+    name_lower = file_path.name.lower()
+
+    if ext == ".ipynb":
+        return parse_ipynb_into_chunks(file_path, rel_path, doc_title, target_chunk_words)
+    if ext in {".vtt", ".srt"}:
+        return parse_subtitle_into_chunks(file_path, rel_path, doc_title, min(target_chunk_words, 300))
+    if ext in {".csv", ".tsv"}:
+        return parse_csv_into_chunks(file_path, rel_path, doc_title)
+    if ext in CODE_EXTENSIONS or name_lower in ELIGIBLE_FILENAMES:
+        return parse_code_into_chunks(file_path, rel_path, doc_title, target_chunk_words)
+    if ext in {".json", ".jsonl", ".json5", ".yaml", ".yml", ".toml", ".xml", ".graphql", ".gql", ".proto"}:
+        return parse_text_into_sliding_chunks(file_path, rel_path, doc_title, target_chunk_words)
+    return parse_markdown_into_breadcrumb_chunks(file_path, rel_path, doc_title, target_chunk_words)
 
 
 # ---------------------------------------------------------------------------
@@ -372,7 +838,8 @@ def extract_domain_catalog(
 
         # Extract code identifiers and key technical terminology
         code_identifiers = re.findall(r"`([a-zA-Z0-9_]{3,30})`", content)
-        for ident in code_identifiers:
+        fn_identifiers = re.findall(r"\b(?:def|class|fn|func|struct|trait|enum|interface)\s+([a-zA-Z0-9_]{3,30})\b", content)
+        for ident in code_identifiers + fn_identifiers:
             if not ident.isdigit() and ident.lower() not in stop_words:
                 prerequisite_terms.add(ident)
 
@@ -469,43 +936,30 @@ def run_build_index(
             existing_manifest = None
 
     # --- GATE 1: SCAN ---
-    eligible_extensions = {".md", ".markdown", ".txt", ".rst"}
     scanned_files: list[dict[str, Any]] = []
 
     for p in sorted(sources_dir.rglob("*")):
-        if not p.is_file() or ".git" in p.parts or p.name.startswith("."):
-            continue
-        # Skip internal rag-db contents if located within sources
-        if "rag-db" in p.parts:
+        if not is_eligible_source_file(p, sources_dir):
             continue
         rel = str(p.relative_to(sources_dir))
         ext = p.suffix.lower()
+        doc_type, source_group = classify_document(rel, ext)
 
-        if ext in eligible_extensions:
-            doc_type = "markdown_file"
-            source_group = "general"
-            if "transcripts" in p.parts:
-                doc_type = "youtube_transcript"
-                source_group = "video_lectures"
-            elif "repos" in p.parts:
-                doc_type = "github_repo_content"
-                source_group = "open_repos"
-
-            title = p.stem.replace("-", " ").replace("_", " ").title()
-            raw_bytes = p.read_bytes()
-            sha = compute_sha256(raw_bytes)
-            text = raw_bytes.decode("utf-8", errors="replace")
-            words = len(re.findall(r"\w+", text))
-            scanned_files.append({
-                "path": p,
-                "rel_path": rel,
-                "title": title,
-                "doc_type": doc_type,
-                "source_group": source_group,
-                "size_bytes": p.stat().st_size,
-                "word_count": words,
-                "sha256": sha,
-            })
+        title = p.name if ext in CODE_EXTENSIONS else p.stem.replace("-", " ").replace("_", " ").title()
+        raw_bytes = p.read_bytes()
+        sha = compute_sha256(raw_bytes)
+        text = raw_bytes.decode("utf-8", errors="replace")
+        words = len(re.findall(r"\w+", text))
+        scanned_files.append({
+            "path": p,
+            "rel_path": rel,
+            "title": title,
+            "doc_type": doc_type,
+            "source_group": source_group,
+            "size_bytes": p.stat().st_size,
+            "word_count": words,
+            "sha256": sha,
+        })
 
     # Track course-correction diff against existing manifest
     prev_files = existing_manifest.get("files", {}) if existing_manifest else {}
@@ -526,7 +980,7 @@ def run_build_index(
             "workspace": str(ws),
             "skipped": True,
             "reason": "zero_eligible_documents",
-            "message": f"No eligible markdown/text documents found in {sources_dir}. Indexing skipped (Dynamic Gate 0 auto-bypass).",
+            "message": f"No eligible source documents found in {sources_dir}. Indexing skipped (Dynamic Gate 0 auto-bypass).",
             "total_documents": 0,
             "total_chunks": 0,
             "total_canonical_topics": 0,
@@ -570,7 +1024,7 @@ def run_build_index(
     doc_id_counter = 1
 
     for f_info in scanned_files:
-        f_chunks = parse_markdown_into_breadcrumb_chunks(
+        f_chunks = parse_source_file_into_chunks(
             file_path=f_info["path"],
             rel_path=f_info["rel_path"],
             doc_title=f_info["title"],
@@ -737,8 +1191,9 @@ def run_build_index(
     probe_results_count = 0
     if len(all_chunks_to_insert) > 0:
         start_time = datetime.datetime.now()
-        # Probe query using the most frequent keyword or first chunk heading
-        probe_query = all_chunks_to_insert[0]["heading"].split()[0]
+        # Probe query using the first alphanumeric token from first chunk heading
+        probe_tokens = re.findall(r"\w+", all_chunks_to_insert[0]["heading"])
+        probe_query = probe_tokens[0] if probe_tokens else "a"
         cur = conn.cursor()
         cur.execute(
             """
