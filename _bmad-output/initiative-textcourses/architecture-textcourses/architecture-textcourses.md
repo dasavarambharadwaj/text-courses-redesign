@@ -4,10 +4,10 @@ type: architecture-spine
 purpose: build-substrate
 altitude: initiative
 paradigm: "Hybrid Deterministic Substrate with Sovereign Filesystem-as-State"
-scope: "Complete TextCourses open-source framework: 9 canonical skills, shared runtime engine, and local workspace specifications"
+scope: "Complete TextCourses open-source framework: 10 canonical skills, shared runtime engine, autonomous multi-source harvesting, and potato-proof sovereign RAG knowledge indexer"
 status: final
 created: "2026-10-10"
-updated: "2026-10-10"
+updated: "2026-10-11"
 binds:
   - FR-1
   - FR-2
@@ -32,6 +32,28 @@ binds:
   - FR-21
   - FR-22
   - FR-23
+  - FR-24
+  - FR-25
+  - FR-26
+  - FR-27
+  - FR-28
+  - FR-29
+  - FR-30
+  - FR-31
+  - FR-32
+  - FR-33
+  - FR-34
+  - FR-35
+  - FR-36
+  - FR-37
+  - FR-38
+  - FR-39
+  - FR-40
+  - FR-41
+  - FR-42
+  - FR-43
+  - FR-44
+  - FR-45
 sources:
   - "product-brief.md"
   - "prd-textcourses.md"
@@ -51,47 +73,62 @@ TextCourses is architected as a **Hybrid Deterministic Substrate with Sovereign 
    The AI agent prompt governs human-facing instructional delivery, Socratic reasoning, worked-example contrasts, diagnostic evaluation scenarios, tone matching, and the standardized Next-Action Fork protocol.
 
 3. **Sovereign Filesystem-as-State:**
-   There is zero reliance on remote databases, background daemon processes, or proprietary cloud accounts. All persistent state lives exclusively as standard files on the local filesystem across a dual-plane boundary: `.tc/` (internal machine state and decision traces) and `plan/`, `courses/`, `portfolio/` (human-facing learning materials).
+   There is zero reliance on remote databases, background daemon processes, or proprietary cloud accounts. All persistent state lives exclusively as standard files on the local filesystem across a dual-plane boundary: `.tc/` (internal machine state and decision traces), `research/<slug>/sources/` (sovereign local knowledge repository, SQLite FTS5 database, and synthesized catalog), and `roadmap/`, `courses/`, `portfolio/` (human-facing learning materials).
 
 ```mermaid
 flowchart TD
     subgraph HumanFacingPlane["Human-Facing Learning Plane"]
-        PlanDir["plan/ (Roadmap, Preferences, Sources)"]
+        RoadmapDir["roadmap/ (Macro Trajectory & Manifest)"]
+        ProfileDir["profile/ (Learner Preferences & Global Memlog)"]
         CoursesDir["courses/ (Curricula, Notes, Test Ledgers)"]
         PortfolioDir["portfolio/ (Practical Projects & Review Reports)"]
+        ResearchDir["research/<slug>/ (Dossiers, Gold Standards, Multi-Hat Critiques)"]
+    end
+
+    subgraph SovereignKnowledgeSubstrate["Sovereign Local Knowledge Substrate (research/<slug>/sources/)"]
+        ReposDir["repos/ (Harvested GitHub Course Repos & Books)"]
+        TranscriptsDir["transcripts/ (Cleaned YouTube Transcripts)"]
+        IndexDb["index.db (Potato-Proof SQLite FTS5 Database)"]
+        CatalogJson["catalog.json (Synthesized Master Domain Taxonomy)"]
     end
 
     subgraph InternalMachinePlane["Internal Machine Plane"]
         TcRuntime[".tc/config.json"]
-        TcCache[".tc/cache/ (Decision Traces & Audit Logs)"]
-        TcResearch[".tc/research/ (Scraped ToCs & Syllabi)"]
+        TcCache[".tc/cache/ (Consensus Traces & Decision Logs)"]
+        InterStandards["_tc/INTERACTION_STANDARDS.md (Zero-Cognitive-Overload Pacing)"]
     end
 
     subgraph SkillPrompts["Skill Prompt Layer (skills/tc-*/SKILL.md)"]
-        TcInit["tc-init"]
-        TcCreate["tc-create"]
-        TcTeach["tc-teach"]
-        TcTestMe["tc-test-me"]
-        TcPracticals["tc-practicals"]
-        TcRedirect["tc-redirect-course"]
-        TcMigrate["tc-migrate"]
-        TcResearchSkill["tc-research"]
-        TcVerifySkill["tc-verify-course"]
+        TcInit["tc-init (Chiron / Onboarding)"]
+        TcResearchSkill["tc-research (Marie Curie / Deep Research)"]
+        TcIndexSkill["tc-index (Denis Diderot / Sovereign RAG)"]
+        TcCreate["tc-create (Daedalus / Triad Consensus)"]
+        TcTeach["tc-teach (Master Faculty / Socratic Pacing)"]
+        TcTestMe["tc-test-me (Bloom Diagnostic Evaluator)"]
+        TcPracticals["tc-practicals (4-Lens Applied Reviewer)"]
+        TcRedirect["tc-redirect-course (Adaptive Mutator)"]
+        TcMigrate["tc-migrate (Layout Migrator)"]
+        TcVerifySkill["tc-verify-course (Structural Auditor)"]
     end
 
     subgraph DeterministicSubstrate["Shared Deterministic Engine (_tc/scripts/)"]
-        ManifestPy["manifest.py (TOML Reader/Writer)"]
-        LedgerPy["ledger.py (Atomic JSONL Logger & Summarizer)"]
-        DagPy["dag.py (Topological Sorter & Cycle Checker)"]
-        ContextPy["context.py (Context Manifest Enforcement)"]
-        HashPy["hash_tracker.py (SHA-256 Delta Tracker)"]
+        TcDispatcher["tc.py (Unified CLI Dispatcher)"]
+        ScoutPy["scout.py (Autonomous 5/13-Hat Research Engine)"]
+        HarvesterPy["harvester.py (GitHub & YouTube Deep Harvester)"]
+        IndexerPy["indexer.py (Potato-Proof SQLite FTS5 RAG Indexer)"]
+        BuilderPy["course_builder.py (Triad Consensus & Catalog Integration)"]
+        TeachPy["teach_engine.py & notes_compiler.py"]
+        EvaluatorPy["practical_evaluator.py & diagnostic_tester.py"]
+        CorePy["manifest.py, ledger.py, dag.py, hash_tracker.py, memlog.py"]
     end
 
-    SkillPrompts -->|Invokes via uv run| DeterministicSubstrate
+    SkillPrompts -->|Invokes via uv run| TcDispatcher
+    TcDispatcher --> DeterministicSubstrate
     DeterministicSubstrate -->|Atomic Read/Write| HumanFacingPlane
+    DeterministicSubstrate -->|Indexes & Synthesizes| SovereignKnowledgeSubstrate
     DeterministicSubstrate -->|Atomic Read/Write| InternalMachinePlane
-    TcTeach -->|Writes Notes to| CoursesDir
-    TcPracticals -->|Verifies Deliverables in| PortfolioDir
+    BuilderPy -->|Ingests for Master Non-Mirroring Synthesis| CatalogJson
+    IndexerPy -->|Sub-15ms BM25 Point Retrieval| IndexDb
 ```
 
 ---
@@ -163,9 +200,49 @@ flowchart TD
   - If content is superseded, it MUST only prepend a non-destructive Markdown blockquote header to `notes.md` (`> ⚠️ Deprecation Marker: Superseded by Section X.Y`).
 
 ### AD-8 — Surface-Agnostic Public Contract
-- **Binds:** All 9 skills and CLI utilities (`FR-23`).
+- **Binds:** All 10 skills and CLI utilities (`FR-23`).
 - **Prevents:** Vendor lock-in to proprietary IDE extensions, cloud webhooks, or GUI dialogs.
 - **Rule:** All skills, scripts, and commands MUST interact solely through standard POSIX filesystem paths, stdin/stdout, and universally parseable serializations (TOML, JSONL, Markdown). Any compliant agent harness with filesystem read/write access (Terminal CLI, VS Code, Cursor, JetBrains, or web wrappers) can execute the complete framework without adaptation.
+
+### AD-9 — Universal Low-Cognitive-Load Interaction Plane
+- **Binds:** All 10 skills, onboarding flows, and conversational faculties (`FR-42`).
+- **Prevents:** Learner fatigue, cognitive paralysis from multi-question prompt dumping, jargon confusion, and excessive scrolling.
+- **Rule:** 
+  1. Every interactive turn MUST present strictly ONE question or menu decision, waiting for user response before asking the next.
+  2. All prompts and options must adhere to the 10-year-old Plain English standard documented in `_tc/INTERACTION_STANDARDS.md`.
+  3. Contextual choices dynamically display `(Recommended)` based on prior responses.
+  4. For multi-part decisions, provide a final concise scannable summary with short answer codes so the learner never scrolls back and forth.
+
+### AD-10 — Autonomous Multi-Source Deep Harvesting & Evidence Registry
+- **Binds:** `tc-research`, `harvester.py`, `scout.py` (`FR-43`).
+- **Prevents:** Hallucinated or shallow syllabi derived solely from LLM pre-training weights; ungrounded commercial book assumptions.
+- **Rule:** 
+  1. Marie Curie discovers community gold standards from Reddit/HN/university reading lists and logs them to `research/<slug>/gold-standards.md`.
+  2. Open-source repositories and markdown textbooks on GitHub are cloned/downloaded into `research/<slug>/sources/repos/<repo_name>/`.
+  3. Landmark YouTube lecture transcripts are extracted and cleaned via `harvest-youtube` into `research/<slug>/sources/transcripts/`.
+  4. Proprietary commercial books trigger an explicit, gentle material acquisition gate with clear options: drop files into `sources/` or proceed with open documentation.
+
+### AD-11 — Mandatory AI-Era Research Grounding & Universal Hat Dialectic
+- **Binds:** `tc-research`, `scout.py` (`FR-44`).
+- **Prevents:** Teaching deprecated pre-AI idioms, ignoring modern automated tooling, and vulnerability to AI hallucinations.
+- **Rule:** 
+  1. Every research dossier (`dossier.md`) and machine digest (`digest.json`) MUST include an AI-Era landscape analysis detailing automated routine boilerplate, AI-adjacent tools/APIs, and AI hallucination guardrails.
+  2. The Universal Hat Registry provides 13 critical lenses, including `ai_pro_strategist` for AI augmentation and verification workflows.
+
+### AD-12 — Potato-Proof Sovereign RAG Indexer & SQLite FTS5 Point Retrieval
+- **Binds:** `tc-index`, `indexer.py`, `tc.py` (`FR-45.1`, `FR-45.3`, `FR-45.4`, `FR-45.5`).
+- **Prevents:** Out-of-memory crashes on consumer laptops, heavy background daemon overhead, external API leaks, and slow semantic vector search.
+- **Rule:** 
+  1. Knowledge indexing executes entirely within a `<50MB RAM` ceiling using standard library `sqlite3` FTS5 with Porter stemming, zero external server daemons, and zero API keys.
+  2. Indexing operates through 4 deterministic gates: Gate 1 (Scan & SHA-256), Gate 2 (Hierarchical Breadcrumb Chunking), Gate 3 (SQLite FTS5 & `catalog.json` generation), Gate 4 (Automated Probe Verification).
+  3. BM25 point retrieval guarantees sub-15ms search latency with highlighted context snippets.
+
+### AD-13 — Cross-Source Domain Catalog Synthesis & Unified Curriculum Invariant
+- **Binds:** `tc-index`, `tc-create`, `course_builder.py`, `indexer.py` (`FR-45.2`).
+- **Prevents:** Naive book-mirroring ("Book A Chapter 1, Book B Chapter 1"), fragmented curricula, and omission of consensus domain concepts.
+- **Rule:** 
+  1. `indexer.py` synthesizes `research/<slug>/sources/catalog.json`, containing consensus-ranked canonical topics, code identifiers, and prerequisite vocabulary across all ingested textbooks, repos, and transcripts.
+  2. `/tc-create` MUST ingest `catalog.json` during the Triad Consensus Dialectic. Daedalus drafts ONE unified master course synthesized across all sources, verified by Denis Diderot with an affirmative vote.
 
 ---
 
@@ -189,12 +266,14 @@ flowchart TD
 | --- | --- | --- |
 | **Python** | `>=3.11` | Primary runtime for all deterministic substrate scripts (`_tc/scripts/*.py`). |
 | **uv** | `>=0.4.0` | Fast Python runner executing scripts with inline PEP 723 metadata without pre-created virtualenvs. |
+| **sqlite3** | Python stdlib (`3.11+`) | Native FTS5 full-text search with Porter stemmer powering potato-proof local RAG engine under 50MB RAM (`indexer.py`). |
 | **tomli / tomllib** | Python stdlib (`3.11+`) | Native TOML parser for manifests (`course.toml`, `roadmap.toml`, `ledger.toml`). |
 | **tomli-w** | `>=1.0.0` | Deterministic TOML serializer for atomic manifest writing. |
 | **pydantic** | `>=2.8.0` | Data validation and schema enforcement for `test-ledger.jsonl` entries and pre-flight audit reports. |
-| **trafilatura** | `>=1.12.0` | Resilient, headless web text and readability extractor in `tc-research` scraper. |
+| **trafilatura** | `>=1.12.0` | Resilient, headless web text and readability extractor in `tc-research` scout. |
+| **yt-dlp** | Optional CLI | Landmark YouTube lecture transcript and subtitle extraction in `harvester.py`. |
 | **graphlib** | Python stdlib (`3.11+`) | Native topological sorting and cycle detection for prerequisite DAGs in `dag.py`. |
-| **fcntl** | POSIX stdlib | Cross-process file locking for atomic appends in `ledger.py`. |
+| **fcntl** | POSIX stdlib | Cross-process file locking for atomic appends in `ledger.py` and `course_builder.py`. |
 
 ---
 
@@ -208,92 +287,97 @@ text-courses-redesign/
 ├── pyproject.toml                     # Python package metadata & test runner configs
 ├── skills-lock.json                   # Agent skill manifest lockfile
 ├── _tc/                               # Canonical shared runtime engine template
+│   ├── INTERACTION_STANDARDS.md       # Zero-cognitive-overload, 1-question turn limits, kid-friendly UX
 │   ├── config.default.json            # Default framework configuration
 │   └── scripts/
+│       ├── tc.py                      # Unified CLI entrypoint & dispatcher (all 20 modules)
+│       ├── indexer.py                 # Potato-proof SQLite FTS5 RAG indexer & catalog synthesizer
+│       ├── harvester.py               # Autonomous GitHub & YouTube deep asset harvester
+│       ├── scout.py                   # Autonomous 5/13-hat deep research engine
+│       ├── course_builder.py          # Triad Consensus dialectic & non-mirroring catalog integration
+│       ├── bootstrapper.py            # Workspace initialization & scanner
+│       ├── teach_engine.py            # Socratic instruction & session state machine
+│       ├── notes_compiler.py          # Flat textbook compiler & zero-jargon auditor
+│       ├── practical_evaluator.py     # Applied challenge generator & 4-lens reviewer
+│       ├── diagnostic_tester.py       # Bloom taxonomy diagnostic inquiry engine
 │       ├── manifest.py                # Atomic TOML manifest manager
 │       ├── ledger.py                  # Atomic JSONL test ledger manager & query summarizer
 │       ├── dag.py                     # Topological DAG validator & cycle checker
 │       ├── context.py                 # Context manifest loader & budget enforcement
-│       └── hash_tracker.py            # SHA-256 source delta hash tracker
-├── skills/                            # The 9 canonical skill packages
-│   ├── tc-init/
-│   │   ├── SKILL.md                   # Intake, style picker & workspace bootstrap
-│   │   ├── customize.toml             # Overridable intake options & preferences
-│   │   └── assets/                    # Preview style samples & templates
-│   ├── tc-create/
-│   │   ├── SKILL.md                   # Curriculum architect & Triad loop driver
-│   │   ├── customize.toml             # Archetype definitions & depth defaults
-│   │   └── assets/archetypes.json     # Archetype structural scaffolds
-│   ├── tc-research/
-│   │   ├── SKILL.md                   # Web intelligence scout
-│   │   ├── customize.toml             # Search engines & fallback tier configs
-│   │   └── scripts/scraper.py         # Headless doc extractor via trafilatura
-│   ├── tc-teach/
-│   │   ├── SKILL.md                   # Single-concept conversational tutor & notes compiler
-│   │   └── customize.toml             # Pacing & Next-Action Fork defaults
-│   ├── tc-verify-course/
-│   │   ├── SKILL.md                   # Pre-flight curriculum auditor
-│   │   └── scripts/auditor.py         # Deterministic consistency rule checks
-│   ├── tc-test-me/
-│   │   ├── SKILL.md                   # 100% question-based diagnostic evaluator
-│   │   └── customize.toml             # Hinge question generation rubrics
-│   ├── tc-practicals/
-│   │   ├── SKILL.md                   # Project generator & 4-lens reviewer
-│   │   └── assets/lenses/             # Review lenses: functional, edge, craft, verify
-│   ├── tc-redirect-course/
-│   │   ├── SKILL.md                   # Change manager & non-destructive deprecation
-│   │   └── customize.toml             # Delta threshold rules
-│   └── tc-migrate/
-│       ├── SKILL.md                   # Workspace health checker & consent-gated migrator
-│       └── scripts/migrator.py        # Schema migrator & dry-run planner
-└── tests/                             # Test suite for runtime scripts
-    ├── test_manifest.py
-    ├── test_ledger.py
-    ├── test_dag.py
-    └── test_hash_tracker.py
+│       ├── hash_tracker.py            # Resilient cross-platform SHA-256 delta tracker
+│       ├── memlog.py                  # Two-tier token-minimal pedagogical memory logger
+│       ├── auditor.py                 # Structural integrity & link verification
+│       ├── redirector.py              # Dynamic in-flight course mutations & deprecation manager
+│       ├── migrator.py                # Consent-gated schema migrator
+│       └── lesson_tracker.py          # Checklist progress tracker
+├── skills/                            # The 10 canonical skill packages
+│   ├── tc-init/                       # Chiron onboarding & workspace bootstrap
+│   ├── tc-research/                   # Marie Curie autonomous deep research engine
+│   ├── tc-index/                      # Denis Diderot sovereign knowledge indexer & catalog synthesizer
+│   ├── tc-create/                     # Daedalus curriculum architect & Triad consensus
+│   ├── tc-teach/                      # Socratic instruction & master faculty tutoring
+│   ├── tc-roadmap/                    # Macro learning roadmap & prerequisite trajectory
+│   ├── tc-verify-course/              # Pre-flight curriculum auditor
+│   ├── tc-test-me/                    # Question-based diagnostic evaluator
+│   ├── tc-practicals/                 # Applied challenge evaluator & 4-lens reviewer
+│   ├── tc-redirect-course/            # In-flight course mutation manager
+│   └── tc-migrate/                    # Layout migrator & health checker
+└── tests/                             # Comprehensive test suite (254 tests)
+    ├── test_indexer.py                # FTS5 schema, chunking, catalog, memory budget tests
+    ├── test_harvester.py              # Multi-source harvesting & transcript tests
+    ├── test_five_hat_research.py      # Universal hat research engine tests
+    └── ...
 ```
 
 ### 2. Generated Learner Workspace Structure
 
 ```text
 <learner-workspace-root>/
-├── .tc/                               # Internal runtime, caches & scraping data
+├── .tc/                               # Internal runtime, caches & decision logs
 │   ├── config.json                    # Workspace metadata & local settings
-│   ├── cache/                         # Empirical decision traces & audit logs (preserved)
-│   │   ├── consensus-trace.jsonl      # Record of Triad Consensus reconciliations
-│   │   └── audit-preflight.json       # Latest pre-flight audit report
-│   └── research/                      # Scraped intelligence (ToCs, benchmarks)
-│       └── <topic-slug>/
-│           ├── metadata.json          # Search queries, source URLs, confidence score
-│           └── curriculum-digest.md   # Synthesized outline & canonical syllabus
+│   └── cache/                         # Empirical decision traces & audit logs
+│       ├── consensus-trace.jsonl      # Record of Triad Consensus reconciliations
+│       └── audit-preflight.json       # Latest pre-flight audit report
 ├── _tc/                               # Deployed deterministic runtime scripts
-│   └── scripts/
-│       ├── manifest.py
-│       ├── ledger.py
-│       ├── dag.py
-│       ├── context.py
-│       └── hash_tracker.py
-├── plan/                              # User-facing strategic cockpit
-│   ├── roadmap.md                     # Macro learning trajectory
-│   ├── roadmap.toml                   # Machine-readable roadmap status tracker
-│   ├── preferences.md                 # Learner intake, background & evolvable style profile
-│   └── sources/                       # Raw reference inputs & user notes
-│       └── ledger.toml                # Cryptographic SHA-256 hash tracker
-└── courses/                           # Generated living textbooks
-    └── course-01-<slug>/
-        ├── course.toml                # Course manifest & section status tracker
-        ├── test-ledger.jsonl          # Persistent question-based assessment history
-        ├── overview.md                # Syllabus, chosen archetype & prerequisite DAG
-        ├── portfolio/                 # Verifiable human proof-of-work deliverables
-        │   └── project-01-<slug>/
-        │       ├── project-spec.md    # Deterministic deliverable requirements & test contracts
-        │       ├── review-report.md   # Multi-lens review evaluation report
-        │       └── workspace/         # Learner's project code & test implementations
-        └── chapter-01-<slug>/
-            ├── chapter-overview.md    # Chapter objectives & topic index
-            └── section-01-<slug>/
-                ├── lesson-plan.md     # Instructor concept checklist (AI eyes only)
-                └── notes.md           # Distilled student reference textbook (post-completion)
+│   ├── INTERACTION_STANDARDS.md       # Interaction standards reference
+│   └── scripts/                       # 20 self-contained executable Python modules
+├── profile/                           # Sovereign learner profile & global memory
+│   ├── preferences.md                 # Learner background, role, and active teacher persona
+│   └── memlog.md                      # Append-only global pedagogical milestone timeline
+├── roadmap/                           # Macro curricular cockpit
+│   ├── roadmap.md                     # Human-readable milestone progression
+│   └── roadmap.toml                   # Machine-readable macro prerequisite graph
+├── research/                          # Autonomous research substrate
+│   └── <topic-slug>/
+│       ├── gold-standards.md          # Community consensus books & landmark lectures
+│       ├── dossier.md                 # Comprehensive knowledge map & AI-era landscape
+│       ├── multi-hats-critique.md     # Universal multi-perspective dialectic review
+│       ├── sources.json               # Full provenance citations and harvest records
+│       ├── digest.json                # Extracted ToC, symbols, and prerequisite vocabulary
+│       └── sources/                   # Sovereign Local Knowledge Substrate
+│           ├── repos/                 # Cloned open textbook GitHub repositories
+│           ├── transcripts/           # Cleaned landmark lecture transcripts
+│           ├── index.db               # Sovereign SQLite FTS5 database (sub-15ms BM25)
+│           └── catalog.json           # Synthesized master domain taxonomy
+├── courses/                           # Generated living textbooks
+│   └── course-01-<slug>/
+│       ├── course.toml                # Course manifest & section status tracker
+│       ├── memlog.md                  # Course-level session memory & concept log
+│       ├── consensus-deliberation.md  # Multi-critic debate transcript
+│       ├── curriculum-brainstorm.md   # Multi-path architectural trade-off evaluation
+│       ├── overview.md                # Syllabus, chosen archetype & prerequisite DAG
+│       ├── notes/                     # Flat readable textbook chapters
+│       │   ├── chapter-01.md
+│       │   └── chapter-02.md
+│       └── chapter-01-<slug>/
+│           └── section-01-<slug>/
+│               ├── lesson-plan.md     # Instructor concept checklist
+│               └── notes.md           # Distilled reference textbook notes
+└── portfolio/                         # Practical proof-of-work project deliverables
+    └── <slug>-project/
+        ├── project-spec.md            # Concrete challenge requirements & test contracts
+        ├── review-report.md           # 4-lens evaluation report
+        └── workspace/                 # Student's verified runnable code
 ```
 
 ---
@@ -302,18 +386,27 @@ text-courses-redesign/
 
 | Capability / Requirement | Component / Module | Governed by |
 | --- | --- | --- |
-| **FR-1, FR-2, FR-3** (Intake, Styles, Scanner) | `skills/tc-init/`, `_tc/scripts/manifest.py` | AD-1, AD-2, AD-8 |
-| **FR-4, FR-5** (5 Archetypes, User Curriculum) | `skills/tc-create/`, `_tc/scripts/dag.py` | AD-1, AD-4 |
-| **FR-6** (Research Fallback & Confidence Scoring) | `skills/tc-research/`, `scripts/scraper.py` | AD-1, AD-2 |
-| **FR-7, FR-8** (Pre-Flight Audit & Triad Loop) | `skills/tc-verify-course/`, `_tc/scripts/dag.py` | AD-1, AD-4 |
-| **FR-9, FR-10** (Single Concept, Next-Action Fork)| `skills/tc-teach/SKILL.md` | AD-5, AD-8 |
-| **FR-11, FR-12** (Auto Notes Compilation, Compaction) | `skills/tc-teach/`, `_tc/scripts/manifest.py` | AD-1, AD-3, AD-7 |
+| **FR-1, FR-2, FR-3** (Intake, Styles, Scanner) | `skills/tc-init/`, `_tc/scripts/bootstrapper.py` | AD-1, AD-2, AD-8 |
+| **FR-4, FR-5** (5 Archetypes, User Curriculum) | `skills/tc-create/`, `_tc/scripts/course_builder.py` | AD-1, AD-4 |
+| **FR-6** (Research Fallback & Confidence Scoring) | `skills/tc-research/`, `_tc/scripts/scout.py` | AD-1, AD-2 |
+| **FR-7, FR-8** (Pre-Flight Audit & Triad Loop) | `skills/tc-verify-course/`, `_tc/scripts/auditor.py` | AD-1, AD-4 |
+| **FR-9, FR-10** (Single Concept, Next-Action Fork)| `skills/tc-teach/`, `_tc/scripts/teach_engine.py` | AD-5, AD-8 |
+| **FR-11, FR-12** (Auto Notes Compilation, Compaction) | `skills/tc-teach/`, `_tc/scripts/notes_compiler.py` | AD-1, AD-3, AD-7 |
 | **FR-13, FR-14, FR-15** (Diagnostic Testing, Ledger) | `skills/tc-test-me/`, `_tc/scripts/ledger.py` | AD-1, AD-3, AD-5 |
-| **FR-16, FR-17, FR-18** (Practicals & 4-Lens Review) | `skills/tc-practicals/`, `_tc/scripts/ledger.py`| AD-1, AD-3, AD-5 |
+| **FR-16, FR-17, FR-18** (Practicals & 4-Lens Review) | `skills/tc-practicals/`, `practical_evaluator.py` | AD-1, AD-3, AD-5 |
 | **FR-19, FR-20** (Hash Tracking, Immutability) | `skills/tc-redirect-course/`, `hash_tracker.py` | AD-1, AD-2, AD-7 |
 | **FR-21** (Consent-Gated Schema Migration) | `skills/tc-migrate/`, `scripts/migrator.py` | AD-1, AD-2, AD-8 |
 | **FR-22** (Context Loading Matrix) | `_tc/scripts/context.py`, all `SKILL.md` files | AD-5 |
 | **FR-23** (AI-Harness Agnosticism) | All skills & runtime scripts | AD-8 |
+| **FR-24, FR-25** (Faculty Personas & Macro Roadmap) | `skills/tc-roadmap/`, `_tc/scripts/manifest.py` | AD-1, AD-8 |
+| **FR-26, FR-27** (Pedagogical Memlog & Clean Layout) | `_tc/scripts/memlog.py`, `bootstrapper.py` | AD-1, AD-3 |
+| **FR-30, FR-31** (5-Hat Research & Triad Dialectic) | `skills/tc-research/`, `course_builder.py` | AD-4, AD-10 |
+| **FR-34, FR-35** (Pedagogical Brainstorm & Practicals) | `course_builder.py`, `practical_evaluator.py` | AD-4, AD-8 |
+| **FR-38, FR-39** (Unified Dispatcher & Session State) | `_tc/scripts/tc.py`, `teach_engine.py` | AD-1, AD-8 |
+| **FR-42** (Universal Low-Cognitive-Load Pacing) | `_tc/INTERACTION_STANDARDS.md`, `tc-init` | AD-9 |
+| **FR-43** (Multi-Source Deep Harvester & Consensus) | `skills/tc-research/`, `_tc/scripts/harvester.py` | AD-10 |
+| **FR-44** (AI-Era Research Grounding & AI-Pro Hat) | `skills/tc-research/`, `_tc/scripts/scout.py` | AD-11 |
+| **FR-45** (Potato-Proof Sovereign RAG & Catalog) | `skills/tc-index/`, `_tc/scripts/indexer.py` | AD-12, AD-13 |
 
 ---
 

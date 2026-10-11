@@ -1,0 +1,51 @@
+next_id = 6
+
+[[entry]]
+id = 1
+type = "story"
+title = "Zero-Cognitive-Overload Pacing & Centralized Interaction Standards"
+after = []
+risk = "low"
+covers = ["FR-42", "AD-9"]
+description = "Enforce strictly one question per turn, 10-year-old plain English descriptions, 10 diverse learner roles, dynamic recommendation indicators, simplified 3-teacher faculty, and centralized interaction standards in _tc/INTERACTION_STANDARDS.md."
+verify = "Interactive onboarding asks strictly one question per turn; roles contain 10 diverse entries; teacher personas reduced to 3; unit tests pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Autonomous Multi-Source Deep Harvester & Community Consensus Sourcing"
+after = [1]
+risk = "medium"
+covers = ["FR-43", "AD-10"]
+description = "Implement harvester.py with subcommands for community consensus gold-standard recording (Reddit/HN), GitHub open textbook cloning, YouTube lecture transcript extraction, and graceful fallback acquisition gates."
+verify = "harvester.py records gold standards, clones repos, cleans YouTube subtitles, and compiles sources-index.json; unit tests pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "AI-Era Research Grounding & Dedicated AI-Pro Hat Engine"
+after = [1, 2]
+risk = "low"
+covers = ["FR-44", "AD-11"]
+description = "Mandate AI-era landscape analysis in dossier.md and digest.json; add ai_pro_strategist critical hat to scout.py Universal Hat Registry with --ai and alias support."
+verify = "scout.py generates AI-era landscape sections; Universal Hat Registry includes ai_pro_strategist; unit tests pass."
+
+[[entry]]
+id = 4
+type = "story"
+title = "Potato-Proof Sovereign RAG Indexer & SQLite FTS5 Point Retrieval"
+after = [2]
+risk = "high"
+covers = ["FR-45.1", "FR-45.3", "FR-45.4", "FR-45.5", "AD-12"]
+description = "Implement indexer.py using standard library sqlite3 FTS5 with Porter stemming under a strict <50MB RAM ceiling; build 4-stage validation pipeline (Scan, Chunk, Index, Verify) and sub-15ms BM25 hybrid point retrieval."
+verify = "indexer.py executes 4 validation gates; peak memory under 50MB; sub-15ms BM25 search latency; tc.py index routing; unit tests pass."
+
+[[entry]]
+id = 5
+type = "story"
+title = "Cross-Source Domain Catalog Synthesis & Unified Master Curriculum"
+after = [4]
+risk = "medium"
+covers = ["FR-45.2", "AD-13"]
+description = "Synthesize cross-source deduplicated domain taxonomy in research/<slug>/sources/catalog.json; update course_builder.py to consume catalog.json and integrate Denis Diderot into the Triad Consensus panel to guarantee non-mirroring master curricula."
+verify = "catalog.json generated with consensus scores and prerequisite vocabulary; course_builder.py consumes catalog.json; Denis Diderot records consensus vote; unit tests pass."

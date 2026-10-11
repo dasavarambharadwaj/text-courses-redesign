@@ -15,7 +15,7 @@ version: "2.0.0"
 
 This Product Requirements Document (PRD) establishes the authoritative product, functional, and non-functional specifications for **TextCourses 2.0** (`textcourses.com`). It serves technical product managers, systems architects, skill prompt engineers, and downstream implementers. 
 
-TextCourses 2.0 synthesizes the initial framework specifications with the strategic breakthroughs forged in [brainstorm-teacher-personality-framework.md](file:///home/bharath/Documents/Code/text-courses-redesign/_bmad-output/initiative-textcourses/brainstorm-teacher-personality-framework/brainstorm-teacher-personality-framework.md). All requirements are numbered globally as stable references (`FR-1` through `FR-29`). Technical choices that belong strictly to implementation architecture live in downstream specifications (`bmad-architecture`).
+TextCourses 2.0 synthesizes the initial framework specifications with the strategic breakthroughs forged in [brainstorm-teacher-personality-framework.md](file:///home/bharath/Documents/Code/text-courses-redesign/_bmad-output/initiative-textcourses/brainstorm-teacher-personality-framework/brainstorm-teacher-personality-framework.md) and autonomous research, harvesting, and sovereign RAG innovations. All requirements are numbered globally as stable references (`FR-1` through `FR-45`). Technical choices that belong strictly to implementation architecture live in downstream specifications (`bmad-architecture`).
 
 ---
 

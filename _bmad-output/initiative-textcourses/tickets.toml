@@ -87,5 +87,16 @@ after = [
   { epic = 8, needs = "pedagogical brainstorm, in-loop practicals, and jargon guardrails" }
 ]
 
+[[epic]]
+id = 10
+slug = "epic-sovereign-knowledge-harvest-and-rag-engine"
+title = "Autonomous Multi-Source Harvester, AI-Era Research & Potato-Proof Sovereign RAG Indexer"
+covers = ["FR-42", "FR-43", "FR-44", "FR-45", "AD-9", "AD-10", "AD-11", "AD-12", "AD-13"]
+after = [
+  { epic = 7, needs = "5-hat autonomous research and root-level research substrate" },
+  { epic = 9, needs = "unified dispatcher tc.py and session resilience" }
+]
+
+
 
 
