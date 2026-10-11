@@ -1,0 +1,13 @@
+# customize.toml — Customizable options for tc-index knowledge indexer
+
+[agent]
+persona = "Denis Diderot"
+title = "The Master Synthesizer & Encyclopedist"
+icon = "📚"
+
+[indexer]
+db_filename = "index.db"
+catalog_filename = "catalog.json"
+target_chunk_words = 500
+prune_memory_mb = 50
+probe_latency_max_ms = 15

@@ -7,9 +7,11 @@
 # ///
 """tc.py — Unified CLI entrypoint and runtime dispatcher for TextCourses.
 
-Consolidates invocation across all 18 runtime modules behind a single top-level CLI (FR-38):
+Consolidates invocation across all 20 runtime modules behind a single top-level CLI (FR-38):
 - init: Workspace bootstrapping & layout scanning (bootstrapper.py)
 - research: 5-hat autonomous deep research (scout.py)
+- harvest: Multi-source deep asset harvester (harvester.py)
+- index: Potato-proof sovereign SQLite FTS5 RAG indexer (indexer.py)
 - create: Multi-path curriculum brainstorming & Triad consensus (course_builder.py)
 - teach: Socratic instruction engine & session state machine (teach_engine.py)
 - practicals: Hands-on coding challenge evaluation (practical_evaluator.py)
@@ -47,6 +49,7 @@ SUBCOMMAND_MODULES = {
     "research": "scout",
     "scout": "scout",
     "harvest": "harvester",
+    "index": "indexer",
     "create": "course_builder",
     "teach": "teach_engine",
     "practicals": "practical_evaluator",
@@ -69,6 +72,7 @@ COMMAND_DESCRIPTIONS = {
     "research": "Autonomous 5-hat deep research and dossier generation",
     "scout": "Universal multi-hat research engine and dossier compiler",
     "harvest": "Autonomous multi-source deep harvester for repos, transcripts, and gold standards",
+    "index": "Potato-proof sovereign SQLite FTS5 RAG indexer and cross-source catalog synthesizer",
     "create": "Curriculum synthesis, multi-path brainstorming, and Triad consensus",
     "teach": "Conversational Socratic instruction and session state recovery",
     "practicals": "Hands-on coding challenge scaffolding and AI evaluation",

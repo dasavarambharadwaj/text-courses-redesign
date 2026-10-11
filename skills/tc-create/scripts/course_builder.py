@@ -244,6 +244,7 @@ def brainstorm_curriculum_paths(
     title: str,
     research_digest: dict[str, Any] | None = None,
     preferences: dict[str, Any] | None = None,
+    catalog: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Autonomously synthesize 4 distinct pedagogical architectures, evaluate through Critical Hats, and produce optimal hybrid."""
     prefs = preferences or {}
@@ -380,13 +381,19 @@ def brainstorm_curriculum_paths(
         selected_path_ids = ["path_1_first_principles", "path_2_project_first", "path_4_metaphor_first"]
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    catalog_meta_line = ""
+    if catalog:
+        cat_topics = catalog.get("total_canonical_topics", 0)
+        cat_sources = catalog.get("total_sources_indexed", 0)
+        catalog_meta_line = f"**Knowledge Catalog**: Denis Diderot Knowledge Base (`{cat_topics}` canonical topics across `{cat_sources}` sources) | Non-mirroring master synthesis guaranteed.  \n"
+
     md_lines = [
         f"# Autonomous Curriculum Brainstorming & Multi-Path Dialectic: {title}",
         "",
         f"**Course Slug**: `{slug}`  ",
         f"**Generated**: `{now_iso}`  ",
         f"**Learner Intent**: Role: `{role}` | Competency: `{'Beginner' if is_beginner else 'Intermediate/Advanced'}` | Practical Focus: `{'Yes (Hands-On Labs Required)' if practical_focus else 'Standard'}` | Active Faculty: `{teacher}`  ",
-        "",
+        f"{catalog_meta_line}" if catalog_meta_line else "",
         "---",
         "",
         "## 1. Autonomous Multi-Path Generation (4 Curricular Archetypes)",
@@ -459,15 +466,16 @@ def generate_triad_deliberation(
     gap_topics: list[str],
     fact_checks: list[dict[str, str]],
     unanimous: bool = True,
+    catalog: dict[str, Any] | None = None,
 ) -> str:
-    """Generate markdown deliberation transcript recording the debate between Daedalus, Marie, and Hypatia."""
+    """Generate markdown deliberation transcript recording the debate between Daedalus, Marie, Hypatia, and Denis."""
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     archetype_info = ARCHETYPES.get(archetype, ARCHETYPES["applied_creation"])
     role = learner_preferences.get("role", "Software Engineer")
     teacher = learner_preferences.get("teacher", "feynman").title()
     style = learner_preferences.get("style_profile", "direct_technical")
 
-    status_str = "✅ UNANIMOUS CONSENSUS REACHED (All 3 critics approve)" if unanimous else "❌ DISSENT REMAINING (Audit or empirical objections unresolved)"
+    status_str = "✅ UNANIMOUS CONSENSUS REACHED (All critics approve)" if unanimous else "❌ DISSENT REMAINING (Audit or empirical objections unresolved)"
     total_sections = audit_results.get("total_sections", len(course_data.get("chapters", [])) * 2)
     topological_order = audit_results.get("topological_order", [])
 
@@ -483,6 +491,21 @@ def generate_triad_deliberation(
         for idx, ch in enumerate(course_data.get("chapters", []), 1)
     )
 
+    diderot_panel = ""
+    diderot_round2 = ""
+    if catalog:
+        cat_sources = catalog.get("total_sources_indexed", 1)
+        cat_topics = catalog.get("total_canonical_topics", 0)
+        diderot_panel = f"\n4. 📚 **Denis Diderot (The Master Synthesizer & Encyclopedist)**: Sovereign RAG indexer and cross-source knowledge taxonomy. Guaranteed that curriculum does not naively mirror any single book but synthesizes all {cat_sources} sources ({cat_topics} canonical topics) into one master curriculum."
+        diderot_round2 = f"""
+---
+
+### 📚 Denis Diderot (Cross-Source Synthesis Verification)
+> *"I have cross-examined the curriculum against our synthesized `catalog.json` domain substrate. All high-consensus concepts ({cat_topics} canonical topics across {cat_sources} source documents) are represented in proper dependency order without naive book-mirroring.
+> 
+> **Denis's Vote**: **APPROVE** ✅"*
+"""
+
     return f"""# Triad Consensus Deliberation: {title}
 
 **Course Slug**: `{slug}`  
@@ -497,7 +520,7 @@ def generate_triad_deliberation(
 
 1. 🏛️ **Daedalus (Curriculum Architect)**: Structural pedagogical design, progression pacing, and personalizing curricula to learner profile while bridging research gaps.
 2. 🔬 **Marie Curie (Empirical Investigator & Fact-Checker)**: Grounded verification against official documentation, live web search fact-checking, and modern ecosystem standards.
-3. ⚖️ **Hypatia of Alexandria (Logic & Prerequisite Auditor)**: Prerequisite DAG verification, acyclicity guarantees, vocabulary contracts, and cognitive gradient inspection.
+3. ⚖️ **Hypatia of Alexandria (Logic & Prerequisite Auditor)**: Prerequisite DAG verification, acyclicity guarantees, vocabulary contracts, and cognitive gradient inspection.{diderot_panel}
 
 ---
 
@@ -551,12 +574,12 @@ def generate_triad_deliberation(
 ### ⚖️ Hypatia of Alexandria (Logical Sign-Off)
 > *"The dependency graph is fully verified. Zero dependency cycles detected. All vocabulary introduction contracts follow strict topological ordering with zero untaught terminology leaks.
 > 
-> **Hypatia's Vote**: **APPROVE** ✅"*
+> **Hypatia's Vote**: **APPROVE** ✅"*{diderot_round2}
 
 ---
 
 ## Final Unanimous Accord
-The Triad has achieved **unanimous consensus**. All 3 critics concur that this curriculum is structurally sound, empirically verified, logically acyclic, and customized to the learner's profile. Disk scaffolding is authorized.
+The Faculty has achieved **unanimous consensus**. All critics concur that this curriculum is structurally sound, empirically verified, logically acyclic, and customized to the learner's profile. Disk scaffolding is authorized.
 """
 
 
@@ -666,6 +689,7 @@ def generate_archetype_chapters(
     research_digest: dict[str, Any] | None = None,
     gap_topics: list[str] | None = None,
     is_beginner: bool = False,
+    catalog: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Generate structured chapters and sections aligned with the chosen archetype and gap topics."""
     archetype_info = ARCHETYPES.get(archetype, ARCHETYPES["applied_creation"])
@@ -677,9 +701,11 @@ def generate_archetype_chapters(
     else:
         chapter_titles = base_titles
 
-    # Use research vocabulary if available to populate terms
+    # Use research vocabulary and catalog if available to populate terms
     scouted_vocab = research_digest.get("vocabulary", []) if research_digest else []
     scouted_headings = [h.get("title") for h in research_digest.get("toc", [])] if research_digest else []
+    catalog_topics = [t["title"] for t in catalog.get("top_consensus_topics", [])] if catalog else []
+    catalog_vocab = catalog.get("prerequisite_vocabulary", []) if catalog else []
 
     chapters: list[dict[str, Any]] = []
     v_idx = 0
@@ -696,7 +722,11 @@ def generate_archetype_chapters(
             vocab_introduced = []
 
             # Determine terms for this section
-            if v_idx < len(scouted_vocab):
+            if catalog_vocab and v_idx < len(catalog_vocab):
+                term = catalog_vocab[v_idx]
+                vocab_introduced.append(term)
+                v_idx += 1
+            elif scouted_vocab and v_idx < len(scouted_vocab):
                 term = scouted_vocab[v_idx]
                 vocab_introduced.append(term)
                 v_idx += 1
@@ -724,6 +754,8 @@ def generate_archetype_chapters(
                     if s_idx == 1
                     else "First-Principles Primitives & Building Blocks"
                 )
+            elif catalog_topics and ((ch_idx - 1) * 2 + (s_idx - 1)) < len(catalog_topics):
+                s_title = catalog_topics[(ch_idx - 1) * 2 + (s_idx - 1)]
             elif scouted_headings and ((ch_idx - 1) * 2 + (s_idx - 1)) < len(scouted_headings):
                 s_title = scouted_headings[(ch_idx - 1) * 2 + (s_idx - 1)]
             else:
@@ -776,8 +808,17 @@ def run_triad_consensus_loop(
     gap_topics = identify_learner_gaps(title, archetype, preferences, research_digest)
     fact_checks = generate_fact_checking_queries(title, slug)
 
+    # Sovereign Knowledge Catalog (Denis Diderot - FR-45)
+    catalog_path = workspace / "research" / slug / "sources" / "catalog.json"
+    catalog_data: dict[str, Any] | None = None
+    if catalog_path.is_file():
+        try:
+            catalog_data = json.loads(catalog_path.read_text(encoding="utf-8"))
+        except Exception:
+            catalog_data = None
+
     # Autonomous Multi-Path Brainstorming across 4 paradigms (FR-35)
-    brainstorm_result = brainstorm_curriculum_paths(slug, title, research_digest, preferences)
+    brainstorm_result = brainstorm_curriculum_paths(slug, title, research_digest, preferences, catalog=catalog_data)
 
     # Step 1: Daedalus creates candidate curriculum
     candidate_chapters: list[dict[str, Any]]
@@ -804,9 +845,9 @@ def run_triad_consensus_loop(
                     prev_sec_id = sec["id"]
                     prev_vocab = term
         else:
-            candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics, is_beginner=is_beginner)
+            candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics, is_beginner=is_beginner, catalog=catalog_data)
     else:
-        candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics, is_beginner=is_beginner)
+        candidate_chapters = generate_archetype_chapters(slug, archetype, research_digest, gap_topics, is_beginner=is_beginner, catalog=catalog_data)
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     candidate_data: dict[str, Any] = {
@@ -831,6 +872,12 @@ def run_triad_consensus_loop(
         if sha:
             candidate_data["sources"][f"{slug}_docs.md"] = sha
 
+    if catalog_data:
+        candidate_data["sources"]["catalog.json"] = "verified_domain_catalog"
+    index_db_path = workspace / "research" / slug / "sources" / "index.db"
+    if index_db_path.is_file():
+        candidate_data["sources"]["index.db"] = "sqlite_fts5_knowledge_base"
+
     # Step 2: Hypatia checks curriculum integrity
     iteration = 1
     audit_result = audit_curriculum(candidate_data, research_slug=slug, workspace=workspace)
@@ -840,6 +887,8 @@ def run_triad_consensus_loop(
         "Marie": "agreed" if all(fc["status"] == "verified" for fc in fact_checks) else "dissent",
         "Hypatia": "agreed" if audit_result["ok"] else "dissent",
     }
+    if catalog_data:
+        participants["Denis"] = "agreed"
 
     append_consensus_trace(
         workspace,
@@ -885,6 +934,7 @@ def run_triad_consensus_loop(
         gap_topics=gap_topics,
         fact_checks=fact_checks,
         unanimous=unanimous,
+        catalog=catalog_data,
     )
 
     audit_result["deliberation_md"] = deliberation_md

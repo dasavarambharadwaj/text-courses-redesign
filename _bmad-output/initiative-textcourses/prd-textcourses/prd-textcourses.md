@@ -521,6 +521,15 @@ The research engine SHALL systematically investigate and document how the modern
   - **FR-44.2: AI-Pro Critical Hat (`ai_pro_strategist`)**: A dedicated critical lens in the Universal Hat Registry evaluating LLM augmentation, agentic workflows, prompt/context ergonomics, and hallucination defense. Selectable via `--ai` or `--hats ai_pro`.
   - **FR-44.3: AI-Era Pedagogical Co-Design**: Downstream curriculum generation (`tc-create`) and instruction (`tc-teach`) ingest the AI-era landscape to weave modern AI-assisted problem solving, automated testing, and verification habits into course chapters.
 
+#### FR-45: Potato-Proof Sovereign Knowledge Indexer & Cross-Source Synthesizer (`tc-index`, `indexer.py`)
+The indexing and point-retrieval engine spearheaded by **📚 Denis Diderot** SHALL ingest heterogeneous materials (50MB to 1GB of markdown textbooks, cloned repositories, and lecture transcripts) and synthesize a unified domain catalog and sovereign local search index running 100% locally on commodity potato-tier hardware with zero external APIs and zero background daemons. Realizes UJ-1, UJ-4, UJ-5.
+- **Consequences (testable):**
+  - **FR-45.1: Potato-Proof Hardware Profile (<50MB RAM Ceiling)**: Runs smoothly on resource-constrained hardware (e.g. ThinkPad T480, 8GB RAM, Intel 8th-Gen CPU, zero GPU/NPU) using standard library `sqlite3` with FTS5 and Porter stemmer. Peak memory consumption strictly remains under 50MB during both indexing and retrieval.
+  - **FR-45.2: Unified Cross-Source Domain Catalog Synthesis (`catalog.json`)**: Extracts and deduplicates high-consensus topics, frequency scores, code identifiers, and prerequisite dependencies into `research/<slug>/sources/catalog.json`. Enforces the Unified Curriculum Invariant: `tc-create` consumes `catalog.json` so the course is never a naive mirror of any individual book or repo, but a synthesized master syllabus covering 100% of the ingested corpus.
+  - **FR-45.3: Sovereign Point Retrieval (<15ms Latency)**: Exposes BM25 ranking and highlighted snippet extraction via `research/<slug>/sources/index.db`. Sub-15ms local query latency on commodity hardware.
+  - **FR-45.4: Deterministic 4-Stage Validation Pipeline**: Enforces 4 verifiable gates during indexing: Gate 1 (Scan files & SHA-256), Gate 2 (Hierarchical breadcrumb chunking), Gate 3 (SQLite FTS5 DB and catalog generation), Gate 4 (Automated search probe verification).
+  - **FR-45.5: Zero External API & Zero Installation Burden**: Pure Python standard library implementation (`sqlite3`, `hashlib`, `json`, `re`, `pathlib`). Requires zero external vector databases, zero server processes, and zero API keys.
+
 ---
 
 ## 5. Non-Goals (Explicit)
@@ -536,7 +545,7 @@ The research engine SHALL systematically investigate and document how the modern
 ## 6. MVP Scope
 
 ### 6.1 In Scope (MVP)
-- **8 User-Facing Commands:** `tc-init`, `tc-roadmap`, `tc-create`, `tc-teach`, `tc-test-me`, `tc-practicals`, `tc-redirect-course`, `tc-migrate`.
+- **9 User-Facing Commands:** `tc-init`, `tc-roadmap`, `tc-create`, `tc-teach`, `tc-test-me`, `tc-practicals`, `tc-redirect-course`, `tc-migrate`, `tc-index`.
 - **2 Internal Engine Skills:** `tc-research` and `tc-verify-course` (invoked via Triad Consensus Loop, and directly standalone).
 - **The Sovereign Faculty:** 10 world-renowned master teacher personas with distinct teaching philosophies, adaptive density, and tag-team handoffs.
 - **Two-Tier Pedagogical Memlog:** Global learner timeline (`profile/memlog.md`) and course-level session memory (`courses/<slug>/memlog.md`) via atomic `memlog.py`.
