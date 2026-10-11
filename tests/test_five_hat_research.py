@@ -77,6 +77,7 @@ def test_scout_generates_five_hats_and_dossier(tmp_path: Path):
     res_dos = subprocess.run(cmd_dos, capture_output=True, text=True)
     assert res_dos.returncode == 0
     assert "Domain Research Dossier" in res_dos.stdout
+    assert "AI-Era Landscape & Modern Augmentation" in res_dos.stdout
 
     cmd_crit = [
         sys.executable,
@@ -90,6 +91,79 @@ def test_scout_generates_five_hats_and_dossier(tmp_path: Path):
     res_crit = subprocess.run(cmd_crit, capture_output=True, text=True)
     assert res_crit.returncode == 0
     assert "5-Hat Critical Reflection" in res_crit.stdout
+
+
+def test_ai_pro_hat_registration():
+    """Verify ai_pro_strategist is registered in universal hat registry and listed via CLI."""
+    res = subprocess.run([sys.executable, str(SCOUT_SCRIPT), "hats", "--json"], capture_output=True, text=True)
+    assert res.returncode == 0
+    data = json.loads(res.stdout)
+    assert data["ok"] is True
+    assert "ai_pro_strategist" in data["hats"]
+    ai_hat = data["hats"]["ai_pro_strategist"]
+    assert "AI-Pro" in ai_hat["title"]
+    assert "AI era" in ai_hat["stance"]
+
+
+def test_scout_with_ai_flag(tmp_path: Path):
+    """Verify scout --ai activates AI-Pro Strategist hat in multi-hat critique."""
+    cmd = [
+        sys.executable,
+        str(SCOUT_SCRIPT),
+        "scout",
+        "--slug",
+        "tokio-async",
+        "--workspace",
+        str(tmp_path),
+        "--topic",
+        "Tokio Async Runtime in Rust",
+        "--ai",
+        "--json",
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    assert res.returncode == 0
+    data = json.loads(res.stdout)
+    assert data["ok"] is True
+    assert "ai_era" in data["digest"]
+    assert "what_has_changed" in data["digest"]["ai_era"]
+
+    critique_file = tmp_path / "research" / "tokio-async" / "five-hats-critique.md"
+    assert critique_file.is_file()
+    critique_text = critique_file.read_text(encoding="utf-8")
+    assert "AI-Pro Strategist & Co-Pilot" in critique_text
+    assert "Branch D (AI-Era Transformation & Augmentation)" in critique_text
+
+    dossier_file = tmp_path / "research" / "tokio-async" / "dossier.md"
+    assert dossier_file.is_file()
+    dossier_text = dossier_file.read_text(encoding="utf-8")
+    assert "AI-Era Landscape & Modern Augmentation (The AI-Pro Dimension)" in dossier_text
+    assert "What Has Changed in the AI Era" in dossier_text
+    assert "Critical Verification & Hallucination Defense" in dossier_text
+
+
+def test_scout_with_ai_pro_alias(tmp_path: Path):
+    """Verify alias --hats ai_pro resolves to ai_pro_strategist lens."""
+    cmd = [
+        sys.executable,
+        str(SCOUT_SCRIPT),
+        "scout",
+        "--slug",
+        "data-structures",
+        "--workspace",
+        str(tmp_path),
+        "--topic",
+        "Algorithms & Data Structures",
+        "--hats",
+        "applied_practitioner,ai_pro",
+        "--json",
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    assert res.returncode == 0
+
+    critique_file = tmp_path / "research" / "data-structures" / "five-hats-critique.md"
+    assert critique_file.is_file()
+    critique_text = critique_file.read_text(encoding="utf-8")
+    assert "Hat 2: AI-Pro Strategist & Co-Pilot" in critique_text
 
 
 def test_zero_bmad_references_in_tc_research():

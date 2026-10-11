@@ -45,6 +45,8 @@ for p in [str(SCRIPT_DIR), str(PROJECT_ROOT)]:
 SUBCOMMAND_MODULES = {
     "init": "bootstrapper",
     "research": "scout",
+    "scout": "scout",
+    "harvest": "harvester",
     "create": "course_builder",
     "teach": "teach_engine",
     "practicals": "practical_evaluator",
@@ -65,6 +67,8 @@ SUBCOMMAND_MODULES = {
 COMMAND_DESCRIPTIONS = {
     "init": "Workspace bootstrapping, layout scanning, and status inspection",
     "research": "Autonomous 5-hat deep research and dossier generation",
+    "scout": "Universal multi-hat research engine and dossier compiler",
+    "harvest": "Autonomous multi-source deep harvester for repos, transcripts, and gold standards",
     "create": "Curriculum synthesis, multi-path brainstorming, and Triad consensus",
     "teach": "Conversational Socratic instruction and session state recovery",
     "practicals": "Hands-on coding challenge scaffolding and AI evaluation",

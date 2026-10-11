@@ -502,6 +502,25 @@ All TextCourses skills, agents, and interactive flows SHALL adhere to strict cog
   - **Related Decisions Scannable Summary**: When a workflow involves multiple related parts or decisions (e.g. multi-part refactoring or final onboarding recap), the system presents a single scannable summary at the end with simple short options so the user never has to scroll up and down repeatedly.
   - **Centralized Instruction Source of Truth**: All skills reference `_tc/INTERACTION_STANDARDS.md` to guarantee unified conversational behavior across the platform.
 
+#### FR-43: Autonomous Multi-Source Deep Harvester & Community Consensus Sourcing (`tc-research`, `harvester.py`, `scout.py`)
+The research engine spearheaded by **🔬 Marie Curie** SHALL autonomously discover, acquire, and ingest best-in-class, gold-standard learning materials from multiple authoritative channels before course creation. Realizes UJ-1, UJ-4, UJ-5.
+- **Consequences (testable):**
+  - **FR-43.1: Community Consensus & Gold-Standard Discovery**: Scans community recommendations and practitioner reviews (Reddit e.g. `r/learnprogramming`, `r/rust`, `r/datascience`, Hacker News, university reading lists) to determine the consensus gold-standard textbooks, authoritative guides, and landmark courses for the target domain. Compiles structured consensus records into `research/<slug>/gold-standards.md`.
+  - **FR-43.2: Automated GitHub Repository & Open Textbook Harvester**: Searches GitHub for open-source repositories containing courseware, markdown textbooks, or authoritative reference implementations. Automatically clones or downloads repository contents into `research/<slug>/sources/repos/` and extracts table of contents hierarchies.
+  - **FR-43.3: YouTube Lecture & Video Transcript Extractor**: Downloads and formats transcripts/subtitles from landmark YouTube lectures and courses into `research/<slug>/sources/transcripts/` using `yt-dlp` or timedtext APIs, cleaning timestamps into readable, annotated transcript blocks.
+  - **FR-43.4: Graceful Fallback & Explicit Material Acquisition Gate**: If a gold-standard book is commercial/copyrighted and cannot be automatically downloaded, Marie explicitly informs the learner of the exact title, latest edition, and author, prompting them to place the file in `research/<slug>/sources/` or proceed with open web documentation.
+  - **FR-43.5: Multi-Source Evidence Dossier Synthesis**: Ingests all harvested repositories, video transcripts, and user-provided source files into `research/<slug>/sources.json`, `research/<slug>/digest.json`, and `research/<slug>/dossier.md` for seamless consumption by `tc-create`.
+
+#### FR-44: AI-Era Research Grounding & AI-Pro Hat Engine (`tc-research`, `scout.py`)
+The research engine SHALL systematically investigate and document how the modern AI era transforms the domain, identifying what legacy practices are obsolete, what new AI-adjacent topics/tools must be integrated, and providing a dedicated AI-Pro critical hat for learner exploration. Realizes UJ-1, UJ-4, UJ-5.
+- **Consequences (testable):**
+  - **FR-44.1: Mandatory AI-Era Domain Analysis**: Every research dossier (`dossier.md`) and machine digest (`digest.json`) MUST include an AI-Era landscape section detailing:
+    1. What has changed in the AI era for the subject (automated routine boilerplate vs. essential architectural focus).
+    2. What AI-adjacent tools, libraries, models, or workflows should be included in discussion.
+    3. AI hallucination failure modes and adversarial verification guardrails every practitioner must cultivate.
+  - **FR-44.2: AI-Pro Critical Hat (`ai_pro_strategist`)**: A dedicated critical lens in the Universal Hat Registry evaluating LLM augmentation, agentic workflows, prompt/context ergonomics, and hallucination defense. Selectable via `--ai` or `--hats ai_pro`.
+  - **FR-44.3: AI-Era Pedagogical Co-Design**: Downstream curriculum generation (`tc-create`) and instruction (`tc-teach`) ingest the AI-era landscape to weave modern AI-assisted problem solving, automated testing, and verification habits into course chapters.
+
 ---
 
 ## 5. Non-Goals (Explicit)

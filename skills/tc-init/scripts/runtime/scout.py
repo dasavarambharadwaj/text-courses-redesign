@@ -29,8 +29,21 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
-
 import tomli_w
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
+for p in [str(SCRIPT_DIR), str(PROJECT_ROOT)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+try:
+    import harvester
+except ImportError:
+    try:
+        from _tc.scripts import harvester
+    except ImportError:
+        harvester = None
 
 DEFAULT_FALLBACK_TIMEOUT_SECONDS = 10
 VALID_CONFIDENCE_LEVELS = {"high", "medium", "low", "unverified"}
@@ -133,6 +146,14 @@ UNIVERSAL_HATS: dict[str, dict[str, str]] = {
         "trap_label": "Premature Optimization & Trivia Traps",
         "trap_description": "Spending weeks memorizing minor arcana while neglecting the fundamental core mechanisms.",
     },
+    "ai_pro_strategist": {
+        "title": "AI-Pro Strategist & Co-Pilot (AI-Era Transformation & Augmentation)",
+        "generic_title": "AI-Pro Strategist & Co-Pilot (AI-Era Workflows, LLM Augmentation & Modern Tooling)",
+        "stance": "How has the AI era revolutionized this domain? What has changed, what can AI automate or augment, and what critical human skills and AI failure modes must be addressed?",
+        "analysis": "Examines how modern AI tools, LLMs, and autonomous agents transform practice in this field; identifies what manual tasks are now automated, how learners can leverage AI as a force multiplier, where AI hallucinates or fails catastrophically, and what modern AI-adjacent topics/skills should be integrated into discussion.",
+        "trap_label": "AI-Era Traps: Blind Hallucination Trust & Deprecated Manual Toil",
+        "trap_description": "Either naively accepting AI-generated answers without foundational verification instincts, or wasting weeks memorizing deprecated manual boilerplate that modern AI tooling executes instantaneously.",
+    },
 }
 
 
@@ -140,8 +161,9 @@ def select_hats_for_topic(
     topic_title: str,
     requested_hats: list[str] | str | None = None,
     is_beginner: bool = False,
+    include_ai_hat: bool = False,
 ) -> list[tuple[str, dict[str, str]]]:
-    """Dynamically select the 5 most relevant critical hats for the topic from the universal registry."""
+    """Dynamically select domain-tailored critical hats for the topic from the universal registry."""
     if is_beginner:
         # Prioritize beginner empathy and intuitive mental models
         beginner_priority = [
@@ -151,19 +173,31 @@ def select_hats_for_topic(
             "academic_purist",
             "resource_tradeoff_optimizer",
         ]
-        if not requested_hats:
+        if not requested_hats and not include_ai_hat:
             return [(k, UNIVERSAL_HATS[k]) for k in beginner_priority]
+
     if requested_hats:
         if isinstance(requested_hats, str):
             requested_names = [h.strip().lower() for h in requested_hats.split(",") if h.strip()]
         else:
             requested_names = [h.strip().lower() for h in requested_hats if h.strip()]
 
+        alias_map = {
+            "ai": "ai_pro_strategist",
+            "ai_pro": "ai_pro_strategist",
+            "ai-pro": "ai_pro_strategist",
+            "aipro": "ai_pro_strategist",
+            "ai_era": "ai_pro_strategist",
+            "ai-era": "ai_pro_strategist",
+            "copilot": "ai_pro_strategist",
+        }
+
         selected: list[tuple[str, dict[str, str]]] = []
         for name in requested_names:
+            resolved_name = alias_map.get(name, name)
             matched = False
             for k, v in UNIVERSAL_HATS.items():
-                if k == name or name in k or name in v["title"].lower() or name in v["generic_title"].lower():
+                if k == resolved_name or resolved_name in k or resolved_name in v["title"].lower() or resolved_name in v["generic_title"].lower():
                     selected.append((k, v))
                     matched = True
                     break
@@ -177,11 +211,19 @@ def select_hats_for_topic(
                     "trap_description": f"Domain-specific pitfalls identified through the {name} lens.",
                 }
                 selected.append((name, custom_hat))
+        if include_ai_hat and not any(k == "ai_pro_strategist" for k, _ in selected):
+            selected.append(("ai_pro_strategist", UNIVERSAL_HATS["ai_pro_strategist"]))
         if selected:
             return selected[:7]
 
     # Topic domain analysis
     t = topic_title.lower()
+
+    # If topic explicitly mentions AI or LLM or agent, prioritize AI-Pro hat
+    is_ai_domain = any(k in t for k in [
+        "ai", "artificial intelligence", "llm", "agent", "prompt",
+        "machine learning", "deep learning", "neural", "copilot", "gpt",
+    ])
 
     # 1. Software / Systems Engineering
     is_software = any(k in t for k in [
@@ -197,6 +239,8 @@ def select_hats_for_topic(
             "edge_case_systems_engineer",
             "modern_ecosystem_reviewer",
         ]
+        if (include_ai_hat or is_ai_domain) and "ai_pro_strategist" not in keys:
+            keys.append("ai_pro_strategist")
         return [(k, UNIVERSAL_HATS[k]) for k in keys]
 
     # 2. Philosophy / Humanities / Ethics / History / Arts
@@ -212,6 +256,8 @@ def select_hats_for_topic(
             "empirical_skeptic",
             "ethical_systemic_impact",
         ]
+        if (include_ai_hat or is_ai_domain) and "ai_pro_strategist" not in keys:
+            keys.append("ai_pro_strategist")
         return [(k, UNIVERSAL_HATS[k]) for k in keys]
 
     # 3. Science / Mathematics / Medicine
@@ -227,6 +273,8 @@ def select_hats_for_topic(
             "beginner_friction_hunter",
             "empirical_skeptic",
         ]
+        if (include_ai_hat or is_ai_domain) and "ai_pro_strategist" not in keys:
+            keys.append("ai_pro_strategist")
         return [(k, UNIVERSAL_HATS[k]) for k in keys]
 
     # 4. Business / Strategy / Economics / Management
@@ -242,6 +290,8 @@ def select_hats_for_topic(
             "beginner_friction_hunter",
             "contemporary_evolution",
         ]
+        if (include_ai_hat or is_ai_domain) and "ai_pro_strategist" not in keys:
+            keys.append("ai_pro_strategist")
         return [(k, UNIVERSAL_HATS[k]) for k in keys]
 
     # 5. Universal Default (works for any human discipline)
@@ -252,6 +302,8 @@ def select_hats_for_topic(
         "empirical_skeptic",
         "contemporary_evolution",
     ]
+    if (include_ai_hat or is_ai_domain) and "ai_pro_strategist" not in default_keys:
+        default_keys.append("ai_pro_strategist")
     return [(k, UNIVERSAL_HATS[k]) for k in default_keys]
 
 
@@ -422,9 +474,10 @@ def generate_five_hats_critique(
     extracted_content: str,
     requested_hats: list[str] | str | None = None,
     is_beginner: bool = False,
+    include_ai_hat: bool = False,
 ) -> str:
     """Generate universal multi-hat critical reflection markdown analyzing the topic through chosen critical lenses."""
-    hats = select_hats_for_topic(topic_title, requested_hats, is_beginner=is_beginner)
+    hats = select_hats_for_topic(topic_title, requested_hats, is_beginner=is_beginner, include_ai_hat=include_ai_hat)
     headings = [h.get("title", "") for h in parsed.get("toc", [])]
     apis = [a.get("name", "") for a in parsed.get("api_index", [])]
     vocab = sorted(list(parsed.get("vocabulary", [])))
@@ -455,6 +508,8 @@ def generate_five_hats_critique(
             sections.append(f"  - Key vocabulary concepts: {vocab_sample}.")
         elif hat_key in {"edge_case_systems_engineer", "empirical_skeptic"} and apis:
             sections.append(f"  - Critical interfaces checked: {apis_sample}.")
+        elif hat_key == "ai_pro_strategist":
+            sections.append(f"  - AI transformation vectors for {topic_title}: evaluated automated workflows, AI assistant prompt/context ergonomics, verification harnesses for LLM output, and modern AI tool integration across {headings_sample}.")
         sections.append("")
 
     sections.extend([
@@ -464,6 +519,7 @@ def generate_five_hats_critique(
         f"1. **Branch A (Foundational Invariants & Limits)**: Deep dive into core state models and boundary conditions of {topic_title}.",
         f"2. **Branch B (Applied Mastery & Real-World Execution)**: Profile practical operational trade-offs and eliminate ungrounded heuristics.",
         f"3. **Branch C (Modern Synthesis & Conceptual Flow)**: Refine learning gradient to prevent cognitive leaps and vocabulary gaps.",
+        f"4. **Branch D (AI-Era Transformation & Augmentation)**: Audit how modern AI tools and generative agents transform daily practice in {topic_title}, and establish verification harnesses to guard against AI hallucinations or shallow understanding.",
         "",
     ])
 
@@ -477,6 +533,7 @@ def generate_dossier_markdown(
     parsed: dict[str, Any],
     extracted_content: str,
     source_uri: str,
+    gold_standards_section: str = "",
 ) -> str:
     """Generate comprehensive domain research dossier markdown across any field."""
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -488,7 +545,7 @@ def generate_dossier_markdown(
     apis_md = "\n".join(f"- `{a.get('signature', a.get('name', ''))}` ({a.get('type', 'api')})" for a in apis[:20]) or "- Standard interface symbols"
     vocab_md = ", ".join(f"`{v}`" for v in vocab[:25]) or "`core`, `invariants`, `protocols`"
 
-    return f"""---
+    doc = f"""---
 topic: "{topic_title}"
 slug: "{slug}"
 confidence: "{confidence}"
@@ -531,6 +588,25 @@ Concrete interfaces, methods, classes, and types that govern this domain:
 - **Foundational Prerequisites**: Systems programming fundamentals, basic memory layout intuition, and standard control flow.
 - **Target Competency**: Deep operational mastery of {topic_title} enabling autonomous production implementation and rigorous problem diagnosis.
 """
+    section_num = 7
+    if gold_standards_section:
+        doc += f"\n{gold_standards_section.strip()}\n"
+        section_num = 8
+
+    ai_era_section = f"""## {section_num}. AI-Era Landscape & Modern Augmentation (The AI-Pro Dimension)
+
+### What Has Changed in the AI Era
+The arrival of foundation models, generative AI assistants, and autonomous coding agents has fundamentally transformed how practitioners operate in **{topic_title}**. Routine boilerplate, repetitive syntax lookups, and basic scaffolding are now automated in seconds. Consequently, the learner's cognitive focus shifts from mechanical syntax regurgitation to architectural invariant design, deep mental models, prompt/context specification, and rigorous verification.
+
+### What to Include in the Curriculum Because of AI
+1. **AI-Accelerated Workflows**: How modern practitioners leverage LLMs and AI tools (code completion, automated test scaffolding, interactive explication) productively without losing mental agency.
+2. **AI Tooling & Modern Ecosystem Integrations**: Modern libraries, vector embeddings, LLM APIs, function calling, or AI-adjacent tooling relevant to {topic_title}.
+3. **Critical Verification & Hallucination Defense**: Cultivating the vital instinct to spot subtle AI hallucinations, off-by-one reasoning traps, invalid assumptions, and security vulnerabilities that AI co-pilots commonly produce.
+4. **First-Principles Invariant Defense**: Ensuring the learner truly understands the underlying mechanics so they can supervise, debug, and steer AI rather than being blindly dependent on it.
+"""
+    doc += f"\n{ai_era_section.strip()}\n"
+
+    return doc
 
 
 def run_scout(
@@ -542,6 +618,7 @@ def run_scout(
     confidence_override: str | None = None,
     hats: str | list[str] | None = None,
     beginner: bool = False,
+    ai: bool = False,
 ) -> dict[str, Any]:
     """Execute research scouting for target slug and write structured cache files."""
     ws = Path(workspace).resolve()
@@ -632,9 +709,51 @@ def run_scout(
         "toc": parsed["toc"],
         "api_index": parsed["api_index"],
         "vocabulary": parsed["vocabulary"],
+        "ai_era": {
+            "what_has_changed": f"Modern AI tools automate syntax boilerplate in {topic_title}, shifting practitioner emphasis toward invariant formulation, edge cases, and verification.",
+            "ai_adjacent_topics": [
+                "AI-assisted workflow ergonomics",
+                "Verification harnesses for AI-generated code/claims",
+                "Modern ecosystem tooling & LLM integrations",
+                "Prompt/context specification for domain tasks",
+            ],
+            "verification_guardrails": "Never accept AI output without boundary condition checks, type/invariant validation, and adversarial stress-testing.",
+        },
         "summary": f"Scouted {len(parsed['toc'])} headings, {len(parsed['api_index'])} API symbols, {len(parsed['vocabulary'])} terms from {source_type}.",
         "notes": notes,
     }
+
+    # 4. Check for multi-source harvested assets & gold-standard consensus (FR-43)
+    gold_standards_file = ws / "research" / slug / "gold-standards.md"
+    sources_dir = ws / "research" / slug / "sources"
+    gold_section = ""
+    discovered_harvest_sources: list[dict[str, Any]] = []
+
+    if sources_dir.exists():
+        try:
+            if harvester and hasattr(harvester, "ingest_sources_directory"):
+                ingest_res = harvester.ingest_sources_directory(slug, ws)
+                discovered_harvest_sources = ingest_res.get("sources", [])
+        except Exception:
+            pass
+
+    if gold_standards_file.is_file():
+        gs_text = gold_standards_file.read_text(encoding="utf-8")
+        gold_section = f"\n## 7. Gold-Standard Literature & Multi-Source Harvested Assets\n\n{gs_text.strip()}\n"
+    elif discovered_harvest_sources:
+        items_summary = "\n".join(
+            f"- **{s.get('title')}** (`{s.get('type')}`): `{s.get('relative_path')}`"
+            for s in discovered_harvest_sources[:30]
+        )
+        gold_section = (
+            f"\n## 7. Gold-Standard Literature & Multi-Source Harvested Assets\n\n"
+            f"### Harvested Assets ({len(discovered_harvest_sources)} items)\n"
+            f"{items_summary}\n"
+        )
+
+    # If verified harvested sources exist, promote confidence
+    if discovered_harvest_sources and confidence in {"unverified", "medium"} and not confidence_override:
+        confidence = "high"
 
     # Generate full multi-hat critique and dossier markdown
     dossier_md = generate_dossier_markdown(
@@ -644,6 +763,7 @@ def run_scout(
         parsed=parsed,
         extracted_content=extracted_content,
         source_uri=source_uri,
+        gold_standards_section=gold_section,
     )
     critique_md = generate_five_hats_critique(
         topic_title=topic_title,
@@ -651,6 +771,7 @@ def run_scout(
         extracted_content=extracted_content,
         requested_hats=hats,
         is_beginner=beginner,
+        include_ai_hat=ai,
     )
 
     sources_data = {
@@ -685,6 +806,21 @@ def run_scout(
         ],
     }
 
+    for s in discovered_harvest_sources:
+        sources_data["sources"].append({
+            "uri": s.get("relative_path") or s.get("full_path"),
+            "type": s.get("type", "harvested_asset"),
+            "sha256": s.get("sha256", ""),
+            "status": s.get("status", "verified"),
+        })
+        sources_json_data["sources"].append({
+            "title": s.get("title", "Harvested Source"),
+            "uri": s.get("relative_path") or s.get("full_path"),
+            "type": s.get("type", "harvested_asset"),
+            "sha256": s.get("sha256", ""),
+            "status": s.get("status", "verified"),
+        })
+
     # Write to all target locations: visible research/, visible sources/, _tc/research/, .tc/research/
     target_dirs = [
         ws / "research" / slug,
@@ -713,6 +849,7 @@ def run_scout(
         "headings_count": len(parsed["toc"]),
         "apis_count": len(parsed["api_index"]),
         "vocabulary_count": len(parsed["vocabulary"]),
+        "harvested_sources_count": len(discovered_harvest_sources),
         "digest": digest,
     }
 
@@ -831,6 +968,7 @@ def main() -> None:
     p_scout.add_argument("--confidence", default=None, help="Explicit confidence override.")
     p_scout.add_argument("--hats", default=None, help="Optional comma-separated list of critical hats to wear.")
     p_scout.add_argument("--beginner", action="store_true", help="Prioritize beginner empathy and intuitive mental model hats.")
+    p_scout.add_argument("--ai", action="store_true", help="Include AI-Pro Strategist hat to evaluate AI-era transformation and tooling.")
     p_scout.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
     # dossier
@@ -860,6 +998,33 @@ def main() -> None:
     p_list.add_argument("--workspace", default=".", help="Path to workspace root.")
     p_list.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
+    # harvest-repo (FR-43.2)
+    p_repo = subparsers.add_parser("harvest-repo", help="Clone or download open textbook / course repo from GitHub")
+    p_repo.add_argument("--slug", required=True, help="Target course slug")
+    p_repo.add_argument("--repo", required=True, help="GitHub repository URL or owner/repo")
+    p_repo.add_argument("--workspace", default=".", help="Workspace root path")
+    p_repo.add_argument("--branch", default="main", help="Target git branch (default: main)")
+
+    # harvest-youtube (FR-43.3)
+    p_yt = subparsers.add_parser("harvest-youtube", help="Extract and clean video transcript from YouTube lecture")
+    p_yt.add_argument("--slug", required=True, help="Target course slug")
+    p_yt.add_argument("--url", required=True, help="YouTube video URL or video ID")
+    p_yt.add_argument("--title", default="Video Lecture", help="Video lecture title")
+    p_yt.add_argument("--workspace", default=".", help="Workspace root path")
+
+    # record-consensus (FR-43.1 / FR-43.4)
+    p_cons = subparsers.add_parser("record-consensus", help="Record community consensus & gold-standard items")
+    p_cons.add_argument("--slug", required=True, help="Target course slug")
+    p_cons.add_argument("--topic", required=True, help="Topic title")
+    p_cons.add_argument("--summary", required=True, help="Summary of Reddit / community consensus")
+    p_cons.add_argument("--items-json", default="[]", help="JSON array of gold-standard books/items")
+    p_cons.add_argument("--workspace", default=".", help="Workspace root path")
+
+    # ingest-sources (FR-43.5)
+    p_ing = subparsers.add_parser("ingest-sources", help="Scan and index research/<slug>/sources/ directory")
+    p_ing.add_argument("--slug", required=True, help="Target course slug")
+    p_ing.add_argument("--workspace", default=".", help="Workspace root path")
+
     args = parser.parse_args()
 
     try:
@@ -873,6 +1038,7 @@ def main() -> None:
                 confidence_override=args.confidence,
                 hats=getattr(args, "hats", None),
                 beginner=getattr(args, "beginner", False),
+                ai=getattr(args, "ai", False),
             )
             output_json(result, 0)
 
@@ -909,6 +1075,50 @@ def main() -> None:
         elif args.subcommand == "list":
             result = list_cached_research(args.workspace)
             output_json(result, 0)
+
+        elif args.subcommand == "harvest-repo":
+            if not harvester or not hasattr(harvester, "harvest_github_repo"):
+                output_json({"error": "Harvester module unavailable"}, 1)
+            res = harvester.harvest_github_repo(
+                repo_identifier=args.repo,
+                slug=args.slug,
+                workspace=args.workspace,
+                branch=args.branch,
+            )
+            output_json(res, 0 if res.get("ok") else 1)
+
+        elif args.subcommand == "harvest-youtube":
+            if not harvester or not hasattr(harvester, "harvest_youtube_transcript"):
+                output_json({"error": "Harvester module unavailable"}, 1)
+            res = harvester.harvest_youtube_transcript(
+                url_or_id=args.url,
+                slug=args.slug,
+                title=args.title,
+                workspace=args.workspace,
+            )
+            output_json(res, 0 if res.get("ok") else 1)
+
+        elif args.subcommand == "record-consensus":
+            if not harvester or not hasattr(harvester, "record_gold_standards"):
+                output_json({"error": "Harvester module unavailable"}, 1)
+            items = json.loads(args.items_json) if isinstance(args.items_json, str) else args.items_json
+            res = harvester.record_gold_standards(
+                slug=args.slug,
+                topic=args.topic,
+                consensus_summary=args.summary,
+                gold_standard_items=items,
+                workspace=args.workspace,
+            )
+            output_json(res, 0)
+
+        elif args.subcommand == "ingest-sources":
+            if not harvester or not hasattr(harvester, "ingest_sources_directory"):
+                output_json({"error": "Harvester module unavailable"}, 1)
+            res = harvester.ingest_sources_directory(
+                slug=args.slug,
+                workspace=args.workspace,
+            )
+            output_json(res, 0)
 
         else:
             output_json({"error": f"Unknown subcommand: {args.subcommand}"}, 1)
