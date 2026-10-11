@@ -36,9 +36,9 @@ type = "story"
 title = "Potato-Proof Sovereign RAG Indexer & SQLite FTS5 Point Retrieval"
 after = [2]
 risk = "high"
-covers = ["FR-45.1", "FR-45.3", "FR-45.4", "FR-45.5", "AD-12"]
-description = "Implement indexer.py using standard library sqlite3 FTS5 with Porter stemming under a strict <50MB RAM ceiling; build 4-stage validation pipeline (Scan, Chunk, Index, Verify) and sub-15ms BM25 hybrid point retrieval."
-verify = "indexer.py executes 4 validation gates; peak memory under 50MB; sub-15ms BM25 search latency; tc.py index routing; unit tests pass."
+covers = ["FR-45.1", "FR-45.3", "FR-45.4", "FR-45.5", "FR-45.6", "FR-45.7", "FR-45.8", "FR-45.9", "AD-12"]
+description = "Implement indexer.py using standard library sqlite3 FTS5 under a strict <50MB RAM ceiling; build 5-stage validation pipeline (Gate 0 auto-bypass, Scan, Chunk, Index, Verify), sub-15ms BM25 hybrid search, live console observability, dedicated rag-db/ encapsulation with manifest.json audit tracking, deep folder hierarchy traversal, and universal multi-format support."
+verify = "indexer.py executes 5 validation gates; peak memory under 50MB; sub-15ms BM25 search latency; console logs search diagnostics; rag-db/ holds index.db, catalog.json, manifest.json; deep folder breadcrumbs preserved; multi-format sources indexed; tc.py index routing; unit tests pass."
 
 [[entry]]
 id = 5

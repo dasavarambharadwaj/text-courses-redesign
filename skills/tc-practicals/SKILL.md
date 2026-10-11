@@ -104,3 +104,27 @@ uv run _tc/scripts/practical_evaluator.py review \
 - If **NEEDS_WORK**:
   - Present the specific remediation tasks from `review-report.md`.
   - Guide the learner on how to address each finding.
+
+---
+
+## In-Loop Lesson Practicals Evaluation (FR-36)
+
+For courses with hands-on practical focus (`course.toml: practical_focus = true`), each section includes an authentic in-loop coding challenge:
+
+1. **Scaffold Section Lab Exercise**:
+   ```bash
+   uv run _tc/scripts/practical_evaluator.py scaffold-lesson \
+     --course "<slug>" \
+     --section "<sec_id>" \
+     --title "<section_title>"
+   ```
+   Generates `chapter-XX/section-YY/practical.md` with concrete invariant criteria and starter code.
+
+2. **Evaluate Learner Submission**:
+   ```bash
+   uv run _tc/scripts/practical_evaluator.py evaluate-lesson \
+     --course "<slug>" \
+     --section "<sec_id>" \
+     --submission "<solution_code_or_text>"
+   ```
+   Evaluates submission against 3 core invariants (concrete primitives, defensive error handling, boundary resilience). Returns structured JSON verdict (`PASS` or `NEEDS_WORK`) and saves `practical-result.json`. Section advancement is gated on `PASS`.
