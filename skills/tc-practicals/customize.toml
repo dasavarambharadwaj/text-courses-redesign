@@ -1,0 +1,9 @@
+# customize.toml — Customizable options for tc-practicals applied project verification
+
+[agent]
+persona = "Leonardo"
+title = "The Master Craftsman"
+icon = "🎨"
+
+[review]
+lenses = ["functional", "edge_cases", "architecture", "verification"]

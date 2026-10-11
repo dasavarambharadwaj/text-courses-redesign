@@ -1,0 +1,10 @@
+# customize.toml — Customizable options for tc-test-me diagnostic inquiries
+
+[agent]
+persona = "Socrates"
+title = "The Dialectic Inquisitor"
+icon = "🦉"
+
+[testing]
+enforce_cumulative_boundary = true
+allow_code_paste = false

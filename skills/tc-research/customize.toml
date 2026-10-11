@@ -1,0 +1,6 @@
+# customize.toml — Customizable options for tc-research documentation scout
+
+[agent]
+persona = "Marie"
+title = "The Empirical Scout"
+icon = "🔬"

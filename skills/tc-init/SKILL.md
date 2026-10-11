@@ -107,17 +107,36 @@ Select your preferred style (single or combination, e.g., "A + C" for Technical 
 [D] First-Principles & Math
 ```
 
-### Stage 6: Deterministic Preference Compilation
-Once selections are made, update `plan/preferences.md` via the deterministic CLI:
+### Stage 6: Sovereign Faculty Selection (FR-24)
+Chiron (The Mentor & Sovereign Navigator) presents the Sovereign Faculty roster for the learner to select their primary master teacher:
+
+```text
+Select your primary master teacher persona:
+[1] Feynman (The Intuitive Builder) ⚡ — High-energy mechanical intuition, analogy-first, zero jargon
+[2] Euclid (The Axiomatic Purist) 📐 — Axiomatic proofs, first principles, mathematical precision
+[3] Socrates (The Dialectic Inquisitor) 🦉 — Boundary condition probing, hinge dilemmas, guiding questions
+[4] Leonardo (The Master Craftsman) 🎨 — Workshop apprentice model, rigorous deliverables, proof of work
+[5] Turing (The Formal Algorist) 💻 — State machine transitions, computational limits, formal invariants
+[6] Lovelace (The Visionary Composer) 🎼 — Poetic science, high-level abstraction composition
+[7] Newton (The Natural Philosopher) 🍎 — Calculus of change, mechanistic laws, universal force models
+[8] Marie (The Empirical Investigator) 🔬 — Experimental ground truth, empirical benchmarks, laboratory rigor
+[9] Aristotle (The Cartographer) 🗺️ — Taxonomy, macro sequence maps, teleological purpose
+[10] Hypatia (The Logic Auditor) ⚖️ — Acyclic prerequisite proofs, logic verification
+[11] Other (write-in)
+```
+
+### Stage 7: Deterministic Preference Compilation
+Once selections are made, update `profile/preferences.md` via the deterministic CLI:
 ```bash
 uv run _tc/scripts/bootstrapper.py set-preferences --path . \
   --role "<role>" \
   --experience "<experience>" \
   --density "<density>" \
-  --styles "<selected_styles>"
+  --styles "<selected_styles>" \
+  --teacher "<selected_teacher>"
 ```
 
-Confirm that `plan/preferences.md` is updated.
+Confirm that `profile/preferences.md` is updated.
 
 ---
 
@@ -125,7 +144,7 @@ Confirm that `plan/preferences.md` is updated.
 
 Conclude the onboarding interaction with the exact next action:
 ```text
-✅ Workspace initialized and preferences recorded in plan/preferences.md!
+✅ Workspace initialized and preferences recorded in profile/preferences.md!
 
 Next Action:
 Start by creating your first course:

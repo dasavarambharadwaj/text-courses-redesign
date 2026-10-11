@@ -125,10 +125,6 @@ def append_consensus_trace(
     audit_results: dict[str, Any],
 ) -> None:
     """Append a consensus trace record using POSIX atomic fcntl file locking."""
-    cache_dir = workspace / ".tc" / "cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    trace_file = cache_dir / "consensus-trace.jsonl"
-
     record = {
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "slug": slug,
@@ -141,14 +137,17 @@ def append_consensus_trace(
     }
 
     line = json.dumps(record) + "\n"
-    with open(trace_file, "a", encoding="utf-8") as f:
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        try:
-            f.write(line)
-            f.flush()
-            os.fsync(f.fileno())
-        finally:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    for cache_sub in [workspace / ".tc" / "cache", workspace / "_tc" / "cache"]:
+        cache_sub.mkdir(parents=True, exist_ok=True)
+        trace_file = cache_sub / "consensus-trace.jsonl"
+        with open(trace_file, "a", encoding="utf-8") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            try:
+                f.write(line)
+                f.flush()
+                os.fsync(f.fileno())
+            finally:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 def parse_outline_text(outline_text: str) -> list[dict[str, Any]]:
@@ -404,7 +403,26 @@ def scaffold_course_files(
 
     atomic_write_text(course_dir / "overview.md", "\n".join(overview_lines))
 
-    # 3. Scaffold chapter and section lesson plans
+    # 3. Scaffold flat chapter textbook notes directory
+    notes_dir = course_dir / "notes"
+    notes_dir.mkdir(parents=True, exist_ok=True)
+    for ch_idx in range(1, len(course_data.get("chapters", [])) + 1):
+        ch_notes_file = notes_dir / f"chapter-{ch_idx:02d}.md"
+        if not ch_notes_file.exists():
+            atomic_write_text(
+                ch_notes_file,
+                f"# Chapter {ch_idx:02d} Notes\n\n*Textbook compilation for Chapter {ch_idx}. Lessons will be distilled here as they are completed.*\n",
+            )
+
+    # 4. Initialize course pedagogical memory (memlog.md)
+    course_memlog = course_dir / "memlog.md"
+    if not course_memlog.exists():
+        atomic_write_text(
+            course_memlog,
+            f"---\ncourse: {slug}\nversion: 1.0.0\n---\n\n# Course Pedagogical Memory: {title}\n- (milestone) Course scaffolded with archetype '{archetype_info['title']}'.\n",
+        )
+
+    # 5. Scaffold chapter and section lesson plans
     for ch_idx, ch in enumerate(course_data.get("chapters", []), 1):
         ch_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", ch["title"].lower()).strip("-")
         ch_dir_name = f"chapter-{ch_idx:02d}-{ch_slug}"

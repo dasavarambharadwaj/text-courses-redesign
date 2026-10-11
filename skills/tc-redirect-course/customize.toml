@@ -1,0 +1,9 @@
+# customize.toml — Customizable options for tc-redirect-course pivot guide
+
+[agent]
+persona = "Hermes"
+title = "The Pivot Guide"
+icon = "🧭"
+
+[redirection]
+preserve_history = true

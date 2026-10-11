@@ -187,9 +187,10 @@ def compile_preferences_content(
     domain_experience: str = DEFAULT_EXPERIENCE_LEVELS[2],
     explanation_density: str = DEFAULT_DENSITIES[1],
     styles: list[str] | str | None = None,
+    teacher: str = "feynman",
     extra_notes: str = "",
 ) -> str:
-    """Compile valid markdown frontmatter + body for plan/preferences.md."""
+    """Compile valid markdown frontmatter + body for profile/preferences.md."""
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     norm_styles = normalize_style_keys(styles or ["direct_technical", "code_first"])
     style_labels = [STYLE_DEFINITIONS[k]["label"] for k in norm_styles if k in STYLE_DEFINITIONS]
@@ -208,6 +209,7 @@ def compile_preferences_content(
 role: "{role}"
 domain_experience: "{domain_experience}"
 explanation_density: "{explanation_density}"
+teacher: "{teacher}"
 style_profile: "{style_profile_name}"
 styles_selected:
 {yaml_styles}
@@ -221,6 +223,7 @@ updated: "{now_iso}"
 - **Role**: {role}
 - **Domain Experience**: {domain_experience}
 - **Explanation Density**: {explanation_density}
+- **Primary Faculty / Teacher**: {teacher}
 
 ## Active Style Directive
 - **Style Profile**: {style_profile_name}
@@ -233,7 +236,7 @@ updated: "{now_iso}"
 
 
 def parse_preferences_file(filepath: Path) -> dict[str, Any]:
-    """Parse frontmatter attributes from plan/preferences.md."""
+    """Parse frontmatter attributes from preferences.md."""
     if not filepath.is_file():
         return {}
 
@@ -251,8 +254,10 @@ def parse_preferences_file(filepath: Path) -> dict[str, Any]:
                 key, val = line.split(":", 1)
                 key = key.strip()
                 val = val.strip().strip('"').strip("'")
-                if key in {"role", "domain_experience", "explanation_density", "style_profile", "created", "updated"}:
+                if key in {"role", "domain_experience", "explanation_density", "style_profile", "teacher", "faculty", "created", "updated"}:
                     result[key] = val
+                    if key in {"teacher", "faculty"}:
+                        result["teacher"] = val
     return result
 
 
@@ -263,6 +268,7 @@ def bootstrap_workspace(
     domain_experience: str = DEFAULT_EXPERIENCE_LEVELS[2],
     explanation_density: str = DEFAULT_DENSITIES[1],
     styles: list[str] | str | None = None,
+    teacher: str = "feynman",
     extra_notes: str = "",
 ) -> dict[str, Any]:
     """Initialize a sovereign TextCourses workspace directory."""
@@ -275,10 +281,15 @@ def bootstrap_workspace(
 
     # Required directories
     dirs_to_create = [
+        target_path / "_tc",
+        target_path / "_tc" / "cache",
+        target_path / "_tc" / "research",
+        target_path / "_tc" / "scripts",
         target_path / ".tc",
         target_path / ".tc" / "cache",
         target_path / ".tc" / "research",
-        target_path / "_tc" / "scripts",
+        target_path / "roadmap",
+        target_path / "profile",
         target_path / "plan",
         target_path / "plan" / "sources",
         target_path / "courses",
@@ -290,25 +301,25 @@ def bootstrap_workspace(
             d.mkdir(parents=True, exist_ok=True)
             created_dirs.append(str(d.relative_to(target_path)))
 
-    # .tc/config.json
-    config_file = target_path / ".tc" / "config.json"
-    if not config_file.exists():
-        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        config_data = {
-            "version": "0.2.0",
-            "framework": "TextCourses",
-            "created_at": now_iso,
-            "updated_at": now_iso,
-            "settings": {
-                "default_archetype": "applied_creation",
-                "default_style": "direct_technical",
-                "density": "example_driven",
-            },
-        }
-        atomic_write_json(config_file, config_data)
-        created_files.append(str(config_file.relative_to(target_path)))
-    else:
-        preserved_files.append(str(config_file.relative_to(target_path)))
+    # _tc/config.json and legacy .tc/config.json
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    config_data = {
+        "version": "0.2.0",
+        "framework": "TextCourses",
+        "created_at": now_iso,
+        "updated_at": now_iso,
+        "settings": {
+            "default_archetype": "applied_creation",
+            "default_style": "direct_technical",
+            "density": "example_driven",
+        },
+    }
+    for config_file in [target_path / "_tc" / "config.json", target_path / ".tc" / "config.json"]:
+        if not config_file.exists():
+            atomic_write_json(config_file, config_data)
+            created_files.append(str(config_file.relative_to(target_path)))
+        else:
+            preserved_files.append(str(config_file.relative_to(target_path)))
 
     # Copy engine scripts
     src_dir = Path(source_scripts_dir).resolve() if source_scripts_dir else find_canonical_scripts_dir()
@@ -335,20 +346,32 @@ def bootstrap_workspace(
             pass
         created_files.append(str(target_bootstrapper.relative_to(target_path)))
 
-    # plan/preferences.md
-    pref_file = target_path / "plan" / "preferences.md"
-    if not pref_file.exists():
-        pref_content = compile_preferences_content(
-            role=role,
-            domain_experience=domain_experience,
-            explanation_density=explanation_density,
-            styles=styles,
-            extra_notes=extra_notes,
+    # profile/preferences.md and legacy plan/preferences.md
+    pref_content = compile_preferences_content(
+        role=role,
+        domain_experience=domain_experience,
+        explanation_density=explanation_density,
+        styles=styles,
+        teacher=teacher,
+        extra_notes=extra_notes,
+    )
+    for pref_file in [target_path / "profile" / "preferences.md", target_path / "plan" / "preferences.md"]:
+        if not pref_file.exists():
+            atomic_write_text(pref_file, pref_content)
+            created_files.append(str(pref_file.relative_to(target_path)))
+        else:
+            preserved_files.append(str(pref_file.relative_to(target_path)))
+
+    # profile/memlog.md (Global pedagogical memory log)
+    global_memlog = target_path / "profile" / "memlog.md"
+    if not global_memlog.exists():
+        atomic_write_text(
+            global_memlog,
+            "---\ntype: global-memlog\nversion: 1.0.0\n---\n\n# Global Learning Memlog\n- (milestone) Workspace initialized.\n",
         )
-        atomic_write_text(pref_file, pref_content)
-        created_files.append(str(pref_file.relative_to(target_path)))
+        created_files.append(str(global_memlog.relative_to(target_path)))
     else:
-        preserved_files.append(str(pref_file.relative_to(target_path)))
+        preserved_files.append(str(global_memlog.relative_to(target_path)))
 
     return {
         "ok": True,
@@ -573,6 +596,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> None:
             domain_experience=getattr(args, "experience", DEFAULT_EXPERIENCE_LEVELS[2]),
             explanation_density=getattr(args, "density", DEFAULT_DENSITIES[1]),
             styles=styles,
+            teacher=getattr(args, "teacher", "feynman"),
             extra_notes=getattr(args, "notes", ""),
         )
         output_json(result, exit_code=0)
@@ -602,7 +626,9 @@ def cmd_status(args: argparse.Namespace) -> None:
     except Exception as e:
         output_json({"ok": False, "error": f"Failed to inspect workspace: {e}"}, exit_code=1)
 
-    pref_file = target_path / "plan" / "preferences.md"
+    pref_file = target_path / "profile" / "preferences.md"
+    if not pref_file.is_file():
+        pref_file = target_path / "plan" / "preferences.md"
     pref_data = parse_preferences_file(pref_file) if pref_file.is_file() else {}
 
     is_bootstrapped = (
@@ -625,9 +651,11 @@ def cmd_status(args: argparse.Namespace) -> None:
 
 
 def cmd_preferences(args: argparse.Namespace) -> None:
-    """CLI handler to read preferences from plan/preferences.md."""
+    """CLI handler to read preferences from profile/preferences.md or plan/preferences.md."""
     target_path = Path(args.path).resolve()
-    pref_file = target_path / "plan" / "preferences.md"
+    pref_file = target_path / "profile" / "preferences.md"
+    if not pref_file.is_file():
+        pref_file = target_path / "plan" / "preferences.md"
     if not pref_file.is_file():
         output_json({"ok": False, "error": f"Preferences not found: {pref_file}"}, exit_code=1)
 
@@ -636,10 +664,20 @@ def cmd_preferences(args: argparse.Namespace) -> None:
 
 
 def cmd_set_preferences(args: argparse.Namespace) -> None:
-    """CLI handler to write or update plan/preferences.md."""
+    """CLI handler to write or update preferences in profile/ and plan/."""
     target_path = Path(args.path).resolve()
-    pref_file = target_path / "plan" / "preferences.md"
-    pref_file.parent.mkdir(parents=True, exist_ok=True)
+    pref_paths = [target_path / "profile" / "preferences.md", target_path / "plan" / "preferences.md"]
+
+    teacher = getattr(args, "teacher", None)
+    if not teacher:
+        for p_file in pref_paths:
+            if p_file.is_file():
+                existing = parse_preferences_file(p_file)
+                if "teacher" in existing:
+                    teacher = existing["teacher"]
+                    break
+    if not teacher:
+        teacher = "feynman"
 
     styles = getattr(args, "styles", None) or getattr(args, "style", None)
     content = compile_preferences_content(
@@ -647,13 +685,17 @@ def cmd_set_preferences(args: argparse.Namespace) -> None:
         domain_experience=getattr(args, "experience", DEFAULT_EXPERIENCE_LEVELS[2]),
         explanation_density=getattr(args, "density", DEFAULT_DENSITIES[1]),
         styles=styles,
+        teacher=teacher,
         extra_notes=getattr(args, "notes", ""),
     )
-    atomic_write_text(pref_file, content)
+    for p_file in pref_paths:
+        p_file.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(p_file, content)
+
     output_json({
         "ok": True,
-        "message": f"Updated preferences at {pref_file}",
-        "path": str(pref_file),
+        "message": f"Updated preferences at {pref_paths[0]}",
+        "path": str(pref_paths[0]),
     }, exit_code=0)
 
 
@@ -672,6 +714,7 @@ def main() -> None:
     p_boot.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[2], help="Domain experience level")
     p_boot.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
     p_boot.add_argument("--styles", "--style", dest="styles", default="direct_technical,code_first", help="Pedagogical style profile(s)")
+    p_boot.add_argument("--teacher", default="feynman", help="Primary faculty teacher persona")
     p_boot.add_argument("--notes", default="", help="Optional learner notes")
     p_boot.set_defaults(func=cmd_bootstrap)
 
@@ -683,6 +726,7 @@ def main() -> None:
     p_init.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[2], help="Domain experience level")
     p_init.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
     p_init.add_argument("--styles", "--style", dest="styles", default="direct_technical,code_first", help="Pedagogical style profile(s)")
+    p_init.add_argument("--teacher", default="feynman", help="Primary faculty teacher persona")
     p_init.add_argument("--notes", default="", help="Optional learner notes")
     p_init.set_defaults(func=cmd_bootstrap)
 
@@ -708,6 +752,7 @@ def main() -> None:
     p_set_pref.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[2], help="Domain experience level")
     p_set_pref.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
     p_set_pref.add_argument("--styles", "--style", dest="styles", default="direct_technical,code_first", help="Pedagogical style profile(s)")
+    p_set_pref.add_argument("--teacher", default=None, help="Primary faculty teacher persona")
     p_set_pref.add_argument("--notes", default="", help="Optional learner notes")
     p_set_pref.set_defaults(func=cmd_set_preferences)
 

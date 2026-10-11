@@ -56,6 +56,28 @@ NEXT_ACTION_FORK_OPTIONS = [
 ]
 
 
+def render_fork(tag_team: str | None = None) -> tuple[str, list[dict[str, Any]]]:
+    """Render Next-Action Fork text and option array, optionally surfacing a tag-team handoff."""
+    if tag_team:
+        teacher_label = tag_team.strip()
+        text = f"""---
+### Next Action Fork
+- `[1]` **Next Concept**: Advance to the next concept in the lesson plan.
+- `[2]` **Test Me**: Challenge me with a diagnostic inquiry on this concept.
+- `[3]` **Tag-in {teacher_label}**: Bring in {teacher_label} for an alternate angle on this concept.
+- `[4]` **Custom**: Ask a specific question or explore a custom edge case.
+"""
+        options = [
+            {"key": "1", "label": "Next Concept", "action": "advance"},
+            {"key": "2", "label": "Test Me", "action": "test_inquiry"},
+            {"key": "3", "label": f"Tag-in {teacher_label} for an alternate angle", "action": "tag_team", "teacher": teacher_label},
+            {"key": "4", "label": "Custom", "action": "write_in"},
+        ]
+        return text, options
+
+    return NEXT_ACTION_FORK_TEXT, NEXT_ACTION_FORK_OPTIONS
+
+
 def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
     """Print structured JSON to stdout (exit 0) or stderr (exit 1) and terminate."""
     if exit_code == 0:
@@ -67,13 +89,16 @@ def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
 
 
 def load_preferences(workspace: Path) -> dict[str, Any]:
-    """Parse learner preferences from plan/preferences.md if available."""
-    pref_file = workspace / "plan" / "preferences.md"
+    """Parse learner preferences from profile/preferences.md or plan/preferences.md if available."""
+    pref_file = workspace / "profile" / "preferences.md"
+    if not pref_file.is_file():
+        pref_file = workspace / "plan" / "preferences.md"
     if not pref_file.is_file():
         return {
             "style_profile": "direct_technical",
             "density": "example_driven",
             "role": "Software Engineer",
+            "teacher": "feynman",
         }
 
     text = pref_file.read_text(encoding="utf-8")
@@ -81,6 +106,7 @@ def load_preferences(workspace: Path) -> dict[str, Any]:
         "style_profile": "direct_technical",
         "density": "example_driven",
         "role": "Software Engineer",
+        "teacher": "feynman",
     }
     for line in text.splitlines():
         line = line.strip()
@@ -88,8 +114,10 @@ def load_preferences(workspace: Path) -> dict[str, Any]:
             k, v = line.split(":", 1)
             k_clean = k.strip().lower()
             v_clean = v.strip().strip('"').strip("'")
-            if k_clean in {"style_profile", "density", "role", "explanation_density"}:
+            if k_clean in {"style_profile", "density", "role", "explanation_density", "teacher", "faculty"}:
                 result[k_clean] = v_clean
+                if k_clean in {"teacher", "faculty"}:
+                    result["teacher"] = v_clean
     return result
 
 
@@ -211,6 +239,7 @@ def get_teaching_session(
     course_slug: str,
     workspace: Path | str = ".",
     explicit_section: str | None = None,
+    tag_team: str | None = None,
 ) -> dict[str, Any]:
     """Retrieve full teaching context, active concept, and preferences for current turn."""
     ws = Path(workspace).resolve()
@@ -234,6 +263,7 @@ def get_teaching_session(
         }
 
     preferences = load_preferences(ws)
+    fork_text, fork_options = render_fork(tag_team)
 
     return {
         "ok": True,
@@ -241,8 +271,8 @@ def get_teaching_session(
         "active_section": active_info,
         "active_concept": concept_info,
         "preferences": preferences,
-        "fork_text": NEXT_ACTION_FORK_TEXT,
-        "fork_options": NEXT_ACTION_FORK_OPTIONS,
+        "fork_text": fork_text,
+        "fork_options": fork_options,
     }
 
 
@@ -306,6 +336,7 @@ def main() -> None:
     p_sess.add_argument("--course", required=True, help="Course slug.")
     p_sess.add_argument("--workspace", default=".", help="Workspace path.")
     p_sess.add_argument("--section", default=None, help="Explicit section ID.")
+    p_sess.add_argument("--tag-team", default=None, help="Alternate faculty persona to surface in Next-Action Fork.")
     p_sess.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
     # advance
@@ -318,6 +349,7 @@ def main() -> None:
 
     # fork
     p_fork = subparsers.add_parser("fork", help="Render standardized Next-Action Fork block.")
+    p_fork.add_argument("--tag-team", default=None, help="Alternate faculty persona to surface in Next-Action Fork.")
     p_fork.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
     args = parser.parse_args()
@@ -328,6 +360,7 @@ def main() -> None:
                 course_slug=args.course,
                 workspace=args.workspace,
                 explicit_section=args.section,
+                tag_team=getattr(args, "tag_team", None),
             )
             output_json(result, 0)
 
@@ -341,10 +374,11 @@ def main() -> None:
             output_json(result, 0)
 
         elif args.subcommand == "fork":
+            fork_text, fork_options = render_fork(getattr(args, "tag_team", None))
             if args.json:
-                output_json({"ok": True, "text": NEXT_ACTION_FORK_TEXT, "options": NEXT_ACTION_FORK_OPTIONS}, 0)
+                output_json({"ok": True, "text": fork_text, "options": fork_options}, 0)
             else:
-                print(NEXT_ACTION_FORK_TEXT)
+                print(fork_text)
                 sys.exit(0)
 
         else:

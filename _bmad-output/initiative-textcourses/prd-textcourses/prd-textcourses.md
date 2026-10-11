@@ -1,20 +1,21 @@
 ---
-title: "Product Requirements Document: TextCourses (textcourses.com)"
-status: "final"
+title: "Product Requirements Document: TextCourses 2.0 (textcourses.com)"
+status: "in-review"
 created: "2026-10-10"
-updated: "2026-10-10"
+updated: "2026-10-11"
+version: "2.0.0"
 ---
 
-# PRD: TextCourses (textcourses.com)
-**The Sovereign, Open-Source Autonomous Apprenticeship Engine**
+# PRD: TextCourses 2.0 (textcourses.com)
+**The Sovereign, Personality-Driven Autonomous Apprenticeship Platform**
 
 ---
 
 ## 0. Document Purpose
 
-This Product Requirements Document (PRD) establishes the authoritative product, functional, and non-functional specifications for **TextCourses** (`textcourses.com`). It serves technical product managers, systems architects, skill prompt engineers, and downstream implementers. 
+This Product Requirements Document (PRD) establishes the authoritative product, functional, and non-functional specifications for **TextCourses 2.0** (`textcourses.com`). It serves technical product managers, systems architects, skill prompt engineers, and downstream implementers. 
 
-TextCourses synthesizes the prior [product-brief.md](file:///home/bharath/Documents/Code/text-courses-redesign/_bmad-output/initiative-textcourses/product-brief/product-brief.md), embodying decisions made during multi-lens elicitation. All requirements are anchored to the Glossary (§3) and numbered globally as stable references (`FR-1` through `FR-23`). Technical choices that belong strictly to implementation architecture live in downstream specifications (`bmad-architecture`).
+TextCourses 2.0 synthesizes the initial framework specifications with the strategic breakthroughs forged in [brainstorm-teacher-personality-framework.md](file:///home/bharath/Documents/Code/text-courses-redesign/_bmad-output/initiative-textcourses/brainstorm-teacher-personality-framework/brainstorm-teacher-personality-framework.md). All requirements are numbered globally as stable references (`FR-1` through `FR-29`). Technical choices that belong strictly to implementation architecture live in downstream specifications (`bmad-architecture`).
 
 ---
 
@@ -94,6 +95,34 @@ The filesystem hierarchy (`Roadmap` ➔ `Course` ➔ `Chapter` ➔ `Section`) se
   5. `tc-practicals` executes a 4-Lens Review (Functional Completeness, Edge Cases, Architecture & Craft, Verification Integrity).
 - **Climax:** The agent generates `portfolio/project-01/review-report.md`, marking the WAL implementation PASS with a warning on unbuffered fsync throughput.
 - **Resolution:** `course.toml` transitions to `status: completed`. Marcus has a verifiable git artifact for his portfolio.
+
+#### UJ-5: Elena Architectures a Data Science Track via Triad Inception Party Mode
+- **Persona & Context:** Elena, an analytics engineer wanting to master Data Science and Machine Learning.
+- **Entry State:** Fresh workspace initialized via `/tc-init`.
+- **Path:**
+  1. Elena invokes `/tc-roadmap "Data Science Track"`.
+  2. The Triad Faculty assembles in visible Party Mode:
+     - 🔬 **Marie (The Scout)** analyzes modern 2026 data stacks (Arrow, Polars, PyTorch, DuckDB).
+     - 🗺️ **Aristotle (The Cartographer)** sketches a 4-course sequence: Vector Primitives ➔ Probabilistic Foundations ➔ Applied ML ➔ Neural Systems.
+     - ⚖️ **Hypatia (The Auditor)** flags linear algebra prerequisite bounds and requests baseline verification.
+  3. The Triad presents Elena with 3 sharp diagnostic hinge questions assessing her Python, SQL, and linear algebra proficiency.
+  4. Elena passes the Python and SQL checks; the Triad marks Course 1 as `[WAIVED]` in `roadmap/roadmap.toml`.
+  5. Aristotle activates Course 2 (*Vectorized Wrangling & Matrix Foundations*) and seamlessly dispatches `/tc-create`.
+- **Climax:** Elena is placed at her exact learning frontier without sitting through remedial syntax, with an auditable roadmap on disk.
+- **Resolution:** The entire caucus debate and placement decisions are logged to `profile/memlog.md`.
+
+#### UJ-6: Marcus Experiences an Adaptive Faculty Tag-Team Handoff
+- **Persona & Context:** Marcus, learning Distributed Storage Systems, has chosen Euclid as his primary instructor.
+- **Entry State:** Working through Chapter 1, Section 2 on Write-Ahead Log (WAL) durability.
+- **Path:**
+  1. Euclid provides an axiomatic, state-machine derivation of disk sync boundaries.
+  2. Marcus selects `[3] Re-explain / Deeper` to explore failure modes. Euclid provides a second mathematical breakdown.
+  3. Marcus still struggles with how the OS page cache interacts with power failures and selects `[3]` again.
+  4. Detecting repeated conceptual friction, the tutor offers an **Adaptive Faculty Handoff**: `[3] Tag-in ⚡ Feynman for an intuitive physical analogy`.
+  5. Marcus accepts. Feynman steps in acknowledging Euclid's prior state trace, using an everyday physical postal metaphor.
+  6. The breakthrough occurs; Marcus selects `[1] Next Concept`.
+- **Climax:** Marcus overcomes cognitive blockage through a tag-team pedagogical shift rather than repetitive lectures.
+- **Resolution:** The handoff is atomically appended to `courses/distributed-storage/memlog.md`: `- (handoff) Euclid handed off to Feynman: learner needed physical intuition for WAL torn writes`.
 
 ---
 
@@ -297,6 +326,72 @@ All `tc-*` skills SHALL function identically across any AI environment providing
 
 ---
 
+### 4.8 TextCourses 2.0: Personality-Driven Faculty, Macro Roadmaps & Sovereign Memory
+
+**Description:** Upgrades TextCourses from an isolated single-course engine into a personality-driven apprenticeship platform featuring living master teacher personas, multi-course roadmaps with live Triad Inception Party Mode, a two-tier chronological memory log, and streamlined folder ergonomics. Realizes UJ-5, UJ-6.
+
+#### FR-24: Teacher Persona Selection & The Sovereign Faculty
+The system SHALL replace abstract density and style sliders during onboarding with direct selection of a world-renowned master teacher persona from the Sovereign Faculty roster. Realizes UJ-1, UJ-6.
+- **Consequences (testable):**
+  - Chiron (`/tc-init`) presents the Sovereign Faculty roster with distinct teaching oaths, pedagogical voices, and mental model approaches:
+    - **⚡ Feynman (The Intuitive Builder)**: Analogy-first, mechanical thought experiments, zero academic jargon.
+    - **📐 Euclid (The Axiomatic Purist)**: Axiomatic proofs, first principles, mathematical precision, code-first.
+    - **🦉 Socrates (The Dialectic Inquisitor)**: Probing inquiry, boundary condition dilemmas, guiding questions.
+    - **🎨 Leonardo (The Master Craftsman)**: Workshop builder, demanding proof-of-work, 4-lens reviewer.
+  - The chosen primary teacher is persisted to `profile/preferences.md`.
+  - Instructional delivery in `/tc-teach` adopts the selected teacher's persona, tone, and invariants.
+
+#### FR-25: Adaptive Faculty Tag-Team Handoffs & Dynamic Switching
+When a learner encounters conceptual friction by requesting re-explanation twice on the same concept, the system SHALL proactively offer an in-character faculty handoff to an alternate teacher. Realizes UJ-6.
+- **Consequences (testable):**
+  - The Next-Action Fork in `/tc-teach` surfaces a tag-team option: `[3] Tag-in <Teacher B> for an alternate angle`.
+  - Teacher B initiates instruction explicitly referencing Teacher A's prior explanation using context from `memlog.md`.
+  - The handoff event is atomically appended to `courses/<slug>/memlog.md`.
+  - Learners can switch their primary teacher at any time, updating `profile/preferences.md`.
+
+#### FR-26: Multi-Course Macro Roadmaps & DAG Orchestration (`tc-roadmap`)
+The system SHALL provide a dedicated macro-curriculum skill (`tc-roadmap`) orchestrated by **🗺️ Aristotle (The Cartographer)** to decompose expansive domains into structured multi-course roadmaps. Realizes UJ-5.
+- **Consequences (testable):**
+  - Decomposes broad topics (e.g., Data Science, Distributed Systems) into 3–6 sequential, atomic courses.
+  - Generates `roadmap/roadmap.toml` managing track status (`not_started`, `active`, `completed`) and inter-course prerequisite DAGs.
+  - Generates human-readable `roadmap/overview.md` with visual progress indicators.
+  - Automates dispatch to `/tc-create` for the active starting course.
+
+#### FR-27: Live Triad Inception Roundtable & Diagnostic Placement
+`tc-roadmap` SHALL execute the Triad Consensus Loop visibly in open Party Mode between Marie (The Scout), Aristotle (The Cartographer), and Hypatia (The Auditor), culminating in interactive diagnostic placement questions for the learner. Realizes UJ-5.
+- **Consequences (testable):**
+  - Marie evaluates modern industry standards, official documentation ToCs, and current libraries.
+  - Aristotle drafts the multi-course progression and milestones.
+  - Hypatia audits prerequisite contracts and challenges cognitive leaps.
+  - The Triad presents 2–4 targeted hinge diagnostic questions to evaluate learner baseline proficiencies.
+  - Confirmed prior proficiencies are marked `[WAIVED]` in `roadmap/roadmap.toml`, placing the learner directly at their optimal frontier.
+  - Rationale and debate transcripts are preserved in `profile/memlog.md`.
+
+#### FR-28: Two-Tier Pedagogical Memory Logging (`_tc/scripts/memlog.py`)
+The system SHALL maintain a two-tier append-only chronological memory log across all learning sessions, eliminating chat amnesia without token budget bloat. Realizes UJ-2, UJ-5, UJ-6.
+- **Consequences (testable):**
+  - **Global Journey Log (`profile/memlog.md`)**: Records macro milestones, track completions, and global faculty notes.
+  - **Course Pedagogical Memory (`courses/<slug>/memlog.md`)**: Logs granular instructional events using structured tags:
+    - `- (concept by <Teacher>) <Mechanism taught>`
+    - `- (question by user) <Query raised>`
+    - `- (insight by user) <Learner mental model breakthrough>`
+    - `- (misconception) <Confusion identified>`
+    - `- (handoff) <Teacher handoff>`
+    - `- (milestone) <Section completed or test passed>`
+  - Managed via deterministic script `_tc/scripts/memlog.py` using atomic append writes.
+  - `/tc-teach` loads the trailing 15 lines of `memlog.md` on session resume to ensure seamless conversational continuity.
+
+#### FR-29: Streamlined Sovereign Folder Architecture & BMad Ecosystem Parity
+The system SHALL enforce a unified, human-navigable filesystem layout and full BMad packaging compliance across all skills. Realizes UJ-1.
+- **Consequences (testable):**
+  - Eliminates `.tc/` vs `_tc/` ambiguity by consolidating all engine scripts, caches, and configs under visible `_tc/`.
+  - Flattens 4-level deep course nesting into direct chapter textbook files: `courses/<slug>/notes/chapter-XX.md`.
+  - Links practical capstones directly to courses: `portfolio/<slug>-project/`.
+  - Equips all 10 skills with `bmod.toml` manifests and 3-tier `customize.toml` override support.
+  - Eliminates triplicate script redundancy by routing all skills exclusively to `_tc/scripts/`.
+
+---
+
 ## 5. Non-Goals (Explicit)
 
 - **Not a Video/Audio Streaming Platform:** TextCourses will NEVER generate or host video lectures, audio voiceovers, or avatar animations in v1. Text and code are the primary medium.
@@ -310,12 +405,13 @@ All `tc-*` skills SHALL function identically across any AI environment providing
 ## 6. MVP Scope
 
 ### 6.1 In Scope (MVP)
-- **7 User-Facing Commands:** `tc-init`, `tc-create`, `tc-teach`, `tc-test-me`, `tc-practicals`, `tc-redirect-course`, `tc-migrate`.
+- **8 User-Facing Commands:** `tc-init`, `tc-roadmap`, `tc-create`, `tc-teach`, `tc-test-me`, `tc-practicals`, `tc-redirect-course`, `tc-migrate`.
 - **2 Internal Engine Skills:** `tc-research` and `tc-verify-course` (invoked via Triad Consensus Loop, and directly standalone).
-- **Standardized Filesystem Layout:** `.tc/`, `plan/`, `courses/`, `portfolio/` with `course.toml`, `roadmap.toml`, `ledger.toml`, and `test-ledger.jsonl`.
+- **The Sovereign Faculty:** 10 world-renowned master teacher personas with distinct teaching philosophies, adaptive density, and tag-team handoffs.
+- **Two-Tier Pedagogical Memlog:** Global learner timeline (`profile/memlog.md`) and course-level session memory (`courses/<slug>/memlog.md`) via atomic `memlog.py`.
+- **Streamlined Sovereign Filesystem Layout:** Visible `_tc/` (engine & cache), `roadmap/`, `profile/`, `courses/<slug>/notes/chapter-XX.md` (flat readable textbook), and `portfolio/<slug>-project/`.
 - **5 Universal Curriculum Archetypes:** Fully selectable during course creation.
-- **4 Pedagogical Style Voices:** Direct Technical, Analogy-Intuition, Code-First, First-Principles/Math.
-- **Automated Background Notes Compilation:** Guaranteed generation of `notes.md` upon section completion.
+- **Automated Background Notes Compilation:** Guaranteed generation of flat textbook notes upon section completion.
 - **4-Lens Project Review Pass:** Functional, Edge Cases, Craft, Verification Integrity.
 - **Universal Safety Guardrail:** Hard refusal gate on weapons/CBRN, malware, NSFW, and illegal content across all skills.
 - **Zero-Guessing Rule:** Direct clarification with numbered options + `Other` write-in option on ambiguity.
@@ -365,6 +461,7 @@ Whenever an AI skill experiences ambiguity, doubt, or missing user context, it i
 ### 8.3 CLI & Agent Public Surface Contracts
 Each skill SHALL expose a consistent slash command interface and accept standardized arguments:
 - `/tc-init [--reconfigure]`
+- `/tc-roadmap "<domain-or-track>" [--mode party-mode|auto]`
 - `/tc-create "<topic>" [--mode interactive|auto] [--archetype <slug>] [--reference <url|text>]`
 - `/tc-research "<topic>" [--depth <shallow|deep>]`
 - `/tc-verify-course [course-slug]`

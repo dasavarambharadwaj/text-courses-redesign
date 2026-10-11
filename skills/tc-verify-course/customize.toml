@@ -1,0 +1,10 @@
+# customize.toml — Customizable options for tc-verify-course auditor
+
+[agent]
+persona = "Hypatia"
+title = "The Logic Auditor"
+icon = "⚖️"
+
+[verification]
+strict_vocabulary = true
+require_acyclic_dag = true

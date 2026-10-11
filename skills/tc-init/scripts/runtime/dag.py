@@ -34,12 +34,17 @@ def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
 
 
 def resolve_manifest_path(path_arg: str | Path) -> Path:
-    """Resolve course manifest file from path argument."""
+    """Resolve course or roadmap manifest file from path argument."""
     p = Path(path_arg)
     if p.is_dir():
-        manifest = p / "course.toml"
-        if manifest.exists():
-            return manifest
+        for cand in [
+            p / "course.toml",
+            p / "roadmap.toml",
+            p / "roadmap" / "roadmap.toml",
+            p / "plan" / "roadmap.toml",
+        ]:
+            if cand.exists():
+                return cand
         return p / "course.toml"
     return p
 
@@ -98,6 +103,38 @@ def build_graph(data: dict[str, Any]) -> tuple[dict[Any, list[Any]], str | None]
                     if d not in all_defined:
                         return {}, str(d)
                 graph[node] = list(deps_list)
+            return graph, None
+
+    # 2. Roadmap multi-course DAG
+    if "roadmap" in data and isinstance(data["roadmap"], dict):
+        courses = data["roadmap"].get("courses", [])
+        if isinstance(courses, list):
+            alias_map: dict[Any, Any] = {}
+            graph: dict[Any, list[Any]] = {}
+            for c in courses:
+                if not isinstance(c, dict):
+                    continue
+                slug = c.get("slug")
+                if not slug:
+                    continue
+                graph[slug] = []
+                alias_map[slug] = slug
+                if c.get("title"):
+                    alias_map[c["title"]] = slug
+
+            for c in courses:
+                if not isinstance(c, dict):
+                    continue
+                slug = c.get("slug")
+                if not slug:
+                    continue
+                prereqs = extract_prereqs(c)
+                for pr in prereqs:
+                    canon = alias_map.get(pr)
+                    if canon is None:
+                        return {}, str(pr)
+                    if canon not in graph[slug]:
+                        graph[slug].append(canon)
             return graph, None
 
     chapters = data.get("chapters", [])

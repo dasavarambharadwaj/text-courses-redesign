@@ -26,6 +26,7 @@ from typing import Any
 import tomli_w
 
 VALID_STATUSES = {"not_started", "in_progress", "review", "completed"}
+ROADMAP_COURSE_STATUSES = {"not_started", "active", "in_progress", "completed", "waived"}
 
 
 def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
@@ -244,6 +245,139 @@ def cmd_advance(args: argparse.Namespace) -> None:
     })
 
 
+def cmd_add_course(args: argparse.Namespace) -> None:
+    """Add a course table to roadmap.toml manifest."""
+    target_path = Path(args.path)
+    if target_path.is_dir():
+        for cand in [
+            target_path / "roadmap.toml",
+            target_path / "roadmap" / "roadmap.toml",
+            target_path / "plan" / "roadmap.toml",
+        ]:
+            if cand.is_file():
+                manifest_path = cand
+                break
+        else:
+            manifest_path = target_path / "roadmap.toml"
+    else:
+        manifest_path = target_path
+
+    try:
+        data = load_toml(manifest_path)
+    except Exception as e:
+        output_json({"ok": False, "error": f"Failed to load roadmap: {e}"}, exit_code=1)
+
+    if "roadmap" not in data:
+        output_json({"ok": False, "error": f"Not a roadmap manifest: {manifest_path}"}, exit_code=1)
+
+    courses = data["roadmap"].setdefault("courses", [])
+    if any(c.get("slug") == args.slug for c in courses if isinstance(c, dict)):
+        output_json({"ok": False, "error": f"Course with slug '{args.slug}' already exists in roadmap"}, exit_code=1)
+
+    status = getattr(args, "status", "not_started")
+    raw_prereqs = getattr(args, "prerequisites", None) or []
+    if isinstance(raw_prereqs, str):
+        prereqs = [p.strip() for p in raw_prereqs.split(",") if p.strip()]
+    elif isinstance(raw_prereqs, list):
+        prereqs = raw_prereqs
+    else:
+        prereqs = []
+
+    new_course: dict[str, Any] = {
+        "slug": args.slug,
+        "title": args.title,
+        "status": status,
+        "prerequisites": prereqs,
+    }
+    if getattr(args, "archetype", None):
+        new_course["archetype"] = args.archetype
+
+    courses.append(new_course)
+    data["roadmap"]["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    try:
+        atomic_write_toml(manifest_path, data)
+    except Exception as e:
+        output_json({"ok": False, "error": f"Failed to write roadmap: {e}"}, exit_code=1)
+
+    output_json({
+        "ok": True,
+        "message": f"Added course '{args.slug}' to roadmap {manifest_path}",
+        "slug": args.slug,
+        "title": args.title,
+        "status": status,
+        "prerequisites": prereqs,
+        "total_courses": len(courses),
+    })
+
+
+def cmd_advance_course(args: argparse.Namespace) -> None:
+    """Update course status in roadmap.toml."""
+    target_path = Path(args.path)
+    if target_path.is_dir():
+        for cand in [
+            target_path / "roadmap.toml",
+            target_path / "roadmap" / "roadmap.toml",
+            target_path / "plan" / "roadmap.toml",
+        ]:
+            if cand.is_file():
+                manifest_path = cand
+                break
+        else:
+            manifest_path = target_path / "roadmap.toml"
+    else:
+        manifest_path = target_path
+
+    new_status = args.status
+    if new_status not in ROADMAP_COURSE_STATUSES:
+        output_json({
+            "ok": False,
+            "error": f"Invalid status '{new_status}'. Must be one of {sorted(ROADMAP_COURSE_STATUSES)}",
+        }, exit_code=1)
+
+    try:
+        data = load_toml(manifest_path)
+    except Exception as e:
+        output_json({"ok": False, "error": f"Failed to load roadmap: {e}"}, exit_code=1)
+
+    if "roadmap" not in data:
+        output_json({"ok": False, "error": f"Not a roadmap manifest: {manifest_path}"}, exit_code=1)
+
+    courses = data["roadmap"].get("courses", [])
+    target_course = None
+    for c in courses:
+        if isinstance(c, dict) and (c.get("slug") == args.slug or c.get("title") == args.slug):
+            target_course = c
+            break
+
+    if not target_course:
+        output_json({"ok": False, "error": f"Course '{args.slug}' not found in roadmap"}, exit_code=1)
+
+    target_course["status"] = new_status
+    target_course["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    data["roadmap"]["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    # Update overall roadmap status
+    if all(isinstance(c, dict) and c.get("status") in {"completed", "waived"} for c in courses) and courses:
+        data["roadmap"]["status"] = "completed"
+    elif any(isinstance(c, dict) and c.get("status") in {"active", "in_progress", "completed", "waived"} for c in courses):
+        if data["roadmap"].get("status") == "not_started":
+            data["roadmap"]["status"] = "active"
+
+    try:
+        atomic_write_toml(manifest_path, data)
+    except Exception as e:
+        output_json({"ok": False, "error": f"Failed to write roadmap: {e}"}, exit_code=1)
+
+    output_json({
+        "ok": True,
+        "message": f"Updated course '{args.slug}' to status '{new_status}' in roadmap",
+        "slug": args.slug,
+        "status": new_status,
+        "roadmap_status": data["roadmap"]["status"],
+    })
+
+
 def cmd_validate(args: argparse.Namespace) -> None:
     """Validate schema integrity of a course.toml or roadmap.toml manifest."""
     manifest_path = Path(args.path)
@@ -282,6 +416,30 @@ def cmd_validate(args: argparse.Namespace) -> None:
         for key in ("title", "status"):
             if key not in roadmap:
                 errors.append(f"Missing required key 'roadmap.{key}'")
+        courses = roadmap.get("courses", [])
+        if not isinstance(courses, list):
+            errors.append("'roadmap.courses' must be a list of course tables")
+        else:
+            known_slugs = set()
+            for idx, c in enumerate(courses):
+                if not isinstance(c, dict):
+                    errors.append(f"Course at index {idx} must be a table")
+                    continue
+                for key in ("slug", "title"):
+                    if key not in c:
+                        errors.append(f"Course at index {idx} missing required key '{key}'")
+                st = c.get("status", "not_started")
+                if st not in ROADMAP_COURSE_STATUSES:
+                    errors.append(f"Invalid course status '{st}' at index {idx}")
+                if c.get("slug"):
+                    known_slugs.add(c["slug"])
+            for idx, c in enumerate(courses):
+                if isinstance(c, dict):
+                    prereqs = c.get("prerequisites", [])
+                    if isinstance(prereqs, list):
+                        for p in prereqs:
+                            if p not in known_slugs:
+                                errors.append(f"Course '{c.get('slug')}' references unknown prerequisite '{p}'")
     else:
         errors.append("Manifest must contain either '[course]' or '[roadmap]' root table")
 
@@ -308,6 +466,23 @@ def main() -> None:
     p_init_r.add_argument("--path", required=True, help="Directory or file path")
     p_init_r.add_argument("--title", required=True, help="Roadmap title")
     p_init_r.set_defaults(func=cmd_init_roadmap)
+
+    # add-course
+    p_add_c = subparsers.add_parser("add-course", help="Add a course to roadmap.toml")
+    p_add_c.add_argument("--path", required=True, help="Roadmap directory or file path")
+    p_add_c.add_argument("--slug", required=True, help="Course slug")
+    p_add_c.add_argument("--title", required=True, help="Course title")
+    p_add_c.add_argument("--status", default="not_started", choices=list(ROADMAP_COURSE_STATUSES), help="Initial course status")
+    p_add_c.add_argument("--prerequisites", nargs="*", default=[], help="Prerequisite course slugs")
+    p_add_c.add_argument("--archetype", default="applied_creation", help="Curriculum archetype")
+    p_add_c.set_defaults(func=cmd_add_course)
+
+    # advance-course
+    p_adv_c = subparsers.add_parser("advance-course", help="Advance course status in roadmap.toml")
+    p_adv_c.add_argument("--path", required=True, help="Roadmap directory or file path")
+    p_adv_c.add_argument("--slug", required=True, help="Course slug")
+    p_adv_c.add_argument("--status", required=True, choices=list(ROADMAP_COURSE_STATUSES), help="New status")
+    p_adv_c.set_defaults(func=cmd_advance_course)
 
     # get-status
     p_status = subparsers.add_parser("get-status", help="Get course or roadmap progress")

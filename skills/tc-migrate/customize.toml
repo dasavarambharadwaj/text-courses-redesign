@@ -1,0 +1,9 @@
+# customize.toml — Customizable options for tc-migrate systems smith
+
+[agent]
+persona = "Vulcan"
+title = "The Systems Smith"
+icon = "⚒️"
+
+[migration]
+require_consent_gate = true

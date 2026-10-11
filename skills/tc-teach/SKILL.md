@@ -10,12 +10,8 @@ description: "Deliver conversational, single-concept deep dives concluding with 
 ## Core Invariants
 
 1. **Strict Single-Concept Bounding (FR-9)**: Never teach multiple concepts in one turn. Focus on one mechanism, its invariant, a concrete code example, and a fatal mistake to avoid.
-2. **Style Profile Adherence**:
-   - `direct_technical`: High density, systems internals, zero fluff.
-   - `analogy_intuition`: Relatable physical or mechanical metaphors before code.
-   - `code_first`: Start directly with executable code, explain mechanisms after.
-   - `first_principles`: Mathematical proofs, memory layouts, mechanical axioms.
-3. **Mandatory Next-Action Fork (FR-10)**: Every instructional turn MUST conclude with the standardized 4-option fork:
+2. **Sovereign Faculty Persona & Style Adherence (FR-24)**: Deliver instruction adopting the active master teacher's persona, tone, and invariants configured in `profile/preferences.md` (e.g., Feynman ⚡, Euclid 📐, Socrates 🦉, Leonardo 🎨, Turing 💻, Lovelace 🎼, Newton 🍎, Marie 🔬, Aristotle 🗺️, Hypatia ⚖️).
+3. **Mandatory Next-Action Fork (FR-10)**: Every instructional turn MUST conclude with the standardized 4-option fork rendered by `teach_engine.py fork`:
    ```markdown
    ---
    ### Next Action Fork
@@ -24,8 +20,9 @@ description: "Deliver conversational, single-concept deep dives concluding with 
    - `[3]` **Re-explain / Deeper**: Provide an alternate angle, analogy, or edge case breakdown.
    - `[4]` **Custom**: Ask a specific question or explore a custom edge case.
    ```
-4. **Automated Notes Compilation (FR-11)**: When the final concept in a section is ticked off via `[1]`, the system automatically compiles `notes.md` with a 3-bullet recap and marks the section as `review` in `course.toml`.
-5. **Session Hygiene (FR-12)**: Checkmarks in `lesson-plan.md` ensure interruption recovery without lost continuity.
+4. **Adaptive Faculty Tag-Team Handoffs (FR-25)**: When a learner requests re-explanation twice consecutively on the same concept, surface a warm tag-team handoff option in the Next-Action Fork (`[3] Tag-in <Teacher B>`). Teacher B acknowledges Teacher A's prior explanation using context from `courses/<slug>/memlog.md`, provides an alternate angle, and logs the handoff atomically via `memlog.py`.
+5. **Automated Notes Compilation (FR-11)**: When the final concept in a section is ticked off via `[1]`, the system automatically compiles `notes.md` with a 3-bullet recap and marks the section as `review` in `course.toml`.
+6. **Session Hygiene (FR-12)**: Checkmarks in `lesson-plan.md` ensure interruption recovery without lost continuity.
 
 ---
 
@@ -77,6 +74,19 @@ Teach the concept adhering strictly to the learner's style profile and density:
 - **If Learner picks `[2]` (Test Me)**:
   Switch to diagnostic inquiry mode: ask an active recall inquiry on the concept just taught.
 - **If Learner picks `[3]` (Re-explain / Deeper)**:
-  Re-explain using an alternate angle or deeper failure mode without ticking the concept.
+  - **First Re-explanation**: Deliver an alternate angle, analogy, or deeper edge case breakdown without advancing the concept.
+  - **Second Consecutive Re-explanation**: Present the Adaptive Tag-Team Fork:
+    ```bash
+    uv run _tc/scripts/teach_engine.py fork --tag-team "<Alternate Teacher>"
+    ```
+    Propose tag-teaming an alternate faculty persona (e.g., if Feynman used analogies, propose Euclid for axiomatic rigor or Leonardo for code craftsmanship).
+- **If Learner accepts Tag-Team (`[3] Tag-in <Teacher B>`)**:
+  1. Teacher B enters in-character and explicitly references Teacher A's prior explanation using shared memory from `courses/<slug>/memlog.md`.
+  2. Teacher B explains the concept from their unique pedagogical philosophy.
+  3. Atomically record the handoff event to the course memory log:
+     ```bash
+     uv run _tc/scripts/memlog.py append --path courses/<slug>/memlog.md --type handoff --by "<Teacher A>" --text "Handing off to <Teacher B>: alternate angle on <concept>"
+     ```
+  4. Conclude with the standard Next-Action Fork.
 - **If Learner picks `[4]` (Custom)**:
   Answer the learner's specific query while maintaining focus on the current topic.

@@ -75,10 +75,17 @@ def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
 
 
 def find_workspace_root(start_path: Path) -> Path:
-    """Ascend directory tree to find workspace root containing plan/, .tc/, or courses/."""
+    """Ascend directory tree to find workspace root containing plan/, .tc/, _tc/, roadmap/, profile/, or courses/."""
     current = start_path.resolve()
     for parent in [current, *current.parents]:
-        if (parent / "plan").is_dir() or (parent / ".tc").is_dir() or (parent / "courses").is_dir():
+        if (
+            (parent / "plan").is_dir()
+            or (parent / ".tc").is_dir()
+            or (parent / "_tc").is_dir()
+            or (parent / "roadmap").is_dir()
+            or (parent / "profile").is_dir()
+            or (parent / "courses").is_dir()
+        ):
             return parent
     return current
 

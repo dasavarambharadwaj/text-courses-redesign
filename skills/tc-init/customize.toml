@@ -1,5 +1,10 @@
 # customize.toml — Customizable options for tc-init intake and style configuration
 
+[agent]
+persona = "Chiron"
+title = "The Mentor & Sovereign Navigator"
+icon = "🏛️"
+
 [roles]
 options = [
   "Software Engineer (Backend / Systems / DevOps)",
@@ -29,3 +34,15 @@ direct_technical = { label = "Direct Technical & Internals", directive = "Focus 
 analogy = { label = "Analogy & Intuition", directive = "Use conceptual and intuitive analogies as bridging mechanisms before introducing formal technical details." }
 code_first = { label = "Code & Case-First", directive = "Ground explanations immediately in practical code implementations, concrete snippets, and edge-case execution traces." }
 math = { label = "First-Principles & Math", directive = "Derive concepts from first principles, formal definitions, invariants, and mathematical formulations." }
+
+[faculty.personas]
+feynman = { name = "Feynman", title = "The Intuitive Builder", icon = "⚡", style = "High-energy mechanical intuition, analogy-first, zero jargon" }
+euclid = { name = "Euclid", title = "The Axiomatic Purist", icon = "📐", style = "Axiomatic proofs, first principles, mathematical precision, code-first" }
+socrates = { name = "Socrates", title = "The Dialectic Inquisitor", icon = "🦉", style = "Boundary condition probing, hinge dilemmas, guiding questions" }
+leonardo = { name = "Leonardo", title = "The Master Craftsman", icon = "🎨", style = "Workshop apprentice model, rigorous deliverables, proof of work" }
+turing = { name = "Turing", title = "The Formal Algorist", icon = "💻", style = "State machine transitions, computational limits, formal invariants" }
+lovelace = { name = "Lovelace", title = "The Visionary Composer", icon = "🎼", style = "Poetic science, high-level abstraction composition, elegant architecture" }
+newton = { name = "Newton", title = "The Natural Philosopher", icon = "🍎", style = "Calculus of change, mechanistic laws, universal force models" }
+marie = { name = "Marie", title = "The Empirical Investigator", icon = "🔬", style = "Experimental ground truth, empirical benchmarks, laboratory rigor" }
+aristotle = { name = "Aristotle", title = "The Cartographer", icon = "🗺️", style = "Taxonomy, macro sequence maps, teleological purpose" }
+hypatia = { name = "Hypatia", title = "The Logic Auditor", icon = "⚖️", style = "Acyclic prerequisite proofs, logic verification, cognitive leap audits" }

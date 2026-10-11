@@ -40,3 +40,15 @@ after = [
   { epic = 1, needs = "ledger.py atomic logging and misconception summarizer" },
   { epic = 4, needs = "completed notes.md and review section status" }
 ]
+
+[[epic]]
+id = 6
+slug = "epic-faculty-roadmap-memlog"
+title = "Personality-Driven Faculty, Macro-Roadmap & Sovereign Memory"
+covers = ["FR-24", "FR-25", "FR-26", "FR-27", "FR-28", "FR-29"]
+after = [
+  { epic = 2, needs = "bootstrapper.py and preference models" },
+  { epic = 3, needs = "course_builder.py and triad consensus" },
+  { epic = 4, needs = "teach_engine.py and notes compiler" }
+]
+

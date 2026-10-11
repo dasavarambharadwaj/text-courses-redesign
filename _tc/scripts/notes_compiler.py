@@ -230,11 +230,13 @@ def compile_notes(
     # Atomically write notes.md
     atomic_write_text(notes_file, notes_text)
 
-    # Locate and update course.toml
+    # Locate and update course.toml and flat chapter textbook notes
     manifest_file = find_enclosing_manifest(sec_path)
     manifest_updated = False
     warning = None
     effective_chapter = chapter_dir_name or sec_path.parent.name
+    chapter_notes_file = None
+
     if manifest_file:
         ok, err = update_course_manifest_section_status(
             manifest_path=manifest_file,
@@ -246,12 +248,33 @@ def compile_notes(
             manifest_updated = True
         else:
             warning = err
+
+        # Write or append to flat chapter textbook at courses/<slug>/notes/chapter-XX.md
+        course_dir = manifest_file.parent
+        notes_dir = course_dir / "notes"
+        notes_dir.mkdir(parents=True, exist_ok=True)
+
+        ch_num = 1
+        m_c = re.search(r"ch(?:apter)?[-_]?0*(\d+)", effective_chapter, re.IGNORECASE)
+        if m_c:
+            ch_num = int(m_c.group(1))
+
+        ch_notes_path = notes_dir / f"chapter-{ch_num:02d}.md"
+        chapter_notes_file = str(ch_notes_path)
+        if not ch_notes_path.exists():
+            header = f"# Chapter {ch_num:02d} Notes\n\n"
+            atomic_write_text(ch_notes_path, header + notes_text + "\n")
+        else:
+            existing = ch_notes_path.read_text(encoding="utf-8")
+            if f"# {title.strip()}" not in existing:
+                atomic_write_text(ch_notes_path, existing.rstrip() + f"\n\n---\n\n{notes_text}\n")
     else:
         warning = f"No enclosing course.toml found above {sec_path}"
 
     return {
         "ok": True,
         "notes_file": str(notes_file),
+        "chapter_notes_file": chapter_notes_file,
         "title": title,
         "recap_bullets": len(recap),
         "size_bytes": len(notes_text.encode("utf-8")),

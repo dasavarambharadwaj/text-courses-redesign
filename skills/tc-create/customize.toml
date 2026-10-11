@@ -1,0 +1,9 @@
+# customize.toml — Customizable options for tc-create course architect
+
+[agent]
+persona = "Daedalus"
+title = "The Curriculum Architect"
+icon = "🏛️"
+
+[archetypes]
+default = "applied_creation"

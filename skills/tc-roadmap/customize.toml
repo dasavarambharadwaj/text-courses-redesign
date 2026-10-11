@@ -1,0 +1,11 @@
+# customize.toml — Customizable options for tc-roadmap macro cartographer
+
+[agent]
+persona = "Aristotle"
+title = "The Cartographer"
+icon = "🗺️"
+
+[triad]
+scout = "Marie"
+architect = "Aristotle"
+auditor = "Hypatia"

@@ -1,0 +1,51 @@
+next_id = 6
+
+[[entry]]
+id = 1
+type = "story"
+title = "Implement Two-Tier Pedagogical Memlog Engine (memlog.py)"
+after = []
+risk = "low"
+covers = ["FR-28"]
+description = "Implement _tc/scripts/memlog.py and tests/test_memlog.py. Deploys two-tier pedagogical memory logging with POSIX atomic append, tags, and CLI subcommands (init, append, set, inspect, tail)."
+verify = "memlog.py CLI subcommands execute atomically; unit tests pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Streamline Workspace Filesystem Layout and Note Compaction"
+after = [1]
+risk = "medium"
+covers = ["FR-29"]
+description = "Refactor bootstrapper.py, course_builder.py, notes_compiler.py, and directory paths across scripts and skills to use visible _tc/ directory structure and flat notes/chapter-XX.md layout."
+verify = "Directory migration/bootstrapping creates _tc/ and flat notes/chapter-XX.md; tests pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "Implement Macro-Roadmap Manifest & DAG Extensions in manifest.py and dag.py"
+after = [2]
+risk = "medium"
+covers = ["FR-26"]
+description = "Extend manifest.py and dag.py to support macro-roadmap multi-course DAG orchestration, adding courses, verifying roadmap graph cycles/prerequisites, and advancing course status in roadmap.toml."
+verify = "manifest.py and dag.py support roadmap subcommands and validate multi-course DAGs; pytest tests pass."
+
+[[entry]]
+id = 4
+type = "story"
+title = "Implement tc-roadmap Skill and Triad Inception Party Mode"
+after = [3]
+risk = "high"
+covers = ["FR-26", "FR-27"]
+description = "Implement skills/tc-roadmap/SKILL.md with Aristotle persona, Triad Inception Party Mode roundtable caucus (Marie, Aristotle, Hypatia), and diagnostic placement testing."
+verify = "skills/tc-roadmap/SKILL.md defines triad inception party mode, placement test mechanics, and roadmap.toml updates; zero BMad references; pytest tests pass."
+
+[[entry]]
+id = 5
+type = "story"
+title = "Implement Sovereign Faculty Personas, Chiron Onboarding, and Adaptive Tag-Team Handoffs"
+after = [1, 4]
+risk = "medium"
+covers = ["FR-24", "FR-25", "FR-29"]
+description = "Configure customize.toml across skills with 10 master teacher personas, Chiron faculty onboarding in tc-init, and adaptive tag-team handoff hooks in tc-teach logging to memlog.py."
+verify = "customize.toml defines faculty personas; tc-init prompts faculty selection; tc-teach supports handoffs with memlog.py handoff events; pytest tests pass."
