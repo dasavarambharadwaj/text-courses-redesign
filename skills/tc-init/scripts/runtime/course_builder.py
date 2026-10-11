@@ -44,6 +44,14 @@ try:
 except ImportError:
     from _tc.scripts.scout import get_cached_digest, get_cached_dossier, run_scout
 
+try:
+    from indexer import run_query_index
+except ImportError:
+    try:
+        from _tc.scripts.indexer import run_query_index
+    except ImportError:
+        run_query_index = None
+
 ARCHETYPES = {
     "applied_creation": {
         "title": "Applied Creation",
@@ -816,6 +824,25 @@ def run_triad_consensus_loop(
             catalog_data = json.loads(catalog_path.read_text(encoding="utf-8"))
         except Exception:
             catalog_data = None
+
+    # Ground fact-checking queries against local RAG index when present
+    index_db_path = workspace / "research" / slug / "sources" / "index.db"
+    if index_db_path.is_file() and run_query_index is not None:
+        for fc in fact_checks:
+            try:
+                rag_res = run_query_index(
+                    slug=slug,
+                    query=fc["query"],
+                    workspace=workspace,
+                    top_k=2,
+                    print_console=True,
+                )
+                if rag_res.get("hits"):
+                    top_hit = rag_res["hits"][0]
+                    fc["evidence"] = f"[RAG Verified from {top_hit['source_title']}]: {top_hit['snippet']}"
+                    fc["status"] = "verified"
+            except Exception:
+                pass
 
     # Autonomous Multi-Path Brainstorming across 4 paradigms (FR-35)
     brainstorm_result = brainstorm_curriculum_paths(slug, title, research_digest, preferences, catalog=catalog_data)

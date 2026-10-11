@@ -334,9 +334,13 @@ def run_build_index(
     slug: str,
     workspace: Path | str = ".",
     target_chunk_words: int = 500,
+    min_words_threshold: int = 0,
+    skip_if_empty: bool = True,
+    force: bool = False,
 ) -> dict[str, Any]:
-    """Execute the 4-stage sovereign potato indexing pipeline.
+    """Execute the sovereign potato indexing pipeline.
 
+    Gate 0: Dynamic auto-bypass check (skips if empty/under threshold to prevent overhead).
     Gate 1: Scan sources directory.
     Gate 2: Chunk files with breadcrumbs.
     Gate 3: Populate SQLite FTS5 database and catalog.json.
@@ -344,7 +348,28 @@ def run_build_index(
     """
     ws = Path(workspace).resolve()
     sources_dir = ws / "research" / slug / "sources"
+
+    # --- GATE 0: AUTO-BYPASS (Dynamic check to prevent empty overhead) ---
     if not sources_dir.exists():
+        if skip_if_empty and not force:
+            return {
+                "ok": True,
+                "slug": slug,
+                "workspace": str(ws),
+                "skipped": True,
+                "reason": "sources_dir_not_found",
+                "message": f"Sources directory not found: {sources_dir}. Indexing skipped (Dynamic Gate 0 auto-bypass).",
+                "total_documents": 0,
+                "total_chunks": 0,
+                "total_canonical_topics": 0,
+                "validation_gates": {
+                    "gate0_bypass": {"passed": True, "skipped": True, "reason": "sources_dir_not_found"},
+                    "gate1_scan": {"passed": True, "files_found": 0, "skipped": True},
+                    "gate2_chunk": {"passed": True, "chunks_created": 0, "skipped": True},
+                    "gate3_index": {"passed": True, "skipped": True},
+                    "gate4_verify": {"passed": True, "skipped": True},
+                },
+            }
         raise FileNotFoundError(f"Sources directory not found: {sources_dir}")
 
     db_path = sources_dir / "index.db"
@@ -382,7 +407,51 @@ def run_build_index(
                 "sha256": sha,
             })
 
-    gate1_passed = len(scanned_files) >= 0
+    # Dynamic auto-bypass if 0 eligible source files discovered
+    if len(scanned_files) == 0 and skip_if_empty and not force:
+        return {
+            "ok": True,
+            "slug": slug,
+            "workspace": str(ws),
+            "skipped": True,
+            "reason": "zero_eligible_documents",
+            "message": f"No eligible markdown/text documents found in {sources_dir}. Indexing skipped (Dynamic Gate 0 auto-bypass).",
+            "total_documents": 0,
+            "total_chunks": 0,
+            "total_canonical_topics": 0,
+            "validation_gates": {
+                "gate0_bypass": {"passed": True, "skipped": True, "reason": "zero_eligible_documents"},
+                "gate1_scan": {"passed": True, "files_found": 0, "skipped": True},
+                "gate2_chunk": {"passed": True, "chunks_created": 0, "skipped": True},
+                "gate3_index": {"passed": True, "skipped": True},
+                "gate4_verify": {"passed": True, "skipped": True},
+            },
+        }
+
+    # Dynamic auto-bypass if total content is below minimum word threshold
+    if min_words_threshold > 0 and not force:
+        total_words_approx = sum(f["size_bytes"] // 6 for f in scanned_files)
+        if total_words_approx < min_words_threshold:
+            return {
+                "ok": True,
+                "slug": slug,
+                "workspace": str(ws),
+                "skipped": True,
+                "reason": "below_word_threshold",
+                "message": f"Sources contain ~{total_words_approx} words, below threshold of {min_words_threshold}. Indexing skipped (Dynamic Gate 0 auto-bypass).",
+                "total_documents": len(scanned_files),
+                "total_chunks": 0,
+                "total_canonical_topics": 0,
+                "validation_gates": {
+                    "gate0_bypass": {"passed": True, "skipped": True, "reason": "below_word_threshold"},
+                    "gate1_scan": {"passed": True, "files_found": len(scanned_files), "skipped": True},
+                    "gate2_chunk": {"passed": True, "chunks_created": 0, "skipped": True},
+                    "gate3_index": {"passed": True, "skipped": True},
+                    "gate4_verify": {"passed": True, "skipped": True},
+                },
+            }
+
+    gate1_passed = len(scanned_files) > 0
 
     # --- GATE 2: CHUNK ---
     all_chunks_to_insert: list[dict[str, Any]] = []
@@ -502,12 +571,14 @@ def run_build_index(
         "ok": True,
         "slug": slug,
         "workspace": str(ws),
+        "skipped": False,
         "index_db": str(db_path),
         "catalog_file": str(catalog_path),
         "total_documents": len(scanned_files),
         "total_chunks": len(all_chunks_to_insert),
         "total_canonical_topics": domain_catalog["total_canonical_topics"],
         "validation_gates": {
+            "gate0_bypass": {"passed": True, "skipped": False},
             "gate1_scan": {"passed": gate1_passed, "files_found": len(scanned_files)},
             "gate2_chunk": {"passed": gate2_passed, "chunks_created": len(all_chunks_to_insert)},
             "gate3_index": {"passed": gate3_passed, "db_size_bytes": db_path.stat().st_size if db_path.exists() else 0},
@@ -524,11 +595,39 @@ def run_build_index(
 # 5. Fast Potato-Native Retrieval Engine (Query / Search)
 # ---------------------------------------------------------------------------
 
+def print_search_to_console(
+    query: str,
+    slug: str,
+    hits: list[dict[str, Any]],
+    latency_ms: float,
+    stream: Any = None,
+) -> None:
+    """Print transparent RAG search execution log directly into console."""
+    out = stream if stream is not None else sys.stdout
+    sep = "=" * 76
+    print(sep, file=out)
+    print(f"🔍 [RAG SEARCH] Course: '{slug}' | Input Query: \"{query}\"", file=out)
+    print(f"   ⏱️ Latency: {latency_ms:.2f}ms | Matches Retrieved: {len(hits)}", file=out)
+    if not hits:
+        print("   ⚠️ No matching excerpts found in local index.db.", file=out)
+    else:
+        for idx, h in enumerate(hits, 1):
+            src = h.get("source_title", "Unknown Source")
+            bc = h.get("breadcrumb", "")
+            score = h.get("score", 0.0)
+            snip = h.get("snippet", "").strip().replace("\n", " ")
+            print(f"   [{idx}] 📄 {src} » {bc}", file=out)
+            print(f"       Score: {score} | Snippet: {snip[:160]}...", file=out)
+    print(sep, file=out)
+
+
 def run_query_index(
     slug: str,
     query: str,
     workspace: Path | str = ".",
     top_k: int = 5,
+    print_console: bool = True,
+    console_stream: Any = None,
 ) -> dict[str, Any]:
     """Execute sub-15ms BM25 hybrid search against SQLite FTS5 database."""
     ws = Path(workspace).resolve()
@@ -543,7 +642,9 @@ def run_query_index(
     raw_terms = re.findall(r"\w+", query)
     if not raw_terms:
         conn.close()
-        return {"ok": True, "slug": slug, "query": query, "total_hits": 0, "hits": []}
+        if print_console:
+            print_search_to_console(query, slug, [], 0.0, stream=console_stream)
+        return {"ok": True, "slug": slug, "query": query, "latency_ms": 0.0, "total_hits": 0, "hits": []}
 
     # Match exact tokens or prefix stems (e.g. "raft*" OR "consensus*")
     fts_expression = " OR ".join(f'"{t}"*' for t in raw_terms)
@@ -592,6 +693,10 @@ def run_query_index(
         })
 
     conn.close()
+
+    if print_console:
+        print_search_to_console(query, slug, hits, latency_ms, stream=console_stream)
+
     return {
         "ok": True,
         "slug": slug,
@@ -627,6 +732,10 @@ def main() -> None:
     p_build.add_argument("--slug", required=True, help="Course slug (e.g. rust-systems)")
     p_build.add_argument("--workspace", default=".", help="Workspace root path")
     p_build.add_argument("--chunk-size", type=int, default=500, help="Target chunk size in words (default: 500)")
+    p_build.add_argument("--min-words", type=int, default=0, help="Minimum word count required to trigger indexing (auto-bypass threshold)")
+    p_build.add_argument("--force", action="store_true", help="Force indexing even if sources are empty or below threshold")
+    p_build.add_argument("--no-skip", action="store_true", help="Disable auto-bypass and fail if sources are missing")
+    p_build.add_argument("--json", action="store_true", help="Output results in JSON format")
 
     # query / search
     p_query = subparsers.add_parser("query", help="Execute sub-15ms BM25 hybrid search against course index")
@@ -634,6 +743,7 @@ def main() -> None:
     p_query.add_argument("--query", required=True, help="Search query string")
     p_query.add_argument("--top-k", type=int, default=5, help="Number of excerpts to return")
     p_query.add_argument("--workspace", default=".", help="Workspace root path")
+    p_query.add_argument("--json", action="store_true", help="Output results in JSON format")
 
     # catalog
     p_cat = subparsers.add_parser("catalog", help="Retrieve synthesized domain catalog & topic hierarchy")
@@ -649,17 +759,35 @@ def main() -> None:
                 slug=args.slug,
                 workspace=args.workspace,
                 target_chunk_words=args.chunk_size,
+                min_words_threshold=args.min_words,
+                skip_if_empty=not args.no_skip,
+                force=args.force,
             )
-            output_json(res, 0)
+            if getattr(args, "json", False):
+                output_json(res, 0)
+            else:
+                if res.get("skipped"):
+                    print(f"ℹ️ {res.get('message')}")
+                else:
+                    db_bytes = res["validation_gates"]["gate3_index"]["db_size_bytes"]
+                    print(f"✓ Index built: {res['total_documents']} sources, {res['total_chunks']} chunks, {res['total_canonical_topics']} topics ({db_bytes} bytes in index.db)")
+                sys.exit(0)
 
         elif args.subcommand == "query":
+            is_json = getattr(args, "json", False)
+            target_stream = sys.stderr if is_json else sys.stdout
             res = run_query_index(
                 slug=args.slug,
                 query=args.query,
                 workspace=args.workspace,
                 top_k=args.top_k,
+                print_console=True,
+                console_stream=target_stream,
             )
-            output_json(res, 0)
+            if is_json:
+                output_json(res, 0)
+            else:
+                sys.exit(0)
 
         elif args.subcommand == "catalog":
             res = get_cached_catalog(slug=args.slug, workspace=args.workspace)

@@ -230,12 +230,13 @@ flowchart TD
   2. The Universal Hat Registry provides 13 critical lenses, including `ai_pro_strategist` for AI augmentation and verification workflows.
 
 ### AD-12 — Potato-Proof Sovereign RAG Indexer & SQLite FTS5 Point Retrieval
-- **Binds:** `tc-index`, `indexer.py`, `tc.py` (`FR-45.1`, `FR-45.3`, `FR-45.4`, `FR-45.5`).
-- **Prevents:** Out-of-memory crashes on consumer laptops, heavy background daemon overhead, external API leaks, and slow semantic vector search.
+- **Binds:** `tc-index`, `indexer.py`, `course_builder.py`, `tc.py` (`FR-45.1`, `FR-45.3`, `FR-45.4`, `FR-45.5`, `FR-45.6`, `FR-45.7`).
+- **Prevents:** Out-of-memory crashes on consumer laptops, heavy background daemon overhead, external API leaks, empty database bloat, and unobservable black-box retrievals.
 - **Rule:** 
-  1. Knowledge indexing executes entirely within a `<50MB RAM` ceiling using standard library `sqlite3` FTS5 with Porter stemming, zero external server daemons, and zero API keys.
-  2. Indexing operates through 4 deterministic gates: Gate 1 (Scan & SHA-256), Gate 2 (Hierarchical Breadcrumb Chunking), Gate 3 (SQLite FTS5 & `catalog.json` generation), Gate 4 (Automated Probe Verification).
+  1. Knowledge indexing executes entirely within a `<50MB RAM` ceiling using standard library `sqlite3` FTS5 with Porter stemming and diacritic normalization, zero external server daemons, and zero API keys.
+  2. Indexing operates through 5 deterministic gates: Gate 0 (Dynamic Auto-Bypass if sources are empty or below threshold), Gate 1 (Scan & SHA-256), Gate 2 (Hierarchical Breadcrumb Chunking), Gate 3 (SQLite FTS5 & `catalog.json` generation with WAL truncation), Gate 4 (Automated Probe Verification).
   3. BM25 point retrieval guarantees sub-15ms search latency with highlighted context snippets.
+  4. Real-Time Search Observability: Every RAG search executed interactively or programmatically during course construction (Marie Curie empirical fact-checks) prints the exact input query, latency, and retrieved chunk excerpts directly into the console.
 
 ### AD-13 — Cross-Source Domain Catalog Synthesis & Unified Curriculum Invariant
 - **Binds:** `tc-index`, `tc-create`, `course_builder.py`, `indexer.py` (`FR-45.2`).

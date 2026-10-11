@@ -24,7 +24,8 @@ By extracting high-consensus topics, vocabulary, and code identifiers across all
 3. **Sovereign Point Retrieval (<15ms Latency) (FR-45.3)**:
    - Evaluates search queries using BM25 ranking and highlights matching contextual snippets.
    - Sub-15ms local query latency on commodity laptop hardware.
-4. **Autonomous 4-Gate Pipeline with Deterministic Validation (FR-45.4)**:
+4. **Autonomous 5-Gate Pipeline with Deterministic Validation (FR-45.4)**:
+   - **Gate 0: Auto-Bypass**: Automatically skips indexing when `sources/` contains zero files or falls below minimum word threshold, eliminating empty database overhead.
    - **Gate 1: Scan**: Enumerate and hash all candidate markdown, text, and transcript files in `research/<slug>/sources/`.
    - **Gate 2: Chunk**: Semantic breadcrumb chunking (400–800 words) preserving hierarchical heading trails (`[Book > Chapter > Section]`).
    - **Gate 3: Index**: Write to sovereign `index.db` in WAL mode and atomically emit `catalog.json`.
@@ -32,6 +33,8 @@ By extracting high-consensus topics, vocabulary, and code identifiers across all
 5. **Zero User-Installation Burden (FR-45.5)**:
    - Relies exclusively on standard library modules (`sqlite3`, `hashlib`, `json`, `re`, `pathlib`).
    - No external vector databases, no Docker containers, no background services.
+6. **Live Console Observability & Ground Truth Verification**:
+   - Any RAG query prints transparent diagnostic search inspection into the console displaying the exact input query, latency, and retrieved excerpts with BM25 scores.
 
 ---
 

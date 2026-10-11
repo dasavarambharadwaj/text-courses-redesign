@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import sqlite3
 import sys
@@ -23,6 +24,7 @@ from indexer import (
     get_cached_catalog,
     init_index_db,
     parse_markdown_into_breadcrumb_chunks,
+    print_search_to_console,
     run_build_index,
     run_query_index,
 )
@@ -360,4 +362,63 @@ def test_unformatted_raw_text_chunking_fallback(tmp_path: Path) -> None:
     assert len(chunks) >= 2
     for c in chunks:
         assert c["token_count"] > 0
+
+
+def test_skip_indexing_when_no_sources(tmp_path: Path) -> None:
+    """Verify Gate 0 auto-bypass skips indexing cleanly when sources folder is empty."""
+    slug = "empty-course"
+    res = run_build_index(slug=slug, workspace=tmp_path)
+    assert res["ok"] is True
+    assert res["skipped"] is True
+    assert res["total_documents"] == 0
+    assert res["total_chunks"] == 0
+    assert res["validation_gates"]["gate0_bypass"]["skipped"] is True
+
+    # Ensure no empty index.db or catalog.json was left on disk
+    sources_dir = tmp_path / "research" / slug / "sources"
+    assert not (sources_dir / "index.db").exists()
+
+
+def test_skip_indexing_below_word_threshold(tmp_path: Path) -> None:
+    """Verify auto-bypass skips indexing when sources are below configured word count threshold."""
+    slug = "tiny-course"
+    sources_dir = tmp_path / "research" / slug / "sources"
+    sources_dir.mkdir(parents=True)
+    tiny_file = sources_dir / "note.md"
+    tiny_file.write_text("# Tiny\nJust a quick 5 word sentence.", encoding="utf-8")
+
+    # Set min_words_threshold = 500 (our file has ~10 words)
+    res = run_build_index(slug=slug, workspace=tmp_path, min_words_threshold=500)
+    assert res["ok"] is True
+    assert res["skipped"] is True
+    assert res["reason"] == "below_word_threshold"
+    assert res["validation_gates"]["gate0_bypass"]["skipped"] is True
+
+
+def test_rag_search_prints_to_console(temp_sources_workspace: tuple[Path, str]) -> None:
+    """Verify that any RAG search prints input query and retrieved outputs to console."""
+    ws, slug = temp_sources_workspace
+    run_build_index(slug=slug, workspace=ws)
+
+    buf = io.StringIO()
+    res = run_query_index(
+        slug=slug,
+        query="Raft leader election",
+        workspace=ws,
+        top_k=2,
+        print_console=True,
+        console_stream=buf,
+    )
+
+    output = buf.getvalue()
+    # Check that query and outputs are logged in console view
+    assert "🔍 [RAG SEARCH]" in output
+    assert f"Course: '{slug}'" in output
+    assert "Input Query: \"Raft leader election\"" in output
+    assert "Matches Retrieved:" in output
+    assert "Consensus Handbook" in output or "Raft" in output
+    assert "Score:" in output
+    assert res["ok"] is True
+    assert res["total_hits"] >= 1
+
 
