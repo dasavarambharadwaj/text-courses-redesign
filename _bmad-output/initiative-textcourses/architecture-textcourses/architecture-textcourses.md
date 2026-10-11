@@ -230,13 +230,15 @@ flowchart TD
   2. The Universal Hat Registry provides 13 critical lenses, including `ai_pro_strategist` for AI augmentation and verification workflows.
 
 ### AD-12 — Potato-Proof Sovereign RAG Indexer & SQLite FTS5 Point Retrieval
-- **Binds:** `tc-index`, `indexer.py`, `course_builder.py`, `tc.py` (`FR-45.1`, `FR-45.3`, `FR-45.4`, `FR-45.5`, `FR-45.6`, `FR-45.7`).
-- **Prevents:** Out-of-memory crashes on consumer laptops, heavy background daemon overhead, external API leaks, empty database bloat, and unobservable black-box retrievals.
+- **Binds:** `tc-index`, `indexer.py`, `course_builder.py`, `tc.py` (`FR-45.1`, `FR-45.3`, `FR-45.4`, `FR-45.5`, `FR-45.6`, `FR-45.7`, `FR-45.8`).
+- **Prevents:** Out-of-memory crashes on consumer laptops, heavy background daemon overhead, external API leaks, empty database bloat, unobservable black-box retrievals, and untracked file drift during course correction.
 - **Rule:** 
   1. Knowledge indexing executes entirely within a `<50MB RAM` ceiling using standard library `sqlite3` FTS5 with Porter stemming and diacritic normalization, zero external server daemons, and zero API keys.
-  2. Indexing operates through 5 deterministic gates: Gate 0 (Dynamic Auto-Bypass if sources are empty or below threshold), Gate 1 (Scan & SHA-256), Gate 2 (Hierarchical Breadcrumb Chunking), Gate 3 (SQLite FTS5 & `catalog.json` generation with WAL truncation), Gate 4 (Automated Probe Verification).
+  2. Indexing operates through 5 deterministic gates: Gate 0 (Dynamic Auto-Bypass if sources are empty or below threshold), Gate 1 (Scan & SHA-256), Gate 2 (Hierarchical Breadcrumb Chunking), Gate 3 (SQLite FTS5, `catalog.json`, and `manifest.json` generation with WAL truncation), Gate 4 (Automated Probe Verification).
   3. BM25 point retrieval guarantees sub-15ms search latency with highlighted context snippets.
   4. Real-Time Search Observability: Every RAG search executed interactively or programmatically during course construction (Marie Curie empirical fact-checks) prints the exact input query, latency, and retrieved chunk excerpts directly into the console.
+  5. Dedicated `rag-db/` Encapsulation: All RAG artifacts (`index.db`, `catalog.json`, `manifest.json`) are stored within a dedicated `rag-db/` directory in the course structure (`courses/<slug>/rag-db/` and `research/<slug>/rag-db/`).
+  6. Course-Correction Sync & File Audit Trail: `rag-db/manifest.json` tracks every file path, SHA-256 hash, word count, chunk count, and indexing timestamp. When course correction runs or new files are placed in sources, the indexer diffs against `manifest.json`, ingests new files, updates `index.db`, re-synthesizes `catalog.json`, and appends to `manifest.json`'s history log.
 
 ### AD-13 — Cross-Source Domain Catalog Synthesis & Unified Curriculum Invariant
 - **Binds:** `tc-index`, `tc-create`, `course_builder.py`, `indexer.py` (`FR-45.2`).

@@ -21,6 +21,7 @@ import fcntl
 import json
 import os
 import re
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -45,11 +46,14 @@ except ImportError:
     from _tc.scripts.scout import get_cached_digest, get_cached_dossier, run_scout
 
 try:
-    from indexer import run_query_index
+    from indexer import find_catalog_path, find_manifest_path, find_rag_db_path, run_query_index
 except ImportError:
     try:
-        from _tc.scripts.indexer import run_query_index
+        from _tc.scripts.indexer import find_catalog_path, find_manifest_path, find_rag_db_path, run_query_index
     except ImportError:
+        find_rag_db_path = None
+        find_catalog_path = None
+        find_manifest_path = None
         run_query_index = None
 
 ARCHETYPES = {
@@ -816,8 +820,8 @@ def run_triad_consensus_loop(
     gap_topics = identify_learner_gaps(title, archetype, preferences, research_digest)
     fact_checks = generate_fact_checking_queries(title, slug)
 
-    # Sovereign Knowledge Catalog (Denis Diderot - FR-45)
-    catalog_path = workspace / "research" / slug / "sources" / "catalog.json"
+    # Sovereign Knowledge Catalog & RAG Grounding (Denis Diderot - FR-45)
+    catalog_path = find_catalog_path(slug, workspace) if find_catalog_path else workspace / "research" / slug / "sources" / "catalog.json"
     catalog_data: dict[str, Any] | None = None
     if catalog_path.is_file():
         try:
@@ -826,7 +830,7 @@ def run_triad_consensus_loop(
             catalog_data = None
 
     # Ground fact-checking queries against local RAG index when present
-    index_db_path = workspace / "research" / slug / "sources" / "index.db"
+    index_db_path = find_rag_db_path(slug, workspace) if find_rag_db_path else workspace / "research" / slug / "sources" / "index.db"
     if index_db_path.is_file() and run_query_index is not None:
         for fc in fact_checks:
             try:
@@ -900,10 +904,14 @@ def run_triad_consensus_loop(
             candidate_data["sources"][f"{slug}_docs.md"] = sha
 
     if catalog_data:
+        candidate_data["sources"]["rag-db/catalog.json"] = "verified_domain_catalog"
         candidate_data["sources"]["catalog.json"] = "verified_domain_catalog"
-    index_db_path = workspace / "research" / slug / "sources" / "index.db"
     if index_db_path.is_file():
+        candidate_data["sources"]["rag-db/index.db"] = "sqlite_fts5_knowledge_base"
         candidate_data["sources"]["index.db"] = "sqlite_fts5_knowledge_base"
+    manifest_file = find_manifest_path(slug, workspace) if find_manifest_path else None
+    if manifest_file and manifest_file.is_file():
+        candidate_data["sources"]["rag-db/manifest.json"] = "source_files_manifest"
 
     # Step 2: Hypatia checks curriculum integrity
     iteration = 1
@@ -988,6 +996,31 @@ def scaffold_course_files(
 
     course_dir = workspace / "courses" / slug
     course_dir.mkdir(parents=True, exist_ok=True)
+
+    # Populate courses/<slug>/rag-db/ with sovereign index, catalog, and file manifest
+    course_rag_db = course_dir / "rag-db"
+    course_rag_db.mkdir(parents=True, exist_ok=True)
+
+    src_db = find_rag_db_path(slug, workspace) if find_rag_db_path else None
+    if src_db and src_db.is_file() and (course_rag_db / "index.db") != src_db:
+        try:
+            shutil.copy2(src_db, course_rag_db / "index.db")
+        except Exception:
+            pass
+
+    src_cat = find_catalog_path(slug, workspace) if find_catalog_path else None
+    if src_cat and src_cat.is_file() and (course_rag_db / "catalog.json") != src_cat:
+        try:
+            shutil.copy2(src_cat, course_rag_db / "catalog.json")
+        except Exception:
+            pass
+
+    src_man = find_manifest_path(slug, workspace) if find_manifest_path else None
+    if src_man and src_man.is_file() and (course_rag_db / "manifest.json") != src_man:
+        try:
+            shutil.copy2(src_man, course_rag_db / "manifest.json")
+        except Exception:
+            pass
 
     # 1. Write course.toml
     course_toml_path = course_dir / "course.toml"

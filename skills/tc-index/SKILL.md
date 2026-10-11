@@ -42,9 +42,10 @@ By extracting high-consensus topics, vocabulary, and code identifiers across all
 
 - `{project-root}` is the nearest folder containing `_tc/` or `.tc/`, starting at the current working directory and searching upwards (or `.` if not yet initialized).
 - `{skill-root}` is this skill's own directory (`skills/tc-index`).
-- Per-course database and catalog live in:
-  - `{project-root}/research/<slug>/sources/index.db`
-  - `{project-root}/research/<slug>/sources/catalog.json`
+- Per-course sovereign RAG database, domain catalog, and sources manifest live in:
+  - `{project-root}/courses/<slug>/rag-db/index.db` (also mirrored at `research/<slug>/rag-db/index.db`)
+  - `{project-root}/courses/<slug>/rag-db/catalog.json`
+  - `{project-root}/courses/<slug>/rag-db/manifest.json`
 
 ## On Activation
 
@@ -57,7 +58,7 @@ Verify workspace initialization: check if `{project-root}/_tc/scripts/indexer.py
 
 ### 1. Build Sovereign Index & Synthesize Domain Catalog
 
-After harvesting research materials with `/tc-research`:
+After harvesting research materials with `/tc-research` (or when adding new files during course correction):
 
 ```bash
 uv run _tc/scripts/tc.py index build --slug <course-slug>
@@ -68,9 +69,10 @@ Or via direct script:
 uv run _tc/scripts/indexer.py build --slug <course-slug>
 ```
 
-**Output**:
-- `research/<slug>/sources/index.db`: Sovereign SQLite FTS5 database with document metadata, breadcrumb chunks, and full-text search indexes.
-- `research/<slug>/sources/catalog.json`: Deduplicated master domain taxonomy containing ranked consensus topics, code identifiers, and prerequisite vocabulary.
+**Output in `rag-db/`**:
+- `rag-db/index.db`: Sovereign SQLite FTS5 database with document metadata, breadcrumb chunks, and full-text search indexes.
+- `rag-db/catalog.json`: Deduplicated master domain taxonomy containing ranked consensus topics, code identifiers, and prerequisite vocabulary.
+- `rag-db/manifest.json`: Complete audit trail tracking all source files used in RAG creation (paths, SHA-256, sizes, chunk counts, timestamps, and course correction change history).
 
 ### 2. Fast Point Retrieval & Verification Probe
 

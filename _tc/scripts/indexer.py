@@ -22,6 +22,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -32,6 +33,87 @@ PROJECT_ROOT = SCRIPT_DIR.parent.parent
 for p in [str(SCRIPT_DIR), str(PROJECT_ROOT)]:
     if p not in sys.path:
         sys.path.insert(0, p)
+
+
+def get_rag_paths(slug: str, workspace: Path | str = ".") -> dict[str, Path]:
+    """Resolve standard paths for sources and rag-db across courses and research workspaces."""
+    ws = Path(workspace).resolve()
+
+    # Sources search candidates
+    sources_candidates = [
+        ws / "courses" / slug / "sources",
+        ws / "research" / slug / "sources",
+        ws / "sources" / slug,
+    ]
+    sources_dir = next((p for p in sources_candidates if p.is_dir()), ws / "research" / slug / "sources")
+
+    # Primary target rag-db folder:
+    # 1. Inside courses/<slug>/rag-db if courses/<slug> exists
+    # 2. Inside research/<slug>/rag-db if research/<slug> exists
+    # 3. Default to courses/<slug>/rag-db
+    if (ws / "courses" / slug).is_dir():
+        rag_db_dir = ws / "courses" / slug / "rag-db"
+    elif (ws / "research" / slug).is_dir():
+        rag_db_dir = ws / "research" / slug / "rag-db"
+    else:
+        if "research" in str(sources_dir):
+            rag_db_dir = ws / "research" / slug / "rag-db"
+        else:
+            rag_db_dir = ws / "courses" / slug / "rag-db"
+
+    return {
+        "workspace": ws,
+        "sources_dir": sources_dir,
+        "rag_db_dir": rag_db_dir,
+        "db_path": rag_db_dir / "index.db",
+        "catalog_path": rag_db_dir / "catalog.json",
+        "manifest_path": rag_db_dir / "manifest.json",
+    }
+
+
+def find_rag_db_path(slug: str, workspace: Path | str = ".") -> Path:
+    """Find location of index.db preferring courses/<slug>/rag-db with fallbacks."""
+    ws = Path(workspace).resolve()
+    candidates = [
+        ws / "courses" / slug / "rag-db" / "index.db",
+        ws / "research" / slug / "rag-db" / "index.db",
+        ws / "research" / slug / "sources" / "rag-db" / "index.db",
+        ws / "research" / slug / "sources" / "index.db",
+    ]
+    for c in candidates:
+        if c.is_file():
+            return c
+    return ws / "courses" / slug / "rag-db" / "index.db"
+
+
+def find_catalog_path(slug: str, workspace: Path | str = ".") -> Path:
+    """Find location of catalog.json preferring courses/<slug>/rag-db with fallbacks."""
+    ws = Path(workspace).resolve()
+    candidates = [
+        ws / "courses" / slug / "rag-db" / "catalog.json",
+        ws / "research" / slug / "rag-db" / "catalog.json",
+        ws / "research" / slug / "sources" / "rag-db" / "catalog.json",
+        ws / "research" / slug / "sources" / "catalog.json",
+    ]
+    for c in candidates:
+        if c.is_file():
+            return c
+    return ws / "courses" / slug / "rag-db" / "catalog.json"
+
+
+def find_manifest_path(slug: str, workspace: Path | str = ".") -> Path:
+    """Find location of manifest.json preferring courses/<slug>/rag-db with fallbacks."""
+    ws = Path(workspace).resolve()
+    candidates = [
+        ws / "courses" / slug / "rag-db" / "manifest.json",
+        ws / "research" / slug / "rag-db" / "manifest.json",
+        ws / "research" / slug / "sources" / "rag-db" / "manifest.json",
+        ws / "research" / slug / "sources" / "manifest.json",
+    ]
+    for c in candidates:
+        if c.is_file():
+            return c
+    return ws / "courses" / slug / "rag-db" / "manifest.json"
 
 
 def compute_sha256(content: str | bytes) -> str:
@@ -347,7 +429,12 @@ def run_build_index(
     Gate 4: Verify search probe retrieval latency and recall.
     """
     ws = Path(workspace).resolve()
-    sources_dir = ws / "research" / slug / "sources"
+    rag_paths = get_rag_paths(slug, ws)
+    sources_dir = rag_paths["sources_dir"]
+    rag_db_dir = rag_paths["rag_db_dir"]
+    db_path = rag_paths["db_path"]
+    catalog_path = rag_paths["catalog_path"]
+    manifest_path = rag_paths["manifest_path"]
 
     # --- GATE 0: AUTO-BYPASS (Dynamic check to prevent empty overhead) ---
     if not sources_dir.exists():
@@ -372,8 +459,14 @@ def run_build_index(
             }
         raise FileNotFoundError(f"Sources directory not found: {sources_dir}")
 
-    db_path = sources_dir / "index.db"
-    catalog_path = sources_dir / "catalog.json"
+    # Check for existing manifest to track course-correction additions
+    existing_manifest_file = find_manifest_path(slug, ws)
+    existing_manifest: dict[str, Any] | None = None
+    if existing_manifest_file.is_file():
+        try:
+            existing_manifest = json.loads(existing_manifest_file.read_text(encoding="utf-8"))
+        except Exception:
+            existing_manifest = None
 
     # --- GATE 1: SCAN ---
     eligible_extensions = {".md", ".markdown", ".txt", ".rst"}
@@ -381,6 +474,9 @@ def run_build_index(
 
     for p in sorted(sources_dir.rglob("*")):
         if not p.is_file() or ".git" in p.parts or p.name.startswith("."):
+            continue
+        # Skip internal rag-db contents if located within sources
+        if "rag-db" in p.parts:
             continue
         rel = str(p.relative_to(sources_dir))
         ext = p.suffix.lower()
@@ -396,7 +492,10 @@ def run_build_index(
                 source_group = "open_repos"
 
             title = p.stem.replace("-", " ").replace("_", " ").title()
-            sha = compute_sha256(p.read_bytes())
+            raw_bytes = p.read_bytes()
+            sha = compute_sha256(raw_bytes)
+            text = raw_bytes.decode("utf-8", errors="replace")
+            words = len(re.findall(r"\w+", text))
             scanned_files.append({
                 "path": p,
                 "rel_path": rel,
@@ -404,8 +503,20 @@ def run_build_index(
                 "doc_type": doc_type,
                 "source_group": source_group,
                 "size_bytes": p.stat().st_size,
+                "word_count": words,
                 "sha256": sha,
             })
+
+    # Track course-correction diff against existing manifest
+    prev_files = existing_manifest.get("files", {}) if existing_manifest else {}
+    current_rel_set = {f["rel_path"] for f in scanned_files}
+    added_files = [f for f in scanned_files if f["rel_path"] not in prev_files]
+    updated_files = [f for f in scanned_files if f["rel_path"] in prev_files and prev_files[f["rel_path"]].get("sha256") != f["sha256"]]
+    removed_files = [rel for rel in prev_files if rel not in current_rel_set]
+    is_course_correction = bool(existing_manifest and (added_files or updated_files or removed_files))
+
+    if is_course_correction:
+        print(f"🔄 [Course Correction] Syncing RAG DB for '{slug}': {len(added_files)} new file(s) added, {len(updated_files)} updated, {len(removed_files)} removed.")
 
     # Dynamic auto-bypass if 0 eligible source files discovered
     if len(scanned_files) == 0 and skip_if_empty and not force:
@@ -455,6 +566,7 @@ def run_build_index(
 
     # --- GATE 2: CHUNK ---
     all_chunks_to_insert: list[dict[str, Any]] = []
+    file_chunk_counts: dict[str, int] = {}
     doc_id_counter = 1
 
     for f_info in scanned_files:
@@ -464,6 +576,7 @@ def run_build_index(
             doc_title=f_info["title"],
             target_chunk_words=target_chunk_words,
         )
+        file_chunk_counts[f_info["rel_path"]] = len(f_chunks)
         for idx, ch in enumerate(f_chunks):
             ch["doc_id"] = doc_id_counter
             ch["doc_title"] = f_info["title"]
@@ -476,6 +589,8 @@ def run_build_index(
     gate2_passed = True
 
     # --- GATE 3: INDEX ---
+    rag_db_dir.mkdir(parents=True, exist_ok=True)
+
     # Re-initialize clean DB
     if db_path.exists():
         try:
@@ -533,7 +648,89 @@ def run_build_index(
         total_docs=len(scanned_files),
     )
     atomic_write_json(catalog_path, domain_catalog)
-    gate3_passed = db_path.is_file() and catalog_path.is_file()
+
+    # Build and write manifest.json tracking all files used in RAG creation
+    files_dict: dict[str, Any] = {}
+    for f in scanned_files:
+        rel = f["rel_path"]
+        files_dict[rel] = {
+            "rel_path": rel,
+            "title": f["title"],
+            "doc_type": f["doc_type"],
+            "source_group": f["source_group"],
+            "size_bytes": f["size_bytes"],
+            "sha256": f["sha256"],
+            "word_count": f["word_count"],
+            "chunk_count": file_chunk_counts.get(rel, 0),
+            "indexed_at": now_iso,
+            "status": "active",
+        }
+
+    history = list(existing_manifest.get("history", [])) if existing_manifest else []
+    if is_course_correction:
+        history.append({
+            "timestamp": now_iso,
+            "action": "course_correction",
+            "added_files": [f["rel_path"] for f in added_files],
+            "updated_files": [f["rel_path"] for f in updated_files],
+            "removed_files": removed_files,
+            "message": f"Course correction synced: {len(added_files)} new files added, {len(updated_files)} updated, {len(removed_files)} removed.",
+        })
+    else:
+        history.append({
+            "timestamp": now_iso,
+            "action": "initial_build",
+            "added_files": [f["rel_path"] for f in scanned_files],
+            "updated_files": [],
+            "removed_files": [],
+            "message": f"Initial RAG creation with {len(scanned_files)} files.",
+        })
+
+    manifest_data = {
+        "course_slug": slug,
+        "version": "1.0.0",
+        "created_at": existing_manifest.get("created_at", now_iso) if existing_manifest else now_iso,
+        "updated_at": now_iso,
+        "rag_db_dir": str(rag_db_dir),
+        "total_files_indexed": len(scanned_files),
+        "total_chunks_indexed": len(all_chunks_to_insert),
+        "total_canonical_topics": domain_catalog["total_canonical_topics"],
+        "files": files_dict,
+        "history": history,
+    }
+    atomic_write_json(manifest_path, manifest_data)
+
+    # Mirror rag-db files to secondary locations for cross-folder consistency
+    mirror_targets = []
+    if (ws / "courses" / slug).is_dir() and rag_db_dir != (ws / "courses" / slug / "rag-db"):
+        mirror_targets.append(ws / "courses" / slug / "rag-db")
+    if (ws / "research" / slug).is_dir() and rag_db_dir != (ws / "research" / slug / "rag-db"):
+        mirror_targets.append(ws / "research" / slug / "rag-db")
+    if sources_dir.exists() and rag_db_dir != (sources_dir / "rag-db"):
+        mirror_targets.append(sources_dir / "rag-db")
+
+    for m_dir in mirror_targets:
+        try:
+            m_dir.mkdir(parents=True, exist_ok=True)
+            if db_path.is_file() and (m_dir / "index.db") != db_path:
+                shutil.copy2(db_path, m_dir / "index.db")
+            if catalog_path.is_file() and (m_dir / "catalog.json") != catalog_path:
+                atomic_write_json(m_dir / "catalog.json", domain_catalog)
+            if manifest_path.is_file() and (m_dir / "manifest.json") != manifest_path:
+                atomic_write_json(m_dir / "manifest.json", manifest_data)
+        except Exception:
+            pass
+
+    # Legacy compatibility copy directly into sources_dir
+    try:
+        if sources_dir.is_dir() and (sources_dir / "index.db") != db_path:
+            shutil.copy2(db_path, sources_dir / "index.db")
+            atomic_write_json(sources_dir / "catalog.json", domain_catalog)
+            atomic_write_json(sources_dir / "manifest.json", manifest_data)
+    except Exception:
+        pass
+
+    gate3_passed = db_path.is_file() and catalog_path.is_file() and manifest_path.is_file()
 
     # --- GATE 4: VERIFY (Probe search sanity check) ---
     probe_latency_ms = 0.0
@@ -572,11 +769,19 @@ def run_build_index(
         "slug": slug,
         "workspace": str(ws),
         "skipped": False,
+        "rag_db_dir": str(rag_db_dir),
         "index_db": str(db_path),
         "catalog_file": str(catalog_path),
+        "manifest_file": str(manifest_path),
         "total_documents": len(scanned_files),
         "total_chunks": len(all_chunks_to_insert),
         "total_canonical_topics": domain_catalog["total_canonical_topics"],
+        "course_correction": {
+            "is_update": is_course_correction,
+            "added_files": [f["rel_path"] for f in added_files],
+            "updated_files": [f["rel_path"] for f in updated_files],
+            "removed_files": removed_files,
+        },
         "validation_gates": {
             "gate0_bypass": {"passed": True, "skipped": False},
             "gate1_scan": {"passed": gate1_passed, "files_found": len(scanned_files)},
@@ -631,7 +836,7 @@ def run_query_index(
 ) -> dict[str, Any]:
     """Execute sub-15ms BM25 hybrid search against SQLite FTS5 database."""
     ws = Path(workspace).resolve()
-    db_path = ws / "research" / slug / "sources" / "index.db"
+    db_path = find_rag_db_path(slug, ws)
     if not db_path.is_file():
         raise FileNotFoundError(f"Knowledge index not built for '{slug}'. Run indexer.py build first.")
 
@@ -710,10 +915,19 @@ def run_query_index(
 def get_cached_catalog(slug: str, workspace: Path | str = ".") -> dict[str, Any]:
     """Retrieve synthesized domain catalog for given course slug."""
     ws = Path(workspace).resolve()
-    cat_file = ws / "research" / slug / "sources" / "catalog.json"
+    cat_file = find_catalog_path(slug, ws)
     if not cat_file.is_file():
         raise FileNotFoundError(f"Catalog not found for '{slug}'. Run indexer.py build first.")
     return json.loads(cat_file.read_text(encoding="utf-8"))
+
+
+def get_sources_manifest(slug: str, workspace: Path | str = ".") -> dict[str, Any]:
+    """Retrieve manifest of all source files used in RAG creation."""
+    ws = Path(workspace).resolve()
+    manifest_file = find_manifest_path(slug, ws)
+    if not manifest_file.is_file():
+        raise FileNotFoundError(f"Sources manifest not found for '{slug}'. Run indexer.py build first.")
+    return json.loads(manifest_file.read_text(encoding="utf-8"))
 
 
 # ---------------------------------------------------------------------------
@@ -751,6 +965,12 @@ def main() -> None:
     p_cat.add_argument("--workspace", default=".", help="Workspace root path")
     p_cat.add_argument("--json", action="store_true", help="Output results in JSON format")
 
+    # manifest
+    p_man = subparsers.add_parser("manifest", help="Retrieve manifest of files used in RAG creation")
+    p_man.add_argument("--slug", required=True, help="Course slug")
+    p_man.add_argument("--workspace", default=".", help="Workspace root path")
+    p_man.add_argument("--json", action="store_true", help="Output results in JSON format")
+
     args = parser.parse_args()
 
     try:
@@ -770,7 +990,8 @@ def main() -> None:
                     print(f"ℹ️ {res.get('message')}")
                 else:
                     db_bytes = res["validation_gates"]["gate3_index"]["db_size_bytes"]
-                    print(f"✓ Index built: {res['total_documents']} sources, {res['total_chunks']} chunks, {res['total_canonical_topics']} topics ({db_bytes} bytes in index.db)")
+                    rag_dir = res.get("rag_db_dir", "rag-db")
+                    print(f"✓ Index built in {rag_dir}: {res['total_documents']} sources, {res['total_chunks']} chunks, {res['total_canonical_topics']} topics ({db_bytes} bytes in index.db)")
                 sys.exit(0)
 
         elif args.subcommand == "query":
@@ -791,6 +1012,10 @@ def main() -> None:
 
         elif args.subcommand == "catalog":
             res = get_cached_catalog(slug=args.slug, workspace=args.workspace)
+            output_json(res, 0)
+
+        elif args.subcommand == "manifest":
+            res = get_sources_manifest(slug=args.slug, workspace=args.workspace)
             output_json(res, 0)
 
         else:

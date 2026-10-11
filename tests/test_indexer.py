@@ -21,7 +21,11 @@ for p in [str(SCRIPTS_DIR), str(PROJECT_ROOT)]:
 from course_builder import create_course
 from indexer import (
     extract_domain_catalog,
+    find_catalog_path,
+    find_manifest_path,
+    find_rag_db_path,
     get_cached_catalog,
+    get_sources_manifest,
     init_index_db,
     parse_markdown_into_breadcrumb_chunks,
     print_search_to_console,
@@ -420,5 +424,82 @@ def test_rag_search_prints_to_console(temp_sources_workspace: tuple[Path, str]) 
     assert "Score:" in output
     assert res["ok"] is True
     assert res["total_hits"] >= 1
+
+
+def test_rag_db_folder_structure_and_manifest_tracking(temp_sources_workspace: tuple[Path, str]) -> None:
+    """Verify that RAG files are stored inside rag-db/ and manifest.json tracks all contributing files."""
+    ws, slug = temp_sources_workspace
+    res = run_build_index(slug=slug, workspace=ws)
+    assert res["ok"] is True
+    assert "rag-db" in res["rag_db_dir"]
+
+    # Verify rag-db directory exists and holds index.db, catalog.json, manifest.json
+    rag_dir = Path(res["rag_db_dir"])
+    assert rag_dir.is_dir()
+    assert (rag_dir / "index.db").is_file()
+    assert (rag_dir / "catalog.json").is_file()
+    assert (rag_dir / "manifest.json").is_file()
+
+    # Verify manifest tracking content
+    manifest = get_sources_manifest(slug=slug, workspace=ws)
+    assert manifest["course_slug"] == slug
+    assert manifest["total_files_indexed"] == 3
+    assert len(manifest["files"]) == 3
+
+    # Check that individual files are tracked with sha256, chunk count, and doc_type
+    for rel_path, meta in manifest["files"].items():
+        assert meta["sha256"]
+        assert meta["chunk_count"] > 0
+        assert meta["doc_type"] in {"markdown_file", "github_repo_content", "youtube_transcript"}
+        assert meta["status"] == "active"
+
+    # Check history records initial build
+    assert len(manifest["history"]) >= 1
+    assert manifest["history"][0]["action"] == "initial_build"
+
+
+def test_course_correction_adds_new_files_to_rag_db(temp_sources_workspace: tuple[Path, str]) -> None:
+    """Verify that when course correction adds new files, rag-db updates and tracks them in manifest."""
+    ws, slug = temp_sources_workspace
+    # 1. Initial build with 3 files
+    init_res = run_build_index(slug=slug, workspace=ws)
+    assert init_res["ok"] is True
+    assert init_res["total_documents"] == 3
+
+    # 2. Simulate course correction by adding a new gold-standard book chapter
+    sources_dir = ws / "research" / slug / "sources"
+    new_dir = sources_dir / "course-correct-materials"
+    new_dir.mkdir(parents=True)
+    new_file = new_dir / "byzantine-fault-tolerance.md"
+    new_file.write_text(
+        """# Byzantine Fault Tolerance (BFT)
+## PBFT Algorithm Foundations
+Practical Byzantine Fault Tolerance operates in asynchronous networks with malicious adversaries.
+It tolerates up to `f = (N - 1) / 3` malicious nodes through pre-prepare, prepare, and commit phases.
+""",
+        encoding="utf-8",
+    )
+
+    # 3. Re-run indexer (as happens during course correct)
+    update_res = run_build_index(slug=slug, workspace=ws)
+    assert update_res["ok"] is True
+    assert update_res["total_documents"] == 4
+    assert update_res["course_correction"]["is_update"] is True
+    assert any("byzantine-fault-tolerance.md" in f for f in update_res["course_correction"]["added_files"])
+
+    # 4. Check manifest records course correction in history
+    manifest = get_sources_manifest(slug=slug, workspace=ws)
+    assert manifest["total_files_indexed"] == 4
+    assert len(manifest["history"]) == 2
+    last_event = manifest["history"][-1]
+    assert last_event["action"] == "course_correction"
+    assert any("byzantine-fault-tolerance.md" in f for f in last_event["added_files"])
+
+    # 5. Verify the new concept is immediately searchable in rag-db/index.db
+    search_res = run_query_index(slug=slug, query="Byzantine Fault Tolerance PBFT", workspace=ws)
+    assert search_res["ok"] is True
+    assert search_res["total_hits"] >= 1
+    assert any("Byzantine" in h["heading"] or "PBFT" in h["full_content"] for h in search_res["hits"])
+
 
 
