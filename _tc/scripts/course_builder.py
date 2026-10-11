@@ -323,6 +323,7 @@ def run_triad_consensus_loop(
     candidate_data: dict[str, Any] = {
         "course": {
             "id": slug,
+            "slug": slug,
             "title": title,
             "archetype": archetype,
             "status": "in_progress",
@@ -416,12 +417,14 @@ def scaffold_course_files(
             sec_path.mkdir(parents=True, exist_ok=True)
 
             # lesson-plan.md (Teacher's instructional checklist - AI only)
+            vocab_list = sec.get('vocabulary_introduced', [])
+            vocab_bullets = "\n".join(f"- [ ] Verify mechanics of {v}." for v in vocab_list) if vocab_list else f"- [ ] Verify understanding of {sec['title']}."
             lesson_plan_content = (
                 f"# Lesson Plan: {sec['title']}\n\n"
                 f"> **Internal AI Instructor Checklist** (Never show raw contents to student)\n\n"
                 f"## Objectives\n"
-                f"- Master mechanics of {sec['title']}.\n"
-                f"- Verify understanding of {', '.join(sec.get('vocabulary_introduced', ['key concepts']))}.\n\n"
+                f"- [ ] Master core mechanics and invariants of {sec['title']}.\n"
+                f"{vocab_bullets}\n\n"
                 f"## Prerequisites to Verify\n"
                 f"- {', '.join(sec.get('vocabulary_prerequisites', ['None (Foundational)']))}\n\n"
                 f"## Socratic Diagnostic Prompts\n"

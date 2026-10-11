@@ -26,6 +26,11 @@ DAG_SCRIPT = SCRIPTS_DIR / "dag.py"
 HASH_TRACKER_SCRIPT = SCRIPTS_DIR / "hash_tracker.py"
 CONTEXT_SCRIPT = SCRIPTS_DIR / "context.py"
 LEDGER_SCRIPT = SCRIPTS_DIR / "ledger.py"
+COURSE_BUILDER_SCRIPT = SCRIPTS_DIR / "course_builder.py"
+TEACH_ENGINE_SCRIPT = SCRIPTS_DIR / "teach_engine.py"
+NOTES_COMPILER_SCRIPT = SCRIPTS_DIR / "notes_compiler.py"
+DIAGNOSTIC_TESTER_SCRIPT = SCRIPTS_DIR / "diagnostic_tester.py"
+PRACTICAL_EVALUATOR_SCRIPT = SCRIPTS_DIR / "practical_evaluator.py"
 
 
 def run_script(script_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -451,3 +456,173 @@ def test_concurrent_ledger_append_locking(tmp_path: Path):
         parsed = json.loads(line)
         assert "timestamp" in parsed
         assert "worker_id" in parsed
+
+
+def test_full_apprenticeship_pipeline_e2e(tmp_path: Path):
+    """End-to-end test verifying the complete autonomous apprenticeship pipeline:
+    1. course_builder.py create scaffolds curriculum filesystem with lesson plan checkboxes
+    2. teach_engine.py session inspects active teaching turn and concept
+    3. teach_engine.py advance ticks off checklist items in lesson-plan.md and compiles notes
+    4. diagnostic_tester.py prepare analyzes cumulative boundary and extracts recap questions
+    5. diagnostic_tester.py record logs response in test-ledger.jsonl and promotes section to 'completed'
+    6. practical_evaluator.py init-brief generates 4-lens capstone project brief
+    7. practical_evaluator.py review grades capstone submission across 4 lenses and marks course completed
+    """
+    workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
+
+    # Step 1: course_builder.py create
+    build_res = run_script(
+        COURSE_BUILDER_SCRIPT,
+        "create",
+        "--slug", "systems-craft",
+        "--title", "Systems Craft",
+        "--archetype", "applied_creation",
+        "--workspace", str(workspace_root),
+        "--json",
+    )
+    assert build_res.returncode == 0, build_res.stderr
+    build_data = json.loads(build_res.stdout)
+    assert build_data["ok"] is True
+    assert build_data["slug"] == "systems-craft"
+
+    course_dir = workspace_root / "courses" / "systems-craft"
+    assert course_dir.is_dir()
+    manifest_file = course_dir / "course.toml"
+    assert manifest_file.is_file()
+
+    # Step 2: teach_engine.py session
+    sess_res = run_script(
+        TEACH_ENGINE_SCRIPT,
+        "session",
+        "--course", "systems-craft",
+        "--workspace", str(workspace_root),
+        "--json",
+    )
+    assert sess_res.returncode == 0, sess_res.stderr
+    sess_data = json.loads(sess_res.stdout)
+    assert sess_data["ok"] is True
+    active_sec = sess_data["active_section"]
+    sec_dir = Path(active_sec["section_dir"])
+    assert sec_dir.is_dir()
+
+    lesson_plan_file = sec_dir / "lesson-plan.md"
+    assert lesson_plan_file.is_file()
+    lp_content = lesson_plan_file.read_text(encoding="utf-8")
+    assert "- [ ]" in lp_content  # Markdown checkboxes must be present!
+
+    # Step 3: teach_engine.py advance to completion
+    # Count checklist items
+    import re
+    unchecked = re.findall(r"^-\s*\[\s*\]\s+(.+)$", lp_content, re.MULTILINE)
+    assert len(unchecked) >= 1
+
+    # Advance until last concept
+    for _ in range(len(unchecked) - 1):
+        adv_res = run_script(
+            TEACH_ENGINE_SCRIPT,
+            "advance",
+            "--course", "systems-craft",
+            "--workspace", str(workspace_root),
+            "--json",
+        )
+        assert adv_res.returncode == 0, adv_res.stderr
+
+    # Advance final concept with recap
+    recap_bullets = [
+        "Primitives compose into higher-order abstractions.",
+        "Deterministic states prevent race conditions.",
+        "Bounded memory layouts guarantee predictable latency.",
+    ]
+    adv_final = run_script(
+        TEACH_ENGINE_SCRIPT,
+        "advance",
+        "--course", "systems-craft",
+        "--workspace", str(workspace_root),
+        "--recap", *recap_bullets,
+        "--json",
+    )
+    assert adv_final.returncode == 0, adv_final.stderr
+    adv_data = json.loads(adv_final.stdout)
+    assert adv_data["ok"] is True
+    assert adv_data["section_fully_completed"] is True
+
+    # Verify notes.md was created and section transitioned to review
+    notes_file = sec_dir / "notes.md"
+    assert notes_file.is_file()
+    assert "3-Bullet Recap" in notes_file.read_text(encoding="utf-8")
+
+    with open(manifest_file, "rb") as f:
+        course_manifest = tomllib.load(f)
+    assert course_manifest["chapters"][0]["sections"][0]["status"] == "review"
+
+    # Step 4: diagnostic_tester.py prepare
+    diag_prep = run_script(
+        DIAGNOSTIC_TESTER_SCRIPT,
+        "prepare",
+        "--course", str(course_dir),
+    )
+    assert diag_prep.returncode == 0, diag_prep.stderr
+    prep_data = json.loads(diag_prep.stdout)
+    assert prep_data["ok"] is True
+    assert prep_data["eligible_sections_count"] >= 1
+    assert "active_test_section" in prep_data
+
+    # Step 5: diagnostic_tester.py record
+    diag_rec = run_script(
+        DIAGNOSTIC_TESTER_SCRIPT,
+        "record",
+        "--course", str(course_dir),
+        "--chapter", active_sec["chapter_id"],
+        "--section", active_sec["section_id"],
+        "--type", "hinge_scenario",
+        "--prompt", "Why do bounded memory layouts eliminate unexpected GC pauses?",
+        "--response", "Memory allocations are pre-allocated or statically bounded on the stack.",
+        "--outcome", "pass",
+    )
+    assert diag_rec.returncode == 0, diag_rec.stderr
+    rec_data = json.loads(diag_rec.stdout)
+    assert rec_data["ok"] is True
+    assert rec_data["section_status_updated"] is True
+    assert rec_data["new_section_status"] == "completed"
+
+    # Verify section transitioned to completed
+    with open(manifest_file, "rb") as f:
+        course_manifest = tomllib.load(f)
+    assert course_manifest["chapters"][0]["sections"][0]["status"] == "completed"
+
+    # Step 6: practical_evaluator.py init-brief
+    init_brief_res = run_script(
+        PRACTICAL_EVALUATOR_SCRIPT,
+        "init-brief",
+        "--course", str(course_dir),
+        "--project-id", "01",
+    )
+    assert init_brief_res.returncode == 0, init_brief_res.stderr
+    brief_data = json.loads(init_brief_res.stdout)
+    assert brief_data["ok"] is True
+    spec_path = Path(brief_data["spec_path"])
+    assert spec_path.is_file()
+
+    # Step 7: practical_evaluator.py review
+    rev_res = run_script(
+        PRACTICAL_EVALUATOR_SCRIPT,
+        "review",
+        "--course", str(course_dir),
+        "--project-id", "01",
+        "--verdict", "PASS",
+        "--functional-lens", "Full protocol compliance verified with automated tests.",
+        "--edge-lens", "Tested boundary conditions, network disconnections, and corrupt frames.",
+        "--architecture-lens", "Adheres to sovereignty invariants with zero external daemon requirements.",
+        "--verification-lens", "100% test pass rate across unit and stress test suites.",
+    )
+    assert rev_res.returncode == 0, rev_res.stderr
+    rev_data = json.loads(rev_res.stdout)
+    assert rev_data["ok"] is True
+    assert rev_data["verdict"] == "PASS"
+
+    # Verify final course completion status
+    with open(manifest_file, "rb") as f:
+        final_manifest = tomllib.load(f)
+    assert final_manifest["course"]["status"] == "completed"
+

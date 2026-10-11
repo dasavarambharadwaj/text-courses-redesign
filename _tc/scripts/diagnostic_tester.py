@@ -113,7 +113,7 @@ def read_notes_summary(notes_path: Path) -> dict[str, Any]:
         capture = False
         for line in lines:
             stripped = line.strip()
-            if "### 3-Bullet Recap" in stripped or "## Recap" in stripped:
+            if "3-bullet recap" in stripped.lower() or stripped.lower() in ("## recap", "### recap"):
                 capture = True
                 continue
             if capture:
@@ -180,7 +180,7 @@ def cmd_prepare(args: argparse.Namespace) -> None:
 
     course_data = manifest.get("course", {})
     course_slug = course_data.get("slug", course_dir.name)
-    chapters = manifest.get("chapter", [])
+    chapters = manifest.get("chapters") or manifest.get("chapter", [])
     if isinstance(chapters, dict):
         chapters = [chapters]
 
@@ -189,20 +189,33 @@ def cmd_prepare(args: argparse.Namespace) -> None:
     active_test_section: dict[str, Any] | None = None
 
     for ch in chapters:
-        ch_slug = ch.get("slug", "")
+        ch_slug = ch.get("slug") or ch.get("id", "")
         ch_title = ch.get("title", "")
-        sections = ch.get("section", [])
+        sections = ch.get("sections") or ch.get("section", [])
         if isinstance(sections, dict):
             sections = [sections]
 
         for sec in sections:
-            sec_slug = sec.get("slug", "")
+            sec_slug = sec.get("slug") or sec.get("id", "")
             sec_title = sec.get("title", "")
             sec_status = sec.get("status", "not-started")
 
             # Cumulative Boundary Rule: Only 'review' or 'completed' sections are eligible!
             if sec_status in {"review", "completed"}:
-                notes_path = course_dir / "chapters" / ch_slug / sec_slug / "notes.md"
+                candidates = [
+                    course_dir / ch_slug / sec_slug / "notes.md",
+                    course_dir / "chapters" / ch_slug / sec_slug / "notes.md",
+                ]
+                notes_path = candidates[0]
+                for cand in candidates:
+                    if cand.is_file():
+                        notes_path = cand
+                        break
+                else:
+                    globbed = list(course_dir.glob(f"**/*{sec_slug}*/notes.md"))
+                    if globbed:
+                        notes_path = globbed[0]
+
                 notes_info = read_notes_summary(notes_path)
                 sec_info = {
                     "chapter_slug": ch_slug,
@@ -265,18 +278,20 @@ def cmd_record(args: argparse.Namespace) -> None:
     found_sec = None
     target_ch_obj = None
 
-    chapters = manifest.get("chapter", [])
+    chapters = manifest.get("chapters") or manifest.get("chapter", [])
     if isinstance(chapters, dict):
         chapters = [chapters]
 
     for ch in chapters:
-        if ch.get("slug") == target_ch or ch.get("title") == target_ch:
+        ch_matches = target_ch in (ch.get("slug"), ch.get("title"), ch.get("id"))
+        if ch_matches:
             target_ch_obj = ch
-            sections = ch.get("section", [])
+            sections = ch.get("sections") or ch.get("section", [])
             if isinstance(sections, dict):
                 sections = [sections]
             for sec in sections:
-                if sec.get("slug") == target_sec or sec.get("title") == target_sec:
+                sec_matches = target_sec in (sec.get("slug"), sec.get("title"), sec.get("id"))
+                if sec_matches:
                     found_sec = sec
                     break
             if found_sec:

@@ -119,8 +119,9 @@ def update_course_manifest_section_status(
     manifest_path: Path,
     section_dir_name: str,
     new_status: str = "review",
+    chapter_dir_name: str | None = None,
 ) -> tuple[bool, str | None]:
-    """Atomically update section status in course.toml matching section directory name."""
+    """Atomically update section status in course.toml matching section directory name and optional chapter."""
     try:
         data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
     except Exception as e:
@@ -133,21 +134,55 @@ def update_course_manifest_section_status(
     sec_id_match = re.search(r"sec(?:tion)?[-_]?0*(\d+)", section_dir_name, re.IGNORECASE)
     expected_sec_num = int(sec_id_match.group(1)) if sec_id_match else None
 
-    for ch in chapters:
-        for idx, sec in enumerate(ch.get("sections", []), 1):
-            sec_id = str(sec.get("id", ""))
-            sec_id_num = None
-            m_s = re.search(r"sec(?:tion)?[-_]?0*(\d+)", sec_id, re.IGNORECASE)
-            if m_s:
-                sec_id_num = int(m_s.group(1))
+    # Determine candidate chapters if chapter_dir_name is provided
+    candidate_chapters = chapters
+    if chapter_dir_name:
+        ch_id_match = re.search(r"ch(?:apter)?[-_]?0*(\d+)", chapter_dir_name, re.IGNORECASE)
+        expected_ch_num = int(ch_id_match.group(1)) if ch_id_match else None
 
-            if sec_id == section_dir_name or (expected_sec_num is not None and (sec_id_num == expected_sec_num or idx == expected_sec_num)):
-                sec["status"] = new_status
-                sec["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                found = True
-                break
-        if found:
-            break
+        matching_chapters = []
+        for ch_idx, ch in enumerate(chapters, 1):
+            ch_id = str(ch.get("id", ""))
+            ch_slug = str(ch.get("slug", ""))
+            ch_id_num = None
+            m_c = re.search(r"ch(?:apter)?[-_]?0*(\d+)", ch_id, re.IGNORECASE)
+            if m_c:
+                ch_id_num = int(m_c.group(1))
+
+            if (
+                ch_id == chapter_dir_name
+                or ch_slug == chapter_dir_name
+                or chapter_dir_name.lower() in ch_slug.lower()
+                or (expected_ch_num is not None and (ch_id_num == expected_ch_num or ch_idx == expected_ch_num))
+            ):
+                matching_chapters.append(ch)
+
+        if matching_chapters:
+            candidate_chapters = matching_chapters
+
+    def search_chapters(chs: list[dict[str, Any]]) -> bool:
+        for ch in chs:
+            for idx, sec in enumerate(ch.get("sections", []), 1):
+                sec_id = str(sec.get("id", ""))
+                sec_slug = str(sec.get("slug", ""))
+                sec_id_num = None
+                m_s = re.search(r"sec(?:tion)?[-_]?0*(\d+)", sec_id, re.IGNORECASE)
+                if m_s:
+                    sec_id_num = int(m_s.group(1))
+
+                if (
+                    sec_id == section_dir_name
+                    or sec_slug == section_dir_name
+                    or (expected_sec_num is not None and (sec_id_num == expected_sec_num or idx == expected_sec_num))
+                ):
+                    sec["status"] = new_status
+                    sec["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    return True
+        return False
+
+    found = search_chapters(candidate_chapters)
+    if not found and candidate_chapters is not chapters:
+        found = search_chapters(chapters)
 
     if found:
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -168,6 +203,7 @@ def compile_notes(
     pitfalls: str = "",
     force: bool = False,
     target_status: str = "review",
+    chapter_dir_name: str | None = None,
 ) -> dict[str, Any]:
     """Compile section notes into notes.md and transition course.toml status to review."""
     sec_path = Path(section_dir).resolve()
@@ -198,12 +234,13 @@ def compile_notes(
     manifest_file = find_enclosing_manifest(sec_path)
     manifest_updated = False
     warning = None
-
+    effective_chapter = chapter_dir_name or sec_path.parent.name
     if manifest_file:
         ok, err = update_course_manifest_section_status(
             manifest_path=manifest_file,
             section_dir_name=sec_path.name,
             new_status=target_status,
+            chapter_dir_name=effective_chapter,
         )
         if ok:
             manifest_updated = True
@@ -272,6 +309,7 @@ def main() -> None:
     p_comp.add_argument("--content", default="", help="Detailed technical mechanics content.")
     p_comp.add_argument("--examples", default="", help="Worked examples content.")
     p_comp.add_argument("--pitfalls", default="", help="Common pitfalls content.")
+    p_comp.add_argument("--chapter", default=None, help="Optional chapter identifier or directory name.")
     p_comp.add_argument("--status", default="review", help="Target status for section in course.toml (default: review).")
     p_comp.add_argument("--force", action="store_true", help="Force overwrite existing notes.")
     p_comp.add_argument("--json", action="store_true", help="Output results in JSON format.")
@@ -294,6 +332,7 @@ def main() -> None:
                 pitfalls=args.pitfalls,
                 force=args.force,
                 target_status=args.status,
+                chapter_dir_name=args.chapter,
             )
             output_json(result, 0)
 

@@ -215,3 +215,69 @@ def test_inspect_notes_state(tmp_path: Path):
     assert d2["compiled"] is True
     assert d2["recap_bullets_count"] == 2
     assert d2["size_bytes"] > 0
+
+
+def test_compile_notes_cross_chapter_collision(tmp_path: Path):
+    """Verify that compiling section in chapter 2 does not accidentally update chapter 1 section with identical ID."""
+    course_dir = tmp_path / "courses" / "multi-ch"
+    sec1_dir = course_dir / "chapter-01" / "section-01"
+    sec2_dir = course_dir / "chapter-02" / "section-01"
+    sec1_dir.mkdir(parents=True)
+    sec2_dir.mkdir(parents=True)
+
+    manifest_data = {
+        "course": {
+            "id": "multi-ch",
+            "title": "Multi Chapter Course",
+            "status": "in_progress",
+        },
+        "chapters": [
+            {
+                "id": "ch-01",
+                "title": "Chapter 1",
+                "sections": [
+                    {"id": "sec-01", "title": "Ch1 Sec1", "status": "completed"}
+                ],
+            },
+            {
+                "id": "ch-02",
+                "title": "Chapter 2",
+                "sections": [
+                    {"id": "sec-01", "title": "Ch2 Sec1", "status": "in_progress"}
+                ],
+            },
+        ],
+    }
+    course_toml = course_dir / "course.toml"
+    with open(course_toml, "wb") as f:
+        tomli_w.dump(manifest_data, f)
+
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(COMPILER_SCRIPT),
+            "compile",
+            "--section-dir",
+            str(sec2_dir),
+            "--title",
+            "Ch2 Sec1",
+            "--recap",
+            "Point A",
+            "Point B",
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 0
+    data = json.loads(res.stdout)
+    assert data["ok"] is True
+
+    # Verify manifest was updated correctly
+    import tomllib
+    updated = tomllib.loads(course_toml.read_text(encoding="utf-8"))
+    # Chapter 1 section must remain "completed"
+    assert updated["chapters"][0]["sections"][0]["status"] == "completed"
+    # Chapter 2 section must be transitioned to "review"
+    assert updated["chapters"][1]["sections"][0]["status"] == "review"
+

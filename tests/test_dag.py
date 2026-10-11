@@ -475,3 +475,48 @@ title = "Sec 1"
     data = json.loads(result.stdout)
     assert data["ok"] is True
     assert data["valid"] is True
+
+
+def test_validate_cross_chapter_section_id_collision(tmp_path: Path):
+    """Verify that identical section IDs across distinct chapters do not overwrite or collide."""
+    manifest_file = tmp_path / "course.toml"
+    content = """
+[course]
+slug = "collision-course"
+title = "Collision Course"
+status = "not_started"
+
+[[chapters]]
+id = "ch-01"
+slug = "ch-01"
+title = "Chapter 1"
+
+[[chapters.sections]]
+id = "sec-01"
+slug = "sec-01"
+title = "Ch1 Sec1"
+prerequisites = []
+
+[[chapters]]
+id = "ch-02"
+slug = "ch-02"
+title = "Chapter 2"
+
+[[chapters.sections]]
+id = "sec-01"
+slug = "sec-01"
+title = "Ch2 Sec1"
+prerequisites = ["ch-01:sec-01"]
+"""
+    manifest_file.write_text(content.strip(), encoding="utf-8")
+
+    result = run_dag("validate", "--path", str(manifest_file))
+    assert result.returncode == 0
+    data = json.loads(result.stdout)
+    assert data["ok"] is True
+    assert data["valid"] is True
+    assert data["total_nodes"] == 2
+    assert "ch-01:sec-01" in data["order"]
+    assert "ch-02:sec-01" in data["order"]
+    assert data["order"].index("ch-01:sec-01") < data["order"].index("ch-02:sec-01")
+

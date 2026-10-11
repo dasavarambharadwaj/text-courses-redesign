@@ -47,6 +47,14 @@ CANONICAL_SCRIPTS = [
     "bootstrapper.py",
     "redirector.py",
     "migrator.py",
+    "scout.py",
+    "auditor.py",
+    "course_builder.py",
+    "lesson_tracker.py",
+    "notes_compiler.py",
+    "teach_engine.py",
+    "diagnostic_tester.py",
+    "practical_evaluator.py",
 ]
 
 

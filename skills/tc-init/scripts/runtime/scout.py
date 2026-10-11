@@ -22,6 +22,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -153,6 +154,9 @@ def extract_toc_and_symbols(content: str) -> dict[str, Any]:
 
 def fetch_url_content(url: str, timeout: int = 8) -> tuple[str, str]:
     """Fetch content from HTTP/HTTPS URL, returning (content, error_msg)."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme.lower() not in ("http", "https"):
+        return "", f"Invalid URL scheme '{parsed.scheme}'. Only http and https schemes are permitted."
     headers = {"User-Agent": "TextCourses-Scout/1.0 (+https://textcourses.com)"}
     req = urllib.request.Request(url, headers=headers)
     try:

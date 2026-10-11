@@ -127,61 +127,104 @@ def build_graph(data: dict[str, Any]) -> tuple[dict[Any, list[Any]], str | None]
                 break
 
         use_int_id = isinstance(sample_prereq, int)
-        use_slug = isinstance(sample_prereq, str) and not (sample_prereq.isdigit() or "." in sample_prereq)
+        use_slug = isinstance(sample_prereq, str) and not (sample_prereq.isdigit() or "." in sample_prereq or ":" in sample_prereq or "/" in sample_prereq)
 
-        # Build alias map -> canonical node
-        alias_map: dict[Any, Any] = {}
+        # Check for collisions across chapters
+        sec_ids = [s.get("id") for _, s in all_sections if s.get("id") is not None]
+        sec_slugs = [s.get("slug") for _, s in all_sections if s.get("slug")]
+        has_id_collision = len(sec_ids) != len(set(sec_ids))
+        has_slug_collision = len(sec_slugs) != len(set(sec_slugs))
+
+        # Build alias maps -> canonical node
+        global_alias_map: dict[Any, Any] = {}
+        chapter_alias_map: dict[Any, dict[Any, Any]] = {}
         canonical_nodes: list[Any] = []
-        graph = {}
+        graph: dict[Any, list[Any]] = {}
+        sec_to_canon: dict[int, Any] = {}
 
-        for ch, sec in all_sections:
+        for idx, (ch, sec) in enumerate(all_sections):
             sec_id = sec.get("id")
             sec_slug = sec.get("slug")
             ch_id = ch.get("id")
             ch_slug = ch.get("slug")
 
             # Determine canonical node representation
-            if use_int_id and sec_id is not None:
+            if has_id_collision and (not use_slug or has_slug_collision):
+                if ch_id is not None and sec_id is not None:
+                    canon = f"{ch_id}:{sec_id}"
+                elif ch_slug and sec_slug:
+                    canon = f"{ch_slug}:{sec_slug}"
+                else:
+                    canon = f"{ch_id}.{sec_id}"
+            elif use_int_id and sec_id is not None and not has_id_collision:
                 canon = sec_id
-            elif use_slug and sec_slug:
+            elif use_slug and sec_slug and not has_slug_collision:
                 canon = sec_slug
-            elif sec_slug:
+            elif sec_slug and not has_slug_collision:
                 canon = sec_slug
-            elif sec_id is not None:
+            elif sec_id is not None and not has_id_collision:
                 canon = sec_id
+            elif ch_slug and sec_slug:
+                canon = f"{ch_slug}/{sec_slug}"
+            elif ch_id is not None and sec_id is not None:
+                canon = f"{ch_id}:{sec_id}"
             else:
                 canon = f"{ch_id}.{sec_id}"
 
+            sec_to_canon[idx] = canon
             canonical_nodes.append(canon)
             graph[canon] = []
 
-            # Register aliases
-            if sec_id is not None:
-                alias_map[sec_id] = canon
-                alias_map[str(sec_id)] = canon
-            if sec_slug:
-                alias_map[sec_slug] = canon
+            # Register chapter-scoped aliases
+            for cid in (ch_id, str(ch_id) if ch_id is not None else None, ch_slug):
+                if cid is not None:
+                    ch_map = chapter_alias_map.setdefault(cid, {})
+                    if sec_id is not None:
+                        ch_map[sec_id] = canon
+                        ch_map[str(sec_id)] = canon
+                    if sec_slug:
+                        ch_map[sec_slug] = canon
+
+            # Register explicit compound aliases
+            global_alias_map[canon] = canon
             if ch_id is not None and sec_id is not None:
-                alias_map[f"{ch_id}.{sec_id}"] = canon
-                alias_map[f"{ch_id}:{sec_id}"] = canon
+                global_alias_map[f"{ch_id}.{sec_id}"] = canon
+                global_alias_map[f"{ch_id}:{sec_id}"] = canon
             if ch_slug and sec_slug:
-                alias_map[f"{ch_slug}/{sec_slug}"] = canon
+                global_alias_map[f"{ch_slug}/{sec_slug}"] = canon
             if ch_slug and sec_id is not None:
-                alias_map[f"{ch_slug}/{sec_id}"] = canon
+                global_alias_map[f"{ch_slug}/{sec_id}"] = canon
+
+            # If no collision across chapters, register simple ID/slug in global map
+            if not has_id_collision and sec_id is not None:
+                global_alias_map[sec_id] = canon
+                global_alias_map[str(sec_id)] = canon
+            if not has_slug_collision and sec_slug:
+                global_alias_map[sec_slug] = canon
 
         # Resolve prerequisites for each section
-        for ch, sec in all_sections:
-            sec_id = sec.get("id")
-            sec_slug = sec.get("slug")
-            canon = alias_map.get(sec_slug) or alias_map.get(sec_id)
-            if canon is None:
-                continue
+        for idx, (ch, sec) in enumerate(all_sections):
+            canon = sec_to_canon[idx]
+            ch_id = ch.get("id")
+            ch_slug = ch.get("slug")
+            ch_scope = chapter_alias_map.get(ch_id) or chapter_alias_map.get(ch_slug) or {}
 
             prereqs = extract_prereqs(sec)
             for p in prereqs:
-                if p not in alias_map:
+                resolved = None
+                # 1. Check chapter scope first
+                if p in ch_scope:
+                    resolved = ch_scope[p]
+                elif str(p) in ch_scope:
+                    resolved = ch_scope[str(p)]
+                # 2. Check global alias map
+                elif p in global_alias_map:
+                    resolved = global_alias_map[p]
+                elif str(p) in global_alias_map:
+                    resolved = global_alias_map[str(p)]
+
+                if resolved is None:
                     return {}, str(p)
-                resolved = alias_map[p]
                 graph[canon].append(resolved)
 
         return graph, None

@@ -569,8 +569,14 @@ def cmd_check(args: argparse.Namespace) -> None:
             active_ch, active_sec, _, _ = find_active_and_completed_sections(manifest_data)
             if active_sec:
                 active_lp = resolve_section_file_path(course_dir, active_ch or {}, active_sec, "lesson-plan.md")
+                active_slug = str(active_sec.get("slug", ""))
+                active_id = str(active_sec.get("id", ""))
                 # Compare filenames or relative paths
-                if file_path.resolve() == active_lp.resolve() or active_sec.get("slug") in file_str or f"sec-{active_sec.get('id')}" in file_str:
+                if (
+                    file_path.resolve() == active_lp.resolve()
+                    or (active_slug and active_slug in file_str)
+                    or (active_id and f"sec-{active_id}" in file_str)
+                ):
                     output_json({
                         "ok": True,
                         "authorized": True,

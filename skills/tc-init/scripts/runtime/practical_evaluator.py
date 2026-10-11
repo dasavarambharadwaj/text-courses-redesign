@@ -135,6 +135,21 @@ def read_ledger_misconceptions(course_dir: Path) -> list[str]:
     return sorted(freq.keys(), key=lambda k: freq[k], reverse=True)
 
 
+def resolve_portfolio_dir(course_dir: Path) -> Path:
+    """Resolve portfolio directory (prefers workspace root portfolio/ if workspace exists, fallbacks to course_dir/portfolio)."""
+    if course_dir.parent.name == "courses":
+        ws_root = course_dir.parent.parent
+        ws_portfolio = ws_root / "portfolio"
+        if ws_portfolio.exists() or (ws_root / ".tc").exists():
+            return ws_portfolio
+    if (course_dir / "portfolio").is_dir():
+        return course_dir / "portfolio"
+    ws_portfolio = course_dir.parent / "portfolio"
+    if ws_portfolio.exists():
+        return ws_portfolio
+    return course_dir / "portfolio"
+
+
 def cmd_init_brief(args: argparse.Namespace) -> None:
     """Generate a customizable practical project brief with misconception weighting."""
     try:
@@ -149,7 +164,7 @@ def cmd_init_brief(args: argparse.Namespace) -> None:
     archetype = course_data.get("archetype", "systems")
 
     # Determine project ID
-    portfolio_dir = course_dir / "portfolio"
+    portfolio_dir = resolve_portfolio_dir(course_dir)
     portfolio_dir.mkdir(parents=True, exist_ok=True)
 
     project_id = args.project_id
@@ -268,8 +283,10 @@ def cmd_review(args: argparse.Namespace) -> None:
         output_json({"ok": False, "error": str(e)}, exit_code=1)
 
     project_id = args.project_id.strip()
-    portfolio_dir = course_dir / "portfolio"
+    portfolio_dir = resolve_portfolio_dir(course_dir)
     project_dir = portfolio_dir / f"project-{project_id}"
+    if not (project_dir / "project-spec.md").is_file() and (course_dir / "portfolio" / f"project-{project_id}" / "project-spec.md").is_file():
+        project_dir = course_dir / "portfolio" / f"project-{project_id}"
     spec_path = project_dir / "project-spec.md"
 
     if not spec_path.is_file():
@@ -367,10 +384,15 @@ def cmd_review(args: argparse.Namespace) -> None:
     if verdict == "PASS":
         course_data = manifest.setdefault("course", {})
         course_data["status"] = "completed"
-        # Also mark all chapters completed if needed
-        for ch in manifest.get("chapter", []):
+        chs = manifest.get("chapters") or manifest.get("chapter", [])
+        if isinstance(chs, dict):
+            chs = [chs]
+        for ch in chs:
             ch["status"] = "completed"
-            for sec in ch.get("section", []):
+            sections = ch.get("sections") or ch.get("section", [])
+            if isinstance(sections, dict):
+                sections = [sections]
+            for sec in sections:
                 sec["status"] = "completed"
         try:
             atomic_write_toml(course_dir / "course.toml", manifest)

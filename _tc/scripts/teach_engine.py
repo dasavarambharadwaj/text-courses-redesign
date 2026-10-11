@@ -93,10 +93,12 @@ def load_preferences(workspace: Path) -> dict[str, Any]:
     return result
 
 
-def find_section_directory(course_dir: Path, chapter_id: str, section_id: str) -> Path | None:
+def find_section_directory(course_dir: Path, chapter_id: Any, section_id: Any) -> Path | None:
     """Locate the actual section directory on disk for given chapter and section IDs."""
-    ch_num_m = re.search(r"(\d+)", chapter_id)
-    sec_num_m = re.search(r"(\d+)", section_id)
+    ch_id_str = str(chapter_id) if chapter_id is not None else ""
+    sec_id_str = str(section_id) if section_id is not None else ""
+    ch_num_m = re.search(r"(\d+)", ch_id_str)
+    sec_num_m = re.search(r"(\d+)", sec_id_str)
     ch_num = int(ch_num_m.group(1)) if ch_num_m else None
     sec_num = int(sec_num_m.group(1)) if sec_num_m else None
 
@@ -118,7 +120,7 @@ def find_section_directory(course_dir: Path, chapter_id: str, section_id: str) -
     for ch_path in course_dir.glob("*"):
         if ch_path.is_dir():
             for sec_path in ch_path.glob("*"):
-                if sec_path.is_dir() and section_id.lower() in sec_path.name.lower():
+                if sec_path.is_dir() and sec_id_str.lower() in sec_path.name.lower():
                     return sec_path
 
     return None
@@ -142,7 +144,7 @@ def resolve_active_section(course_dir: Path, explicit_section: str | None = None
     if explicit_section:
         for ch in chapters:
             for sec in ch.get("sections", []):
-                if sec.get("id") == explicit_section:
+                if str(sec.get("id")) == str(explicit_section):
                     target_sec = sec
                     target_ch = ch
                     break
@@ -164,7 +166,18 @@ def resolve_active_section(course_dir: Path, explicit_section: str | None = None
     if not target_sec:
         for ch in chapters:
             for sec in ch.get("sections", []):
-                if sec.get("status") in {"not_started", "review"}:
+                if sec.get("status") == "not_started":
+                    target_sec = sec
+                    target_ch = ch
+                    break
+            if target_sec:
+                break
+
+    # 4. Fallback to review sections if no not_started sections remain
+    if not target_sec:
+        for ch in chapters:
+            for sec in ch.get("sections", []):
+                if sec.get("status") == "review":
                     target_sec = sec
                     target_ch = ch
                     break

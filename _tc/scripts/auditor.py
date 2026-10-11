@@ -111,21 +111,53 @@ def audit_curriculum(
 
     # Collect sections and index
     all_sections: list[dict[str, Any]] = []
+    raw_ids: list[str] = []
+    for ch in chapters if isinstance(chapters, list) else []:
+        for sec in ch.get("sections", []):
+            raw_ids.append(str(sec.get("id", "")))
+    has_id_collision = len(raw_ids) != len(set(raw_ids))
+
     section_map: dict[str, dict[str, Any]] = {}
     dep_graph: dict[str, list[str]] = {}
+    alias_to_canon: dict[str, str] = {}
+    canon_keys: list[str] = []
 
     for ch in chapters if isinstance(chapters, list) else []:
         ch_id = str(ch.get("id", ""))
+        ch_slug = str(ch.get("slug", ""))
         for sec in ch.get("sections", []):
             sec_id = str(sec.get("id", ""))
+            sec_slug = str(sec.get("slug", ""))
             if not sec_id:
-                sec_id = f"{ch_id}:{len(all_sections)}"
+                sec_id = f"sec-{len(all_sections) + 1}"
+
+            if has_id_collision:
+                canon_id = f"{ch_id}:{sec_id}" if ch_id else sec_id
+            else:
+                canon_id = sec_id
+
             sec_record = dict(sec)
             sec_record["_ch_id"] = ch_id
+            sec_record["_canon_id"] = canon_id
             all_sections.append(sec_record)
-            section_map[sec_id] = sec_record
+            canon_keys.append(canon_id)
 
-            # Extract prerequisites
+            section_map[canon_id] = sec_record
+            if ch_id:
+                comp_key = f"{ch_id}:{sec_id}"
+                section_map[comp_key] = sec_record
+                alias_to_canon[comp_key] = canon_id
+                alias_to_canon[f"{ch_id}.{sec_id}"] = canon_id
+            if ch_slug and sec_slug:
+                alias_to_canon[f"{ch_slug}:{sec_slug}"] = canon_id
+                alias_to_canon[f"{ch_slug}/{sec_slug}"] = canon_id
+
+            if not has_id_collision:
+                section_map[sec_id] = sec_record
+                alias_to_canon[sec_id] = canon_id
+            else:
+                alias_to_canon[f"{ch_id}:{sec_id}"] = canon_id
+
             prereqs = sec.get("prerequisites") or sec.get("after") or []
             if isinstance(prereqs, (str, int)):
                 prereqs = [str(prereqs)]
@@ -133,19 +165,32 @@ def audit_curriculum(
                 prereqs = [str(p) for p in prereqs]
             else:
                 prereqs = []
-            dep_graph[sec_id] = prereqs
+            sec_record["_raw_prereqs"] = prereqs
 
     # 2. Prerequisite DAG Cycle & Reference Check
-    # Verify antecedent existence
-    for sec_id, prereqs in dep_graph.items():
-        for p in prereqs:
-            if p not in section_map:
+    # Verify antecedent existence and build dependency graph
+    for sec_record in all_sections:
+        canon_id = sec_record["_canon_id"]
+        ch_id = sec_record["_ch_id"]
+        resolved_prereqs: list[str] = []
+
+        for p in sec_record["_raw_prereqs"]:
+            if p in alias_to_canon:
+                resolved_prereqs.append(alias_to_canon[p])
+            elif f"{ch_id}:{p}" in alias_to_canon:
+                resolved_prereqs.append(alias_to_canon[f"{ch_id}:{p}"])
+            elif p in section_map:
+                resolved_prereqs.append(p)
+            elif f"{ch_id}:{p}" in section_map:
+                resolved_prereqs.append(f"{ch_id}:{p}")
+            else:
                 findings.append({
                     "severity": "CRITICAL",
                     "code": "MISSING_PREREQUISITE",
-                    "message": f"Section '{sec_id}' depends on non-existent prerequisite '{p}'",
-                    "target": sec_id,
+                    "message": f"Section '{canon_id}' depends on non-existent prerequisite '{p}'",
+                    "target": canon_id,
                 })
+        dep_graph[canon_id] = resolved_prereqs
 
     topological_order: list[str] = []
     cycle_detected = False
@@ -175,7 +220,7 @@ def audit_curriculum(
 
     # If no explicit prerequisites were declared, default to linear chapter order
     if not topological_order and not cycle_detected and all_sections:
-        topological_order = [str(s.get("id", idx)) for idx, s in enumerate(all_sections)]
+        topological_order = canon_keys
 
     # 3. Vocabulary Contract Audit
     if not cycle_detected:

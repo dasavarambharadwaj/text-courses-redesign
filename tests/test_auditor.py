@@ -296,3 +296,57 @@ def test_audit_with_research_cross_check(tmp_path: Path):
     data = json.loads(res.stdout)
     assert data["ok"] is True
     assert data["critical_count"] == 0
+
+
+def test_audit_cross_chapter_section_id_collision(tmp_path: Path):
+    """Verify that multiple chapters sharing identical section IDs are correctly audited without collisions."""
+    manifest_data = {
+        "course": {
+            "id": "multi-chapter-course",
+            "title": "Multi-Chapter Architecture",
+            "archetype": "applied_creation",
+        },
+        "chapters": [
+            {
+                "id": "ch-01",
+                "title": "Chapter 1",
+                "sections": [
+                    {
+                        "id": "sec-01",
+                        "title": "Introduction",
+                        "vocabulary_introduced": ["base_concept"],
+                    }
+                ],
+            },
+            {
+                "id": "ch-02",
+                "title": "Chapter 2",
+                "sections": [
+                    {
+                        "id": "sec-01",
+                        "title": "Advanced Topics",
+                        "prerequisites": ["ch-01:sec-01"],
+                        "vocabulary_prerequisites": ["base_concept"],
+                        "vocabulary_introduced": ["advanced_concept"],
+                    }
+                ],
+            },
+        ],
+    }
+
+    manifest_file = tmp_path / "course.toml"
+    with open(manifest_file, "wb") as f:
+        tomli_w.dump(manifest_data, f)
+
+    res = subprocess.run(
+        [sys.executable, str(AUDITOR_SCRIPT), "audit", "--manifest", str(manifest_file), "--json"],
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 0
+    data = json.loads(res.stdout)
+    assert data["ok"] is True
+    assert data["total_sections"] == 2
+    assert data["critical_count"] == 0
+    assert data["topological_order"] == ["ch-01:sec-01", "ch-02:sec-01"]
+

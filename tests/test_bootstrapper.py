@@ -86,7 +86,7 @@ def test_bootstrap_empty_workspace(tmp_path: Path):
     assert config_file.is_file()
     config_data = json.loads(config_file.read_text(encoding="utf-8"))
     assert config_data["framework"] == "TextCourses"
-    assert config_data["version"] == "0.1.0"
+    assert config_data["version"] == "0.2.0"
     assert "created_at" in config_data
 
     # plan/preferences.md

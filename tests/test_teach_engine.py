@@ -168,3 +168,91 @@ def test_teaching_session_and_advance_flow(tmp_path: Path):
     import tomllib
     updated_manifest = tomllib.loads((course_dir / "course.toml").read_text(encoding="utf-8"))
     assert updated_manifest["chapters"][0]["sections"][0]["status"] == "review"
+
+
+def test_resolve_active_section_skips_review_when_not_started_present(tmp_path: Path):
+    """Verify that teach_engine does not loop on completed review section when not_started section exists."""
+    course_dir = tmp_path / "courses" / "flow-test"
+    course_dir.mkdir(parents=True)
+    (course_dir / "chapter-01" / "section-01").mkdir(parents=True)
+    (course_dir / "chapter-01" / "section-02").mkdir(parents=True)
+
+    manifest_data = {
+        "course": {"id": "flow-test", "title": "Flow Test", "status": "in_progress"},
+        "chapters": [
+            {
+                "id": "chapter-01",
+                "title": "Ch 1",
+                "sections": [
+                    {"id": "sec-01", "title": "Sec 1", "status": "review"},
+                    {"id": "sec-02", "title": "Sec 2", "status": "not_started"},
+                ],
+            }
+        ],
+    }
+    with open(course_dir / "course.toml", "wb") as f:
+        tomli_w.dump(manifest_data, f)
+
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(TEACH_SCRIPT),
+            "session",
+            "--course",
+            "flow-test",
+            "--workspace",
+            str(tmp_path),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 0
+    data = json.loads(res.stdout)
+    assert data["ok"] is True
+    # Must select section 2 (not_started), NOT section 1 (review)
+    assert data["active_section"]["section_id"] == "sec-02"
+    assert data["active_section"]["section_status"] == "not_started"
+
+
+def test_integer_ids_compatibility(tmp_path: Path):
+    """Verify that integer chapter and section IDs in manifest do not cause TypeErrors."""
+    course_dir = tmp_path / "courses" / "int-ids"
+    course_dir.mkdir(parents=True)
+    (course_dir / "chapter-01" / "section-01").mkdir(parents=True)
+
+    manifest_data = {
+        "course": {"id": "int-ids", "title": "Int IDs Test", "status": "in_progress"},
+        "chapters": [
+            {
+                "id": 1,
+                "title": "Chapter 1",
+                "sections": [
+                    {"id": 1, "title": "Section 1", "status": "in_progress"},
+                ],
+            }
+        ],
+    }
+    with open(course_dir / "course.toml", "wb") as f:
+        tomli_w.dump(manifest_data, f)
+
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(TEACH_SCRIPT),
+            "session",
+            "--course",
+            "int-ids",
+            "--workspace",
+            str(tmp_path),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 0
+    data = json.loads(res.stdout)
+    assert data["ok"] is True
+    assert data["active_section"]["chapter_id"] == 1
+    assert data["active_section"]["section_id"] == 1
+

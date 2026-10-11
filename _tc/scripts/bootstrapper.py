@@ -295,7 +295,7 @@ def bootstrap_workspace(
     if not config_file.exists():
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         config_data = {
-            "version": "0.1.0",
+            "version": "0.2.0",
             "framework": "TextCourses",
             "created_at": now_iso,
             "updated_at": now_iso,
