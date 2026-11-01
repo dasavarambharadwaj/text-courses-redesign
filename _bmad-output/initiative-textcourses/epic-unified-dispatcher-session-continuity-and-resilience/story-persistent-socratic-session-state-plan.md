@@ -1,3 +1,10 @@
+---
+title: "Persistent Socratic Session State Machine"
+ticket: 2
+status: done
+type: feature
+---
+
 # Story 2: Persistent Socratic Session State Machine
 
 **Status**: completed  

@@ -1,8 +1,15 @@
+---
+title: "Zero-Unexplained-Jargon and Human-First Readability Guardrail"
+ticket: 4
+status: done
+type: feature
+---
+
 # Story Plan: Zero-Unexplained-Jargon & Human-First Readability Guardrail
 
 **Story ID**: 4  
 **Epic**: `epic-pedagogical-brainstorm-practicals-and-jargon-guardrail`  
-**Status**: in-progress  
+**Status**: completed  
 **Covers**: FR-37  
 
 ## Context & Objectives

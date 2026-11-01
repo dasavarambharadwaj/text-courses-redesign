@@ -1,3 +1,14 @@
+---
+type: epic
+title: "Unified Dispatcher CLI, Session State Continuity and Cross-Platform Integrity"
+parent: initiative-textcourses
+covers: [FR-38, FR-39, FR-40, FR-41]
+after: [epic-instruction-delivery, epic-assessment-verification, epic-autonomous-research-dialectic-synthesis, epic-pedagogical-brainstorm-practicals-and-jargon-guardrail]
+assignee: ""
+status: done
+risk: medium
+---
+
 # Epic 9: Unified Dispatcher CLI, Session State Continuity & Cross-Platform Integrity
 
 **Initiative**: `initiative-textcourses`  

@@ -865,7 +865,8 @@ def main() -> None:
 
     # bootstrap subcommand
     p_boot = subparsers.add_parser("bootstrap", help="Initialize workspace folder layout and deploy runtime scripts")
-    p_boot.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_boot.add_argument("--path", "--workspace", dest="path", default=".", help="Target workspace root path (default: current directory)")
+    p_boot.add_argument("--json", action="store_true", help="Output results in JSON format")
     p_boot.add_argument("--source-scripts", default=None, help="Explicit path to canonical runtime scripts directory")
     p_boot.add_argument("--role", default=DEFAULT_ROLES[0], help="Learner role")
     p_boot.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[2], help="Domain experience level")
@@ -877,7 +878,8 @@ def main() -> None:
 
     # init alias for bootstrap
     p_init = subparsers.add_parser("init", help="Alias for bootstrap")
-    p_init.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_init.add_argument("--path", "--workspace", dest="path", default=".", help="Target workspace root path (default: current directory)")
+    p_init.add_argument("--json", action="store_true", help="Output results in JSON format")
     p_init.add_argument("--source-scripts", default=None, help="Explicit path to canonical runtime scripts directory")
     p_init.add_argument("--role", default=DEFAULT_ROLES[0], help="Learner role")
     p_init.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[2], help="Domain experience level")

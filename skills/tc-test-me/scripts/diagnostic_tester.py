@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import datetime
-import fcntl
 import json
 import os
 import re
@@ -34,6 +33,17 @@ if str(_CURRENT_DIR) not in sys.path:
     sys.path.insert(0, str(_CURRENT_DIR))
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
+
+try:
+    from lock_utils import file_lock
+except ImportError:
+    try:
+        from _tc.scripts.lock_utils import file_lock
+    except ImportError:
+        import contextlib
+        @contextlib.contextmanager
+        def file_lock(file_obj, exclusive=True, timeout=15.0):
+            yield
 
 try:
     import tomli_w
@@ -161,8 +171,7 @@ def read_misconceptions(ledger_path: Path) -> dict[str, Any]:
     records = []
     try:
         with open(ledger_path, "r", encoding="utf-8") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_SH)
-            try:
+            with file_lock(f, exclusive=False):
                 for line in f:
                     stripped = line.strip()
                     if not stripped:
@@ -173,8 +182,6 @@ def read_misconceptions(ledger_path: Path) -> dict[str, Any]:
                             records.append(record)
                     except json.JSONDecodeError:
                         continue
-            finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     except Exception:
         return {"total_records": 0, "misconceptions": [], "frequency": {}}
 
@@ -375,13 +382,10 @@ def cmd_record(args: argparse.Namespace) -> None:
     record_line = json.dumps(record, ensure_ascii=False) + "\n"
     try:
         with open(ledger_path, "a", encoding="utf-8") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-            try:
+            with file_lock(f, exclusive=True):
                 f.write(record_line)
                 f.flush()
                 os.fsync(f.fileno())
-            finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     except Exception as e:
         output_json({"ok": False, "error": f"Failed to append to ledger {ledger_path}: {e}"}, exit_code=1)
 

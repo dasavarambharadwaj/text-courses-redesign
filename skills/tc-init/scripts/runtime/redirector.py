@@ -75,11 +75,19 @@ def atomic_write_toml(filepath: Path, data: dict[str, Any]) -> None:
         raise RuntimeError(f"Atomic TOML write failed for {filepath}: {e}") from e
 
 
-def compute_file_hash(filepath: Path) -> str:
-    """Compute SHA-256 byte digest of a file in 64KB chunks."""
+def compute_file_hash(filepath: Path | str, normalize_text: bool = True) -> str:
+    """Compute SHA-256 byte digest of a file with cross-platform text normalization."""
     filepath = Path(filepath)
     if not filepath.is_file():
         raise FileNotFoundError(f"Source file not found: {filepath}")
+    if normalize_text and filepath.suffix.lower() not in {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".db", ".sqlite", ".exe", ".bin"}:
+        try:
+            raw = filepath.read_bytes()
+            text = raw.decode("utf-8").replace("\r\n", "\n")
+            normalized = "\n".join(line.rstrip() for line in text.split("\n")).encode("utf-8")
+            return hashlib.sha256(normalized).hexdigest()
+        except Exception:
+            pass
     hasher = hashlib.sha256()
     with open(filepath, "rb") as f:
         while chunk := f.read(CHUNK_SIZE):

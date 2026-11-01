@@ -1,3 +1,10 @@
+---
+title: "AI-Era Research Grounding and Dedicated AI-Pro Hat Engine"
+ticket: 3
+status: done
+type: feature
+---
+
 # Story 3: AI-Era Research Grounding & Dedicated AI-Pro Hat Engine
 
 **Status**: completed  

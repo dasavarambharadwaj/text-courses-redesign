@@ -7,6 +7,9 @@ dependencies = [
     "tomli-w>=1.0.0",
 ]
 
+[project.scripts]
+tc = "_tc.scripts.tc:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",

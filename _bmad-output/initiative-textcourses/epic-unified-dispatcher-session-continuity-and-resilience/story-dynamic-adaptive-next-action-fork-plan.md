@@ -1,3 +1,10 @@
+---
+title: "Dynamic Context-Adaptive Next-Action Fork"
+ticket: 3
+status: done
+type: feature
+---
+
 # Story 3: Dynamic Context-Adaptive Next-Action Fork
 
 **Status**: completed  

@@ -1,8 +1,15 @@
+---
+title: "Autonomous Multi-Path Curriculum Brainstorming and Hat Validation"
+ticket: 2
+status: done
+type: feature
+---
+
 # Story Plan: Autonomous Multi-Path Curriculum Brainstorming & Hat Validation
 
 **Story ID**: 2  
 **Epic**: `epic-pedagogical-brainstorm-practicals-and-jargon-guardrail`  
-**Status**: in-progress  
+**Status**: completed  
 **Covers**: FR-35  
 
 ## Context & Objectives

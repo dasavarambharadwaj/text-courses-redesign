@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import datetime
-import fcntl
 import json
 import os
 import re
@@ -34,6 +33,17 @@ PROJECT_ROOT = SCRIPT_DIR.parent.parent
 for p in [str(SCRIPT_DIR), str(PROJECT_ROOT)]:
     if p not in sys.path:
         sys.path.insert(0, p)
+
+try:
+    from lock_utils import file_lock
+except ImportError:
+    try:
+        from _tc.scripts.lock_utils import file_lock
+    except ImportError:
+        import contextlib
+        @contextlib.contextmanager
+        def file_lock(file_obj, exclusive=True, timeout=15.0):
+            yield
 
 try:
     from auditor import audit_curriculum
@@ -632,13 +642,10 @@ def append_consensus_trace(
         cache_sub.mkdir(parents=True, exist_ok=True)
         trace_file = cache_sub / "consensus-trace.jsonl"
         with open(trace_file, "a", encoding="utf-8") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-            try:
-                f.write(line)
-                f.flush()
-                os.fsync(f.fileno())
-            finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                with file_lock(f, exclusive=True):
+                    f.write(line)
+                    f.flush()
+                    os.fsync(f.fileno())
 
 
 def parse_outline_text(outline_text: str) -> list[dict[str, Any]]:

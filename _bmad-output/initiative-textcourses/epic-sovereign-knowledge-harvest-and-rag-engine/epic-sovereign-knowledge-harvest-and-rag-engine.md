@@ -1,3 +1,14 @@
+---
+type: epic
+title: "Autonomous Multi-Source Harvester, AI-Era Research and Potato-Proof Sovereign RAG Indexer"
+parent: initiative-textcourses
+covers: [FR-42, FR-43, FR-44, FR-45, AD-9, AD-10, AD-11, AD-12, AD-13]
+after: [epic-autonomous-research-dialectic-synthesis, epic-unified-dispatcher-session-continuity-and-resilience]
+assignee: ""
+status: done
+risk: high
+---
+
 # Epic 10: Autonomous Multi-Source Harvester, AI-Era Research & Potato-Proof Sovereign RAG Indexer
 
 **Initiative**: `initiative-textcourses`  

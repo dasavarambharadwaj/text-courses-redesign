@@ -1,3 +1,10 @@
+---
+title: "Resilient Cross-Platform Hash Checksum Normalization"
+ticket: 4
+status: done
+type: feature
+---
+
 # Story 4: Resilient Cross-Platform Hash Checksum Normalization
 
 **Status**: completed  

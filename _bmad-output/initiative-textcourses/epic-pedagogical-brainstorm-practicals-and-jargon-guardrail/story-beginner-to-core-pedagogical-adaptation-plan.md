@@ -1,8 +1,15 @@
+---
+title: "Beginner-to-Core Pedagogical Adaptation"
+ticket: 1
+status: done
+type: feature
+---
+
 # Story Plan: Beginner-to-Core Pedagogical Adaptation
 
 **Story ID**: 1  
 **Epic**: `epic-pedagogical-brainstorm-practicals-and-jargon-guardrail`  
-**Status**: in-progress  
+**Status**: completed  
 **Covers**: FR-34  
 
 ## Context & Objectives

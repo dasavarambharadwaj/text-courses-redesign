@@ -130,9 +130,22 @@ def main() -> None:
 
     module_name = SUBCOMMAND_MODULES[subcommand]
 
+    # Convenience default subcommands for modules where the top-level command matches
+    forward_args = list(args[1:])
+    is_help = any(a in {"--help", "-h"} for a in forward_args)
+    if not is_help:
+        if subcommand == "init" and (not forward_args or forward_args[0].startswith("-")):
+            forward_args.insert(0, "init")
+        elif subcommand == "create" and (not forward_args or forward_args[0].startswith("-")):
+            forward_args.insert(0, "create")
+        elif subcommand == "index" and (not forward_args or forward_args[0].startswith("-")):
+            forward_args.insert(0, "build")
+        elif subcommand in {"research", "scout"} and (not forward_args or forward_args[0].startswith("-")):
+            forward_args.insert(0, "scout")
+
     # Adjust sys.argv for the target module's CLI parser
     target_script = SCRIPT_DIR / f"{module_name}.py"
-    sys.argv = [str(target_script)] + args[1:]
+    sys.argv = [str(target_script)] + forward_args
 
     try:
         mod = importlib.import_module(module_name)

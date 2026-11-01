@@ -1,3 +1,10 @@
+---
+title: "Autonomous Multi-Source Deep Harvester and Community Consensus Sourcing"
+ticket: 2
+status: done
+type: feature
+---
+
 # Story 2: Autonomous Multi-Source Deep Harvester & Community Consensus Sourcing
 
 **Status**: completed  

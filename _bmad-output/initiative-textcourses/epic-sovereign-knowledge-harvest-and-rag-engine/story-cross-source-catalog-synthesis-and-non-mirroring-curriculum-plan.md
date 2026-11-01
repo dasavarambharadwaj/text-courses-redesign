@@ -1,3 +1,10 @@
+---
+title: "Cross-Source Domain Catalog Synthesis and Unified Master Curriculum"
+ticket: 5
+status: done
+type: feature
+---
+
 # Story 5: Cross-Source Domain Catalog Synthesis & Unified Master Curriculum
 
 **Status**: completed  

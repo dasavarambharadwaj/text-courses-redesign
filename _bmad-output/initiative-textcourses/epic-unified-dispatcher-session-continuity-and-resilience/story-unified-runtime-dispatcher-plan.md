@@ -1,3 +1,10 @@
+---
+title: "Unified Runtime Dispatcher CLI (tc.py)"
+ticket: 1
+status: done
+type: feature
+---
+
 # Story 1: Unified Runtime Dispatcher CLI (`tc.py`)
 
 **Status**: completed  

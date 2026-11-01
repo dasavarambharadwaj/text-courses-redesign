@@ -1,3 +1,10 @@
+---
+title: "Potato-Proof Sovereign RAG Indexer and SQLite FTS5 Point Retrieval"
+ticket: 4
+status: done
+type: feature
+---
+
 # Story 4: Potato-Proof Sovereign RAG Indexer & SQLite FTS5 Point Retrieval
 
 **Status**: completed  

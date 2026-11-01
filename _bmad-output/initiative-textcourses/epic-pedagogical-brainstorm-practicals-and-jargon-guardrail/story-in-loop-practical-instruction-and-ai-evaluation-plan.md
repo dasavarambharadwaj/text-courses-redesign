@@ -1,8 +1,15 @@
+---
+title: "In-Loop Practical Instruction and AI Practical Evaluation"
+ticket: 3
+status: done
+type: feature
+---
+
 # Story Plan: In-Loop Practical Instruction & AI Practical Evaluation
 
 **Story ID**: 3  
 **Epic**: `epic-pedagogical-brainstorm-practicals-and-jargon-guardrail`  
-**Status**: in-progress  
+**Status**: completed  
 **Covers**: FR-36  
 
 ## Context & Objectives

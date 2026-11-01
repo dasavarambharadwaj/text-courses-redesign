@@ -20,6 +20,23 @@ import sys
 from pathlib import Path
 from typing import Any
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
+for p in [str(SCRIPT_DIR), str(PROJECT_ROOT)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+try:
+    from lock_utils import file_lock
+except ImportError:
+    try:
+        from _tc.scripts.lock_utils import file_lock
+    except ImportError:
+        import contextlib
+        @contextlib.contextmanager
+        def file_lock(file_obj, exclusive=True, timeout=15.0):
+            yield
+
 VALID_OUTCOMES = {"pass", "fail", "correct", "incorrect", "passed", "failed"}
 
 # Core fields required when appending a new diagnostic record
@@ -138,15 +155,11 @@ def cmd_append(args: argparse.Namespace) -> None:
     # Append under POSIX advisory lock (fcntl.flock)
     try:
         ledger_path.parent.mkdir(parents=True, exist_ok=True)
-        import fcntl
         with open(ledger_path, "a", encoding="utf-8") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-            try:
+            with file_lock(f, exclusive=True):
                 f.write(json_line + "\n")
                 f.flush()
                 os.fsync(f.fileno())
-            finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     except Exception as e:
         output_json({
             "ok": False,
@@ -185,10 +198,8 @@ def cmd_summarize(args: argparse.Namespace) -> None:
     misconceptions: list[str] = []
 
     try:
-        import fcntl
         with open(ledger_path, "r", encoding="utf-8") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_SH)
-            try:
+            with file_lock(f, exclusive=False):
                 for line in f:
                     line_str = line.strip()
                     if not line_str:
@@ -221,8 +232,6 @@ def cmd_summarize(args: argparse.Namespace) -> None:
                         misc_str = str(misc).strip()
                         if misc_str and misc_str.lower() not in {"null", "none"}:
                             misconceptions.append(misc_str)
-            finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     except Exception as e:
         output_json({"ok": False, "error": f"Failed to read ledger: {e}"}, exit_code=1)
 
@@ -282,10 +291,8 @@ def cmd_validate(args: argparse.Namespace) -> None:
     total_records = 0
 
     try:
-        import fcntl
         with open(ledger_path, "r", encoding="utf-8") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_SH)
-            try:
+            with file_lock(f, exclusive=False):
                 for line_num, line in enumerate(f, start=1):
                     line_str = line.strip()
                     if not line_str:
@@ -313,8 +320,6 @@ def cmd_validate(args: argparse.Namespace) -> None:
                         errors.append(f"Line {line_num}: 'timestamp' must be a string")
 
                     total_records += 1
-            finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     except Exception as e:
         output_json({
             "ok": False,
