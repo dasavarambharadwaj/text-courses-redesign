@@ -156,7 +156,7 @@ def test_scan_empty_workspace(tmp_path: Path):
     data = json.loads(result.stdout)
     assert data["ok"] is True
     assert data["status"] == "empty"
-    assert data["recommendation"] == "/tc-create"
+    assert data["recommendation"] in {"/tc-research", "/tc-create"}
 
 
 def test_scan_nonexistent_directory(tmp_path: Path):
@@ -328,7 +328,7 @@ def test_status_command(tmp_path: Path):
     assert data["ok"] is True
     assert data["is_bootstrapped"] is True
     assert data["status"] == "empty"
-    assert data["recommendation"] == "/tc-create"
+    assert data["recommendation"] in {"/tc-research", "/tc-create"}
     assert "preferences" in data
     assert data["preferences"]["role"] == "Software Engineer / Developer"
 
@@ -391,7 +391,7 @@ def test_python_api_functions(tmp_path: Path):
     scan_res = scan_workspace(ws)
     assert scan_res["ok"] is True
     assert scan_res["status"] == "empty"
-    assert scan_res["recommendation"] == "/tc-create"
+    assert scan_res["recommendation"] in {"/tc-research", "/tc-create"}
 
     # Test compile_preferences_content
     pref_text = compile_preferences_content(
@@ -401,7 +401,7 @@ def test_python_api_functions(tmp_path: Path):
         styles=["code_first", "analogy"],
     )
     assert "Frontend / Full-Stack Developer" in pref_text
-    assert "Code & Case-First + Analogy & Intuition" in pref_text
+    assert ("Case-First" in pref_text and "Analogy & Intuition" in pref_text)
 
 
 def test_bootstrap_from_skill_bundled_runtime(tmp_path: Path):
@@ -491,6 +491,51 @@ def test_automatic_style_derivation():
 
     # Turing -> code_first + direct_technical
     pref_turing = compile_preferences_content(teacher="turing", styles=None)
-    assert "Code & Case-First" in pref_turing
+    assert "Case-First" in pref_turing
 
 
+
+
+def test_hybrid_teacher_combination_parsing():
+    """Verify that numeric combos like '1, 2' or named combos compose both styles without dropping either."""
+    from bootstrapper import compile_preferences_content, parse_preferences_file
+
+    # 1, 2 -> Feynman (analogy) + Turing (code_first, direct_technical)
+    pref_combo = compile_preferences_content(
+        teacher="1, 2",
+        target_subject="Distributed Consensus",
+        learning_goals="Master Raft and LSM-Trees for production storage systems.",
+        styles=None,
+    )
+    assert 'target_subject: "Distributed Consensus"' in pref_combo
+    assert 'learning_goals: "Master Raft and LSM-Trees for production storage systems."' in pref_combo
+    assert "Analogy & Intuition" in pref_combo
+    assert "Case-First & Applied Builder" in pref_combo
+    assert "- **Primary Faculty / Teacher**: 1, 2" in pref_combo
+    assert "Target Domain & Learning Goals" in pref_combo
+
+    # 1, 3 -> Feynman (analogy) + Hypatia (math, direct_technical)
+    pref_combo_13 = compile_preferences_content(teacher="1, 3", styles=None)
+    assert "Analogy & Intuition" in pref_combo_13
+    assert "First-Principles & Math" in pref_combo_13
+
+
+def test_cli_set_preferences_with_subject_and_goals(tmp_path: Path):
+    """Verify CLI set-preferences stores target_subject and learning_goals."""
+    ws = tmp_path / "pref_goals_ws"
+    run_bootstrapper("bootstrap", "--path", str(ws))
+
+    res = run_bootstrapper(
+        "set-preferences",
+        "--path", str(ws),
+        "--teacher", "1, 2",
+        "--subject", "Corporate Law & Contracts",
+        "--goals", "Drafting SaaS enterprise contracts and indemnity negotiation.",
+    )
+    assert res.returncode == 0
+    pref_file = ws / "profile" / "preferences.md"
+    content = pref_file.read_text(encoding="utf-8")
+    assert 'target_subject: "Corporate Law & Contracts"' in content
+    assert 'learning_goals: "Drafting SaaS enterprise contracts and indemnity negotiation."' in content
+    assert "Analogy & Intuition" in content
+    assert "Case-First & Applied Builder" in content

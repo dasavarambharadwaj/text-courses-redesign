@@ -31,6 +31,7 @@ from indexer import (
     print_search_to_console,
     run_build_index,
     run_query_index,
+    run_verify_grounding,
 )
 
 
@@ -302,7 +303,7 @@ def test_course_builder_integrates_catalog_synthesis(temp_sources_workspace: tup
     assert "Denis Diderot Knowledge Base" in brainstorm_text or "catalog" in brainstorm_text.lower()
 
     # Check course.toml sources includes catalog.json and index.db
-    course_toml = course_dir / "course.toml"
+    course_toml = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     assert course_toml.is_file()
     toml_content = course_toml.read_text(encoding="utf-8")
     assert "catalog.json" in toml_content
@@ -737,3 +738,28 @@ def test_ignored_directories_and_binary_exclusion(tmp_path: Path) -> None:
 
 
 
+
+
+def test_verify_grounding_audit(temp_sources_workspace: tuple[Path, str]) -> None:
+    """Verify that syllabus concepts are corroborated against the SQLite RAG index (FR-45)."""
+    ws, slug = temp_sources_workspace
+
+    # Non-existent course returns ok: False
+    non_existent = run_verify_grounding(slug="missing-course", workspace=ws)
+    assert non_existent["ok"] is False
+    assert non_existent["corroboration_score"] == 0.0
+
+    # 1. Build index
+    run_build_index(slug=slug, workspace=ws)
+
+    # 2. Create course
+    res = create_course(slug=slug, workspace=ws, archetype="applied_creation")
+    assert res["ok"] is True
+
+    # 3. Verify grounding
+    v_res = run_verify_grounding(slug=slug, workspace=ws)
+    assert v_res["ok"] is True
+    assert "corroboration_score" in v_res
+    assert v_res["total_concepts"] > 0
+    assert v_res["corroborated_count"] >= 1
+    assert v_res["corroboration_score"] > 0.0

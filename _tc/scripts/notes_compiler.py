@@ -76,7 +76,7 @@ def find_enclosing_manifest(start_dir: Path) -> Path | None:
     """Find course.toml by walking up directory tree from section dir."""
     curr = start_dir.resolve()
     for _ in range(5):
-        manifest = curr / "course.toml"
+        manifest = (curr / ".tc" / "course.toml") if (curr / ".tc" / "course.toml").is_file() else (curr / "course.toml")
         if manifest.is_file():
             return manifest
         if curr.parent == curr:

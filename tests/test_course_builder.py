@@ -78,7 +78,7 @@ def test_create_course_scaffolds_filesystem_correctly(tmp_path: Path):
     course_dir = tmp_path / "courses" / "sqlite-clone"
     assert course_dir.is_dir()
 
-    manifest_file = course_dir / "course.toml"
+    manifest_file = (course_dir / ".tc" / "course.toml") if (course_dir / ".tc" / "course.toml").is_file() else (course_dir / "course.toml")
     overview_file = course_dir / "overview.md"
     assert manifest_file.is_file()
     assert overview_file.is_file()
@@ -98,7 +98,8 @@ def test_create_course_scaffolds_filesystem_correctly(tmp_path: Path):
     assert last_record["consensus_reached"] is True
 
     # Check chapter directories and lesson-plan.md
-    chapter_dirs = list(course_dir.glob("chapter-*"))
+    plans_root = (course_dir / ".tc" / "plans") if (course_dir / ".tc" / "plans").is_dir() else course_dir
+    chapter_dirs = list(plans_root.glob("chapter-*"))
     assert len(chapter_dirs) >= 4
     for ch_d in chapter_dirs:
         sec_dirs = list(ch_d.glob("section-*"))
@@ -141,7 +142,7 @@ def test_create_all_archetypes(tmp_path: Path, archetype: str):
     assert res.returncode == 0
     data = json.loads(res.stdout)
     assert data["ok"] is True
-    assert (tmp_path / "courses" / slug / "course.toml").is_file()
+    assert (tmp_path / "courses" / slug / ".tc" / "course.toml").is_file() or (tmp_path / "courses" / slug / "course.toml").is_file()
 
 
 def test_create_with_outline_file_ingestion(tmp_path: Path):

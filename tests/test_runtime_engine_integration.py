@@ -488,7 +488,7 @@ def test_full_apprenticeship_pipeline_e2e(tmp_path: Path):
 
     course_dir = workspace_root / "courses" / "systems-craft"
     assert course_dir.is_dir()
-    manifest_file = course_dir / "course.toml"
+    manifest_file = (course_dir / ".tc" / "course.toml") if (course_dir / ".tc" / "course.toml").is_file() else (course_dir / "course.toml")
     assert manifest_file.is_file()
 
     # Step 2: teach_engine.py session

@@ -168,7 +168,7 @@ def load_preferences(workspace: Path) -> dict[str, Any]:
     role_lower = str(result.get("role", "")).lower()
     if "beginner" in role_lower or result.get("competency_level") == "beginner":
         result["competency_level"] = "beginner"
-        if "teacher" not in result or result["teacher"] == "feynman":
+        if "teacher" not in result:
             result["teacher"] = "hypatia"
     if str(result.get("practical_focus", "")).lower() in {"true", "yes", "1"}:
         result["practical_focus"] = "true"
@@ -183,7 +183,7 @@ def append_course_memlog(
     by: str | None = None,
 ) -> None:
     """Append a token-minimal entry directly into courses/<slug>/memlog.md."""
-    memlog_file = course_dir / "memlog.md"
+    memlog_file = course_dir / ".tc" / "memlog.md" if (course_dir / ".tc" / "memlog.md").is_file() else course_dir / "memlog.md"
     if not memlog_file.exists():
         return
 
@@ -204,7 +204,7 @@ def append_session_event(
     entry: dict[str, Any],
 ) -> None:
     """Record structured conversational turn event into courses/<slug>/session.jsonl."""
-    session_file = course_dir / "session.jsonl"
+    session_file = course_dir / ".tc" / "session.jsonl" if (course_dir / ".tc").is_dir() else course_dir / "session.jsonl"
     clean_entry = {
         "timestamp": entry.get("timestamp") or datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "section_id": entry.get("section_id", ""),
@@ -229,7 +229,7 @@ def load_session_history(
     limit: int = 5,
 ) -> list[dict[str, Any]]:
     """Load the most recent `limit` conversational events from courses/<slug>/session.jsonl."""
-    session_file = course_dir / "session.jsonl"
+    session_file = course_dir / ".tc" / "session.jsonl" if (course_dir / ".tc").is_dir() else course_dir / "session.jsonl"
     if not session_file.is_file():
         return []
 
@@ -253,7 +253,10 @@ def load_session_history(
 
 
 def find_section_directory(course_dir: Path, chapter_id: Any, section_id: Any) -> Path | None:
-    """Locate the actual section directory on disk for given chapter and section IDs."""
+    """Locate the actual section directory on disk for given chapter and section IDs.
+    
+    Checks courses/<slug>/.tc/plans/ first, then falls back to courses/<slug>/.
+    """
     ch_id_str = str(chapter_id) if chapter_id is not None else ""
     sec_id_str = str(section_id) if section_id is not None else ""
     ch_num_m = re.search(r"(\d+)", ch_id_str)
@@ -261,32 +264,39 @@ def find_section_directory(course_dir: Path, chapter_id: Any, section_id: Any) -
     ch_num = int(ch_num_m.group(1)) if ch_num_m else None
     sec_num = int(sec_num_m.group(1)) if sec_num_m else None
 
-    for ch_path in sorted(course_dir.glob("chapter-*")):
-        if not ch_path.is_dir():
-            continue
-        c_m = re.search(r"chapter[-_]?0*(\d+)", ch_path.name, re.IGNORECASE)
-        if c_m and ch_num is not None and int(c_m.group(1)) != ch_num:
-            continue
+    search_roots = []
+    tc_plans = course_dir / ".tc" / "plans"
+    if tc_plans.is_dir():
+        search_roots.append(tc_plans)
+    search_roots.append(course_dir)
 
-        for sec_path in sorted(ch_path.glob("section-*")):
-            if not sec_path.is_dir():
+    for root in search_roots:
+        for ch_path in sorted(root.glob("chapter-*")):
+            if not ch_path.is_dir():
                 continue
-            s_m = re.search(r"sec(?:tion)?[-_]?0*(\d+)", sec_path.name, re.IGNORECASE)
-            if s_m and sec_num is not None and int(s_m.group(1)) == sec_num:
-                return sec_path
+            c_m = re.search(r"chapter[-_]?0*(\d+)", ch_path.name, re.IGNORECASE)
+            if c_m and ch_num is not None and int(c_m.group(1)) != ch_num:
+                continue
 
-        # Subdirectory fallback without section- prefix
-        if sec_id_str:
-            for sec_path in ch_path.glob("*"):
-                if sec_path.is_dir() and sec_id_str.lower() in sec_path.name.lower():
+            for sec_path in sorted(ch_path.glob("section-*")):
+                if not sec_path.is_dir():
+                    continue
+                s_m = re.search(r"sec(?:tion)?[-_]?0*(\d+)", sec_path.name, re.IGNORECASE)
+                if s_m and sec_num is not None and int(s_m.group(1)) == sec_num:
                     return sec_path
+
+            # Subdirectory fallback without section- prefix
+            if sec_id_str:
+                for sec_path in ch_path.glob("*"):
+                    if sec_path.is_dir() and sec_id_str.lower() in sec_path.name.lower():
+                        return sec_path
 
     return None
 
 
 def resolve_active_section(course_dir: Path, explicit_section: str | None = None) -> dict[str, Any]:
     """Find active in-progress or next uncompleted section in course.toml."""
-    manifest_path = course_dir / "course.toml"
+    manifest_path = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     if not manifest_path.is_file():
         raise FileNotFoundError(f"No course.toml found in {course_dir}")
 
@@ -394,7 +404,7 @@ def get_teaching_session(
     preferences = load_preferences(ws)
 
     # Check course manifest for beginner or practical flags
-    course_toml_path = course_dir / "course.toml"
+    course_toml_path = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     course_data: dict[str, Any] = {}
     if course_toml_path.is_file():
         try:
@@ -451,6 +461,119 @@ def get_teaching_session(
     )
     recent_history = load_session_history(course_dir, limit=5)
 
+    # 1. Trailing memlog entries
+    recent_memlog: list[str] = []
+    memlog_file = course_dir / ".tc" / "memlog.md" if (course_dir / ".tc" / "memlog.md").is_file() else course_dir / "memlog.md"
+    if memlog_file.is_file():
+        try:
+            m_lines = [l.strip() for l in memlog_file.read_text(encoding="utf-8").splitlines() if l.strip().startswith("- ")]
+            recent_memlog = m_lines[-5:]
+        except Exception:
+            pass
+
+    # 2. Grounded Source Excerpts for Active Concept (O(1) Symbol Table & Dialectic)
+    rag_excerpts: list[dict[str, Any]] = []
+    source_map_path = course_dir / ".tc" / "source-map.toml" if (course_dir / ".tc" / "source-map.toml").is_file() else course_dir / "source-map.toml"
+    is_dialectic = False
+    dialectic_notes = ""
+
+    active_sec_data = None
+    for ch in course_data.get("chapters", []):
+        if ch.get("id") == active_info.get("chapter_id"):
+            for sec in ch.get("sections", []):
+                if sec.get("id") == active_info.get("section_id"):
+                    active_sec_data = sec
+                    break
+            if active_sec_data:
+                break
+
+    target_term = None
+    if active_sec_data and active_sec_data.get("vocabulary_introduced"):
+        raw_idx = concept_info.get("index") if concept_info else 0
+        idx = raw_idx if isinstance(raw_idx, int) else 0
+        v_list = active_sec_data["vocabulary_introduced"]
+        target_term = v_list[idx] if (v_list and idx < len(v_list)) else (v_list[0] if v_list else None)
+    elif concept_info and concept_info.get("concept"):
+        target_term = concept_info["concept"]
+    elif concept_info and concept_info.get("name"):
+        target_term = concept_info["name"]
+
+    c_query = target_term or (concept_info.get("name") if concept_info else None) or (concept_info.get("concept") if concept_info else None)
+
+    if c_query:
+        c_name = c_query
+        if source_map_path.is_file():
+            try:
+                try:
+                    from source_mapper import read_source_pointer
+                except ImportError:
+                    from _tc.scripts.source_mapper import read_source_pointer
+                pointers = read_source_pointer(course_slug, c_name, workspace=ws)
+                for ptr in pointers:
+                    rag_excerpts.append({
+                        "source_id": ptr.get("source_id"),
+                        "source_title": ptr.get("source_title", ptr.get("source_id")),
+                        "section_title": ptr.get("heading", ""),
+                        "snippet": ptr.get("content", ""),
+                        "verbatim_anchor": ptr.get("verbatim_anchor", ""),
+                        "lines": ptr.get("lines", []),
+                        "dialectic": ptr.get("dialectic", False),
+                    })
+                    if ptr.get("dialectic"):
+                        is_dialectic = True
+                        dialectic_notes = ptr.get("synthesis_notes", "")
+            except Exception:
+                pass
+
+        # Fallback to runtime sqlite RAG if symbol table produced no hits
+        if not rag_excerpts:
+            try:
+                try:
+                    from indexer import find_rag_db_path, run_query_index
+                except ImportError:
+                    from _tc.scripts.indexer import find_rag_db_path, run_query_index
+                rag_db = find_rag_db_path(course_slug, ws)
+                if rag_db.is_file():
+                    q_res = run_query_index(slug=course_slug, query=c_name, top_k=2, workspace=ws)
+                    rag_excerpts = q_res.get("hits", [])
+            except Exception:
+                pass
+
+    # 3. Accumulate Approved Vocabulary from Course History
+    approved_vocabulary: set[str] = set()
+    if not target_term:
+        target_term = concept_info.get("name") if concept_info else None
+    reached_current_section = False
+
+    for ch in course_data.get("chapters", []):
+        for sec in ch.get("sections", []):
+            if ch.get("id") == active_info.get("chapter_id") and sec.get("id") == active_info.get("section_id"):
+                reached_current_section = True
+                break
+            for v in sec.get("vocabulary_introduced", []):
+                approved_vocabulary.add(v)
+        if reached_current_section:
+            break
+
+    # Add any terms logged to memlog as introduced
+    for entry in recent_memlog:
+        m_terms = re.findall(r"\[([a-zA-Z0-9_\-\s]{3,30})\]", entry)
+        for mt in m_terms:
+            approved_vocabulary.add(mt)
+
+    vocabulary_contract = {
+        "target_term": target_term,
+        "approved_terms": sorted(list(approved_vocabulary)),
+        "intuition_before_label": True,
+        "dialectic": is_dialectic,
+        "synthesis_notes": dialectic_notes,
+        "rules": [
+            "Strictly zero unexplained jargon. Every technical term must be in approved_terms or introduced this turn with everyday intuition first.",
+            "When introducing target_term, explain the physical dilemma / real-world analogy BEFORE naming the formal academic label.",
+            "Multi-source synthesis: When dialectic is true, synthesize contrasting book perspectives as trade-offs rather than competing jargon.",
+        ],
+    }
+
     guidance = (
         "Lead with Hypatia (The Empathetic Tutor). Use gentle Socratic stepping stones. Strictly zero unexplained jargon. Anchor in visceral real-world analogies."
         if is_beginner
@@ -466,10 +589,70 @@ def get_teaching_session(
         "is_beginner": is_beginner,
         "is_practical": is_practical,
         "practical": practical_info,
-        "pedagogical_guidance": guidance,
+        "pedagogical_guidance": guidance + (" (Multi-source dialectic active)" if is_dialectic else ""),
         "recent_session_history": recent_history,
+        "recent_memlog_entries": recent_memlog,
+        "rag_source_excerpts": rag_excerpts,
+        "vocabulary_contract": vocabulary_contract,
         "fork_text": fork_text,
         "fork_options": fork_options,
+    }
+
+
+
+def verify_vocabulary_turn(
+    turn_text: str,
+    approved_terms: list[str],
+    target_term: str | None = None,
+) -> dict[str, Any]:
+    """Validate that instructional turn contains zero unearned jargon without antecedent intuition (CAP-6)."""
+    approved_lower = {t.lower().strip() for t in approved_terms if t}
+    # Add variations without hyphens/underscores
+    for t in list(approved_lower):
+        approved_lower.add(t.replace("-", " "))
+        approved_lower.add(t.replace("_", " "))
+
+    target_variants: set[str] = set()
+    if target_term:
+        tl = target_term.lower().strip()
+        target_variants = {tl, tl.replace("-", " "), tl.replace("_", " ")}
+
+    COMMON_ALLOWLIST = {
+        "computer", "system", "program", "code", "function", "variable", "memory",
+        "disk", "file", "network", "server", "client", "node", "data", "database",
+        "read", "write", "message", "error", "machine", "algorithm", "loop", "array",
+        "table", "hardware", "software", "cpu", "input", "output", "user", "request",
+        "response", "state", "value", "key", "number", "string", "byte", "bit",
+        "query", "index", "log", "model", "page", "cache", "tree", "storage",
+    }
+    approved_lower.update(COMMON_ALLOWLIST)
+
+    candidate_terms: set[str] = set()
+    for m in re.finditer(r"\*\*([a-zA-Z0-9_\-\s]{3,35})\*\*", turn_text):
+        candidate_terms.add(m.group(1).strip().lower())
+    for m in re.finditer(r"`([a-zA-Z0-9_\-]{3,30})`", turn_text):
+        candidate_terms.add(m.group(1).strip().lower())
+
+    unearned: list[str] = []
+    used_approved: list[str] = []
+
+    for term in sorted(candidate_terms):
+        term_variants = {term, term.replace("-", " "), term.replace("_", " ")}
+        if term_variants & approved_lower:
+            used_approved.append(term)
+        elif target_variants and (term_variants & target_variants):
+            used_approved.append(term)
+        else:
+            unearned.append(term)
+
+    is_ok = len(unearned) == 0
+
+    return {
+        "ok": is_ok,
+        "unearned_terms": unearned,
+        "approved_terms_used": used_approved,
+        "target_term": target_term,
+        "passed": is_ok,
     }
 
 
@@ -523,7 +706,7 @@ def advance_lesson_concept(
     notes_compilation = None
 
     # Check practical gate if practical focus is enabled
-    course_toml_path = course_dir / "course.toml"
+    course_toml_path = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     course_data: dict[str, Any] = {}
     if course_toml_path.is_file():
         try:
@@ -664,6 +847,13 @@ def main() -> None:
     p_turn.add_argument("--workspace", default=".", help="Workspace path.")
     p_turn.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
+    # verify-vocab
+    p_vv = subparsers.add_parser("verify-vocab", help="Verify instruction turn against vocabulary contract.")
+    p_vv.add_argument("--course", required=True, help="Course slug.")
+    p_vv.add_argument("--text", required=True, help="Instructional turn text to verify.")
+    p_vv.add_argument("--workspace", default=".", help="Workspace path.")
+    p_vv.add_argument("--json", action="store_true", help="Output results in JSON format.")
+
     # history
     p_hist = subparsers.add_parser("history", help="Retrieve recent session events from session.jsonl.")
     p_hist.add_argument("--course", required=True, help="Course slug.")
@@ -723,6 +913,17 @@ def main() -> None:
             }
             append_session_event(c_dir, event)
             output_json({"ok": True, "course": args.course, "logged_event": event}, 0)
+
+        elif args.subcommand == "verify-vocab":
+            sess = get_teaching_session(course_slug=args.course, workspace=args.workspace)
+            v_contract = sess.get("vocabulary_contract", {})
+            v_res = verify_vocabulary_turn(
+                turn_text=args.text,
+                approved_terms=v_contract.get("approved_terms", []),
+                target_term=v_contract.get("target_term"),
+            )
+            exit_code = 0 if v_res["ok"] else 1
+            output_json(v_res, exit_code)
 
         elif args.subcommand == "history":
             ws = Path(args.workspace).resolve()

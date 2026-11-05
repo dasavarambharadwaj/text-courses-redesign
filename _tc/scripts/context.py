@@ -103,14 +103,14 @@ def resolve_course_dir(path_arg: str | Path | None) -> tuple[Path, Path | None]:
         return target.parent, target.parent / "course.toml"
 
     # target is a directory
-    manifest = target / "course.toml"
+    manifest = target / ".tc" / "course.toml" if (target / ".tc" / "course.toml").exists() else target / "course.toml"
     if manifest.exists():
         return target, manifest
 
     # Check if target contains courses/
     courses_sub = target / "courses"
     if courses_sub.is_dir():
-        manifests = list(courses_sub.glob("*/course.toml"))
+        manifests = list(courses_sub.glob("*/.tc/course.toml")) + list(courses_sub.glob("*/course.toml"))
         if manifests:
             return manifests[0].parent, manifests[0]
 

@@ -45,7 +45,7 @@
 
 | Skill | Interaction Model | Pacing Rule |
 | :--- | :--- | :--- |
-| **`tc-init`** | Sequential conversational intake | Strictly 1 question per turn (Name → Domain → Role → Experience → Density → Teacher → Summary). No style preview prompts. |
+| **`tc-init`** | Sequential conversational intake | Strictly 1 question per turn (Name → Domain & Deep Goals → Role → Experience → Teacher / Hybrid Blend → Summary). No style preview prompts. |
 | **`tc-roadmap`** | Diagnostic placement testing | Strictly 1 diagnostic scenario per turn; evaluate response before presenting next scenario. |
 | **`tc-teach`** | Single-concept delivery | Strictly 1 concept per turn; ends with standardized 4-option Next-Action Fork. |
 | **`tc-test-me`** | Diagnostic inquiry | Strictly 1 hinge scenario dilemma per turn (`SM-C3: Do not bombard the user`). |
@@ -53,3 +53,28 @@
 | **`tc-create`** | Zero-stalling autonomous build | Synthesizes 4-paradigm curriculum autonomously without stalling user with open-ended questions. |
 | **`tc-redirect-course`** | Drift triage | Single 3-choice menu for drift resolution. |
 | **`tc-migrate`** | Migration plan consent gate | Single typed confirmation (`--confirm APPLY`). |
+
+
+---
+
+## 6. Universal Pedagogical Decoupling (Anti-Software Bias)
+
+- **Domain-Agnostic Core**: TextCourses serves learners across all knowledge domains (Law, Medicine, Accounting, History, Mechanical Engineering, Software Engineering, Literature). Never assume all learners write code.
+- **Deliverables Diversity**: Practical capstone projects and diagnostic scenarios must accommodate diverse non-code artifacts:
+  - Legal: Contract clause analysis, precedent risk assessments, statutory compliance memos.
+  - Medical / Healthcare: Clinical differential diagnosis trees, contraindication protocols, triage decision logs.
+  - Business / Finance: Discounted cash-flow models, unit economic sensitivity analyses, audit memos.
+  - Engineering & Systems: System architecture blueprints, protocol state machines, functional code implementations.
+- **Substantive Invariant Checking**: Evaluators check for structured logic, defensive safeguards, and failure handling rather than hardcoded language keywords.
+- **Case-First & Applied Builder**: The builder archetype emphasizes tangible case analysis and concrete deliverables across all fields.
+
+---
+
+## 7. Public Learner Skills vs. Internal Engine Tools
+
+TextCourses maintains a strict boundary between public skills surfaced to apprentices and internal orchestration engines:
+
+| Category | Skills / Tools | Purpose & Invocation Model |
+| :--- | :--- | :--- |
+| **Public Learner Skills** | `/tc-init`<br>`/tc-research`<br>`/tc-create`<br>`/tc-teach`<br>`/tc-test-me`<br>`/tc-practicals` | Directly invocable by learners in chat. Guides onboarding, 5-hat research, curriculum creation, interactive instruction, diagnostic testing, and capstone reviews. |
+| **Internal Engine Tools** | `tc-roadmap`<br>`tc-verify-course`<br>`tc-redirect-course`<br>`tc-migrate`<br>`indexer.py` | Background orchestration engines. Invoked deterministically by orchestrator scripts and parent skills. **Never** surfaced as standalone commands to the learner. |

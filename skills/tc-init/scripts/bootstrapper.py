@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 VALID_RECOMMENDATIONS = {
+    "/tc-research",
     "/tc-create",
     "/tc-teach",
     "/tc-test-me",
@@ -75,9 +76,9 @@ PRIMARY_TEACHERS = {
     },
     "turing": {
         "name": "Turing",
-        "title": "The Practical Builder",
+        "title": "The Applied Builder",
         "icon": "💻",
-        "style": "Logical, hands-on, focuses on building things, how it works under the hood, and real code",
+        "style": "Hands-on, practical execution: real-world case studies, runnable snippets, concrete deliverables, and failure modes",
     },
 }
 
@@ -91,8 +92,8 @@ STYLE_DEFINITIONS = {
         "directive": "Use conceptual and intuitive analogies as bridging mechanisms before introducing formal technical details.",
     },
     "code_first": {
-        "label": "Code & Case-First",
-        "directive": "Ground explanations immediately in practical code implementations, concrete snippets, and edge-case execution traces.",
+        "label": "Case-First & Applied Builder",
+        "directive": "Ground explanations immediately in practical case studies, concrete worked analyses, clinical/legal/business scenarios, or runnable code implementations.",
     },
     "math": {
         "label": "First-Principles & Math",
@@ -305,26 +306,40 @@ def compile_preferences_content(
     explanation_density: str = DEFAULT_DENSITIES[1],
     styles: list[str] | str | None = None,
     teacher: str = "feynman",
+    target_subject: str = "",
+    learning_goals: str = "",
     extra_notes: str = "",
 ) -> str:
     """Compile valid markdown frontmatter + body for profile/preferences.md."""
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     if styles is None:
         t_clean = (teacher or "").lower()
-        if "feynman" in t_clean:
-            derived_styles = ["analogy"]
-        elif "turing" in t_clean:
-            derived_styles = ["code_first", "direct_technical"]
-        elif "hypatia" in t_clean:
-            derived_styles = ["direct_technical", "analogy"]
-        else:
+        derived_styles: list[str] = []
+        tokens = [t.strip() for t in re.split(r"[,+/\s&]+", t_clean) if t.strip()]
+        for tok in tokens:
+            if tok in {"1", "feynman", "everyday", "analogy", "explainer"}:
+                derived_styles.append("analogy")
+            elif tok in {"2", "turing", "builder", "code", "code_first", "case_first", "applied"}:
+                derived_styles.extend(["code_first", "direct_technical"])
+            elif tok in {"3", "hypatia", "socrates", "first_principles", "math", "rigor", "mentor"}:
+                derived_styles.extend(["math", "direct_technical"])
+            elif tok in {"all", "polymath"}:
+                derived_styles.extend(["analogy", "code_first", "math"])
+        if not derived_styles:
+            if "feynman" in t_clean:
+                derived_styles.append("analogy")
+            if "turing" in t_clean:
+                derived_styles.extend(["code_first", "direct_technical"])
+            if "hypatia" in t_clean:
+                derived_styles.extend(["math", "direct_technical"])
+        if not derived_styles:
             derived_styles = ["direct_technical", "code_first"]
         norm_styles = normalize_style_keys(derived_styles)
     else:
         norm_styles = normalize_style_keys(styles)
 
     style_labels = [STYLE_DEFINITIONS[k]["label"] for k in norm_styles if k in STYLE_DEFINITIONS]
-    style_profile_name = " + ".join(style_labels) if style_labels else "Direct Technical + Code-First"
+    style_profile_name = " + ".join(style_labels) if style_labels else "Direct Technical + Case-First"
 
     directives = [
         STYLE_DEFINITIONS[k]["directive"]
@@ -334,11 +349,15 @@ def compile_preferences_content(
     compound_directive = " ".join(directives)
 
     yaml_styles = "\n".join(f'  - "{s}"' for s in norm_styles)
+    safe_subj = target_subject.replace('"', '\"')
+    safe_goals = learning_goals.replace('"', '\"')
 
     content = f"""---
 role: "{role}"
 domain_experience: "{domain_experience}"
 explanation_density: "{explanation_density}"
+target_subject: "{safe_subj}"
+learning_goals: "{safe_goals}"
 teacher: "{teacher}"
 style_profile: "{style_profile_name}"
 styles_selected:
@@ -354,6 +373,10 @@ updated: "{now_iso}"
 - **Domain Experience**: {domain_experience}
 - **Explanation Density**: {explanation_density}
 - **Primary Faculty / Teacher**: {teacher}
+- **Target Subject**: {target_subject or "Not specified"}
+
+## Target Domain & Learning Goals
+{learning_goals.strip() if learning_goals.strip() else "Focus on core principles, real-world case studies, and boundary edge cases."}
 
 ## Active Style Directive
 - **Style Profile**: {style_profile_name}
@@ -384,7 +407,7 @@ def parse_preferences_file(filepath: Path) -> dict[str, Any]:
                 key, val = line.split(":", 1)
                 key = key.strip()
                 val = val.strip().strip('"').strip("'")
-                if key in {"role", "domain_experience", "explanation_density", "style_profile", "teacher", "faculty", "created", "updated"}:
+                if key in {"role", "domain_experience", "explanation_density", "style_profile", "teacher", "faculty", "target_subject", "learning_goals", "created", "updated"}:
                     result[key] = val
                     if key in {"teacher", "faculty"}:
                         result["teacher"] = val
@@ -556,17 +579,48 @@ def scan_workspace(path: Path | str) -> dict[str, Any]:
     # Remove duplicates
     course_files = sorted(list(dict.fromkeys(course_files)))
 
-    # If no course manifests found, check roadmap or return empty
+    # If no course manifests found, check research dossiers and roadmap
     if not course_files:
         roadmap_file = target_path / "plan" / "roadmap.toml"
         if not roadmap_file.is_file():
             roadmap_file = target_path / "roadmap.toml"
 
+        research_dir = target_path / "research"
+        dossier_files = []
+        if research_dir.is_dir():
+            dossier_files = list(research_dir.glob("*/dossier.md"))
+        if not dossier_files:
+            alt_res = target_path / ".tc" / "research"
+            if alt_res.is_dir():
+                dossier_files = list(alt_res.glob("*/dossier.md"))
+
+        pref_file = target_path / "profile" / "preferences.md"
+        if not pref_file.is_file():
+            pref_file = target_path / "plan" / "preferences.md"
+        target_subj = ""
+        if pref_file.is_file():
+            try:
+                p_data = parse_preferences_file(pref_file)
+                target_subj = p_data.get("target_subject", "")
+            except Exception:
+                pass
+
+        if dossier_files:
+            d_slug = dossier_files[0].parent.name
+            return {
+                "ok": True,
+                "status": "research_ready",
+                "recommendation": f"/tc-create {d_slug}",
+                "message": f"Research dossier found for '{d_slug}'. Scaffold your course with /tc-create {d_slug}.",
+                "courses": [],
+            }
+
+        rec_cmd = f'/tc-research "{target_subj}"' if target_subj else "/tc-research"
         return {
             "ok": True,
             "status": "empty",
-            "recommendation": "/tc-create",
-            "message": "No courses found. Start by creating a course with /tc-create.",
+            "recommendation": rec_cmd,
+            "message": f"No courses or research found. Start by scouting your domain with {rec_cmd}.",
             "courses": [],
         }
 
@@ -827,12 +881,31 @@ def cmd_set_preferences(args: argparse.Namespace) -> None:
         teacher = "feynman"
 
     styles = getattr(args, "styles", None) or getattr(args, "style", None)
+    subject = getattr(args, "subject", None) or getattr(args, "topic", "")
+    goals = getattr(args, "goals", None) or getattr(args, "description", "")
+    if not subject:
+        for p_file in pref_paths:
+            if p_file.is_file():
+                existing = parse_preferences_file(p_file)
+                if "target_subject" in existing:
+                    subject = existing["target_subject"]
+                    break
+    if not goals:
+        for p_file in pref_paths:
+            if p_file.is_file():
+                existing = parse_preferences_file(p_file)
+                if "learning_goals" in existing:
+                    goals = existing["learning_goals"]
+                    break
+
     content = compile_preferences_content(
         role=getattr(args, "role", DEFAULT_ROLES[0]),
-        domain_experience=getattr(args, "experience", DEFAULT_EXPERIENCE_LEVELS[2]),
+        domain_experience=getattr(args, "experience", DEFAULT_EXPERIENCE_LEVELS[1]),
         explanation_density=getattr(args, "density", DEFAULT_DENSITIES[1]),
         styles=styles,
         teacher=teacher,
+        target_subject=subject or "",
+        learning_goals=goals or "",
         extra_notes=getattr(args, "notes", ""),
     )
     for p_file in pref_paths:
@@ -873,6 +946,8 @@ def main() -> None:
     p_boot.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
     p_boot.add_argument("--styles", "--style", dest="styles", default="direct_technical,code_first", help="Pedagogical style profile(s)")
     p_boot.add_argument("--teacher", default="feynman", help="Primary faculty teacher persona")
+    p_boot.add_argument("--subject", "--topic", dest="subject", default="", help="Target subject or domain to learn")
+    p_boot.add_argument("--goals", "--description", dest="goals", default="", help="In-depth learning goals and focus areas")
     p_boot.add_argument("--notes", default="", help="Optional learner notes")
     p_boot.set_defaults(func=cmd_bootstrap)
 
@@ -886,6 +961,8 @@ def main() -> None:
     p_init.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
     p_init.add_argument("--styles", "--style", dest="styles", default="direct_technical,code_first", help="Pedagogical style profile(s)")
     p_init.add_argument("--teacher", default="feynman", help="Primary faculty teacher persona")
+    p_init.add_argument("--subject", "--topic", dest="subject", default="", help="Target subject or domain to learn")
+    p_init.add_argument("--goals", "--description", dest="goals", default="", help="In-depth learning goals and focus areas")
     p_init.add_argument("--notes", default="", help="Optional learner notes")
     p_init.set_defaults(func=cmd_bootstrap)
 
@@ -912,6 +989,8 @@ def main() -> None:
     p_set_pref.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")
     p_set_pref.add_argument("--styles", "--style", dest="styles", default=None, help="Pedagogical style profile(s)")
     p_set_pref.add_argument("--teacher", default=None, help="Primary faculty teacher persona")
+    p_set_pref.add_argument("--subject", "--topic", dest="subject", default="", help="Target subject or domain to learn")
+    p_set_pref.add_argument("--goals", "--description", dest="goals", default="", help="In-depth learning goals, focus areas, and deliverables")
     p_set_pref.add_argument("--notes", default="", help="Optional learner notes")
     p_set_pref.set_defaults(func=cmd_set_preferences)
 

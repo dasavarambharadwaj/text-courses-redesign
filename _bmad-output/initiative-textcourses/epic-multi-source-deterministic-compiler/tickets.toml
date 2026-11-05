@@ -1,0 +1,61 @@
+next_id = 7
+
+[[entry]]
+id = 1
+type = "story"
+title = "Pure-Python Verbatim Ingestion & Pre-Flight Probe (extractor.py)"
+after = []
+risk = "low"
+covers = ["CAP-1"]
+description = "Implement _tc/scripts/extractor.py to extract raw prose, code blocks, tables, and headers from PDFs/EPUBs into verbatim markdown with zero LLM rewriting; include pre-flight page character density check to fail-fast on scanned bitmap PDFs."
+verify = "extractor.py extracts PDF text/code with exact symbol fidelity; scanned image PDF triggers fail-fast warning without crashing; unit tests in tests/test_extractor.py pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Macro Semantic TOC Alignment & Multi-Source Deduplication Engine"
+after = [1]
+risk = "medium"
+covers = ["CAP-2"]
+description = "Implement TOC tree extraction (toc.json) across heterogeneous peer sources, cluster overlapping domain primitives, preserve source-unique niche topics, and construct unified topological master DAG."
+verify = "Multiple books with overlapping chapters (e.g. DDIA and DB Internals) yield a single unified DAG where common topics appear once and unique topics are preserved; unit tests in tests/test_toc_aligner.py pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "Conveyor-Belt Chapter Pipeline & Symbol Table (source-map.toml)"
+after = [2]
+risk = "high"
+covers = ["CAP-3", "CAP-4"]
+description = "Implement sequential chapter-by-chapter ingestion in course_builder.py with running vocabulary accumulation capping peak prompt tokens <25k; compile courses/<slug>/source-map.toml mapping each concept to exact source files, heading breadcrumbs, and line spans."
+verify = "source-map.toml generated with 100% concepts linked to valid line ranges; multi-chapter ingestion maintains prompt tokens under 25k without context rot; unit tests in tests/test_source_mapper.py pass."
+
+[[entry]]
+id = 4
+type = "story"
+title = "Complete Coverage Verification Ledger (coverage-ledger.md)"
+after = [3]
+risk = "low"
+covers = ["CAP-5"]
+description = "Implement audit verification tool in auditor.py checking that 100% of discovered sections in uploaded sources are mapped into course.toml and emit courses/<slug>/coverage-ledger.md, failing course compilation if any section was dropped."
+verify = "coverage-ledger.md generated with audit matrix; course validation passes when all sections mapped and fails when a section is artificially omitted; unit tests in tests/test_coverage_auditor.py pass."
+
+[[entry]]
+id = 5
+type = "story"
+title = "Grounded Sensei Runtime Grounding & Vocabulary Contract Gate"
+after = [3]
+risk = "medium"
+covers = ["CAP-6"]
+description = "Update teach_engine.py to load verbatim excerpts via O(1) pointer lookup from source-map.toml; enforce Vocabulary Contract (two-token rule and intuition-before-label) with multi-source dialectic synthesis and zero unearned jargon."
+verify = "teach_engine.py session injects exact pre-mapped source text in under 5ms; multi-source concepts render dialectic comparisons; unintroduced jargon is strictly blocked; unit tests in tests/test_teach_grounded_sensei.py pass."
+
+[[entry]]
+id = 6
+type = "story"
+title = "Refactor Sweep, CLI Integration & Multi-Source End-to-End Test Suite"
+after = [1, 2, 3, 4, 5]
+risk = "medium"
+covers = ["CAP-1", "CAP-2", "CAP-3", "CAP-4", "CAP-5", "CAP-6"]
+description = "Integrate extractor.py and source_mapper into /tc-research and /tc-create; deprecate runtime vector chunking; synchronize runtime scripts to skills/; deliver comprehensive multi-source end-to-end regression test suite."
+verify = "Full pytest suite passes with 100% clean results across all existing and new multi-source tests."

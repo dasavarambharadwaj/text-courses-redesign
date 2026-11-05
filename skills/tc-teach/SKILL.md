@@ -11,7 +11,7 @@ description: "Deliver conversational, single-concept deep dives concluding with 
 
 ## Core Invariants
 
-1. **Strict Single-Concept Bounding (FR-9)**: Never teach multiple concepts in one turn. Focus on one mechanism, its invariant, a concrete code example, and a fatal mistake to avoid.
+1. **Strict Single-Concept Bounding (FR-9)**: Never teach multiple concepts in one turn. Focus on one mechanism, its invariant, a concrete worked example (code walkthrough, legal case study, clinical diagnostic path, or domain model), and a fatal mistake to avoid.
 2. **Sovereign Faculty Persona & Style Adherence (FR-24)**: Deliver instruction adopting the active master teacher's persona, tone, and invariants configured in `profile/preferences.md` (e.g., Feynman ⚡, Euclid 📐, Socrates 🦉, Leonardo 🎨, Turing 💻, Lovelace 🎼, Newton 🍎, Marie 🔬, Aristotle 🗺️, Hypatia ⚖️).
 3. **Mandatory Next-Action Fork (FR-10)**: Every instructional turn MUST conclude with the standardized 4-option fork rendered by `teach_engine.py fork`:
    ```markdown
@@ -30,6 +30,9 @@ description: "Deliver conversational, single-concept deep dives concluding with 
    - Advancing a concept automatically mirrors `- (concept by <Teacher>) <sec_id>:<concept_slug>:mastered` to `courses/<slug>/memlog.md`.
    - Learner custom questions are recorded via `teach_engine.py log-question` as `- (question) q:<text>`.
    - Section completion automatically compiles textbook notes and logs `- (milestone) sec:<sec_id>:all_concepts_mastered`.
+   - **Zero-Gap Conversational Turn Logging**: Every conversational turn (instruction, questions, answers, reviews) must be logged via `teach_engine.py log-turn` to maintain full conversational trace in `session.jsonl`.
+
+   - **Zero-Gap Conversational Turn Logging**: Every conversational turn (instruction, questions, answers, reviews) must be logged via `teach_engine.py log-turn` to maintain full conversational trace in `session.jsonl`.
 7. **Session Hygiene (FR-12)**: Checkmarks in `lesson-plan.md` ensure interruption recovery without lost continuity.
 
 ---
@@ -60,15 +63,22 @@ The output indicates:
 - `active_section`: Target chapter and section.
 - `active_concept`: The exact next concept to teach from `lesson-plan.md`.
 - `preferences`: Active style profile, density, and teacher persona.
+- `rag_source_excerpts`: Deterministic verbatim excerpts retrieved in $O(1)$ time from `courses/<slug>/source-map.toml` (with multi-source dialectic synthesis when concepts overlap across peer textbooks).
+- `vocabulary_contract`: Strict zero-unearned-jargon contract with `approved_terms`, designated `target_term`, and the mandatory Intuition-Before-Label pedagogical sequence.
+- `recent_memlog_entries`: Trailing pedagogical context and milestones.
 
 ### 2. Deliver Single-Concept Turn
 
 Teach the concept adhering strictly to the learner's style profile and active teacher persona:
-- **Bold Mechanics**: Explicit terminology.
+- **Bold Mechanics**: Explicit terminology and core invariant.
 - **Mental Model & Analogy**: Relatable intuition and why it exists.
-- **Code Walkthrough / Table**: Concrete, annotated implementation.
-- **Fatal Mistake**: The most common real-world trap or bug.
-- Conclude with the **Next-Action Fork**.
+- **Grounded Source Citation**: Direct anchor from `rag_source_excerpts`.
+- **Worked Application / Walkthrough**: Concrete, annotated implementation (code walkthrough, legal precedent analysis, clinical diagnostic scenario, or domain model).
+- **Fatal Mistake & Edge Cases**: The most dangerous real-world trap or failure mode.
+- Conclude with the **Next-Action Fork**, and log the conversational exchange via:
+  ```bash
+  uv run _tc/scripts/teach_engine.py log-turn --course <course_slug> --section <sec_id> --concept "<concept_slug>" --teacher "<active_teacher>" --turn-type instruction --summary "<short_summary>"
+  ```
 
 ### 3. Handle Learner Response
 

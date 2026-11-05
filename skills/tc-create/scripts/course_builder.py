@@ -66,6 +66,14 @@ except ImportError:
         find_manifest_path = None
         run_query_index = None
 
+try:
+    from source_mapper import compile_source_map
+except ImportError:
+    try:
+        from _tc.scripts.source_mapper import compile_source_map
+    except ImportError:
+        compile_source_map = None
+
 ARCHETYPES = {
     "applied_creation": {
         "title": "Applied Creation",
@@ -181,7 +189,7 @@ def load_learner_preferences(workspace: Path) -> dict[str, Any]:
     role_lower = str(result.get("role", "")).lower()
     if "beginner" in role_lower or result.get("competency_level") == "beginner":
         result["competency_level"] = "beginner"
-        if "teacher" not in result or result["teacher"] == "feynman":
+        if "teacher" not in result:
             result["teacher"] = "hypatia"
     if str(result.get("practical_focus", "")).lower() in {"true", "yes", "1"}:
         result["practical_focus"] = "true"
@@ -1141,7 +1149,16 @@ def scaffold_course_files(
             )
             atomic_write_text(sec_path / "lesson-plan.md", lesson_plan_content)
 
+
+    # 7. Compile deterministic symbol table (source-map.toml)
+    if compile_source_map:
+        try:
+            compile_source_map(slug, workspace=workspace, course_data=course_data)
+        except Exception:
+            pass
+
     return course_dir
+
 
 
 def create_course(

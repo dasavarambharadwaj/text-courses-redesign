@@ -1,0 +1,61 @@
+next_id = 7
+
+[[entry]]
+id = 1
+type = "story"
+title = "Pure-Python Drop-in Workspace Auto-Ingestion Engine (CAP-3)"
+after = []
+risk = "low"
+covers = ["CAP-3"]
+description = "Implement automated discovery and extraction for PDFs/EPUBs placed in workspace root, books/, sources/, or research/. Call extractor.py silently to extract verbatim markdown and density probe, providing empathetic guidance for scanned images without manual CLI invocation."
+verify = "Dropping PDF/EPUB files into workspace allows automatic discovery and extraction; scanned PDFs trigger helpful failure guidance; unit tests in tests/test_auto_ingestion.py pass."
+
+[[entry]]
+id = 2
+type = "story"
+title = "Two-Tier Clean Workspace Substrate & Encapsulation Engine (CAP-4)"
+after = [1]
+risk = "medium"
+covers = ["CAP-4"]
+description = "Encapsulate course.toml, source-map.toml, coverage-ledger.md, memlog.md, session.jsonl, consensus-deliberation.md, curriculum-brainstorm.md, and plans/ into courses/<slug>/.tc/. Maintain only overview.md and notes/ in the course root. Add dual-path search fallback in all engine scripts."
+verify = "New course scaffolding places machine files in .tc/; course root contains only overview.md and notes/; legacy courses with root files still load seamlessly; unit tests in tests/test_clean_workspace.py pass."
+
+[[entry]]
+id = 3
+type = "story"
+title = "Token-Bounded Triad Deliberation Summarizer (CAP-5)"
+after = [2]
+risk = "low"
+covers = ["CAP-5"]
+description = "Implement deliberation summarizer that synthesizes multi-agent Triad (Daedalus, Marie, Hypatia) consensus, topic deduplication, and coverage verification into a concise chat summary of strictly <= 40 words, while saving the complete debate trace in .tc/consensus-deliberation.md."
+verify = "Deliberation summary function enforces word count <= 40 words; full debate transcript is written to disk; unit tests in tests/test_deliberation_summary.py pass."
+
+[[entry]]
+id = 4
+type = "story"
+title = "Interactive Checkpoint Gates & Material Acquisition Pause (CAP-2)"
+after = [3]
+risk = "medium"
+covers = ["CAP-2"]
+description = "Implement interactive checkpoint state machine: pause at Material Acquisition Gate if landmark gold-standard books are missing/proprietary with drop-in or proceed options; pause at Curriculum Approval Gate to review syllabus before generation; pause at Action Fork after every lesson turn."
+verify = "Acquisition gate pauses when required textbook is missing and resumes on user input; approval gate pauses with syllabus and summary; unit tests in tests/test_interactive_gates.py pass."
+
+[[entry]]
+id = 5
+type = "story"
+title = "Unified /tc Skill & Intelligent State Machine (CAP-1, CAP-6)"
+after = [4]
+risk = "high"
+covers = ["CAP-1", "CAP-6"]
+description = "Implement unified /tc skill and CLI orchestrator (skills/tc/SKILL.md and _tc/scripts/tc.py) routing all user interaction through a single command. Supports subcommands (/tc test, /tc practical, etc.) while preserving the 4-Option Action Fork at every teaching turn."
+verify = "Unified /tc correctly routes fresh workspace to intake, new topic/books to course pipeline, and active course to lesson turns; 4-Option Action Fork responds to 1, 2, 3, 4 and natural language; unit tests in tests/test_unified_tc.py pass."
+
+[[entry]]
+id = 6
+type = "story"
+title = "End-to-End Consumer UX Integration Suite & Zero Regressions"
+after = [5]
+risk = "medium"
+covers = ["CAP-1", "CAP-2", "CAP-3", "CAP-4", "CAP-5", "CAP-6"]
+description = "Implement comprehensive end-to-end integration tests for the unified consumer UX workflow, verify zero regressions across all 296+ existing unit/integration tests, and validate strict Zero-BMad compliance across all scripts, skills, and tests."
+verify = "Full pytest suite passes with 0 failures; Zero-BMad scan verifies 0 occurrences of 'bmad' in _tc/scripts/, skills/, and tests/; unit tests in tests/test_consumer_ux_e2e.py pass."

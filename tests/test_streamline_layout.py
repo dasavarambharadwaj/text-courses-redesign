@@ -88,7 +88,7 @@ def test_course_scaffolding_creates_flat_notes_and_memlog(tmp_path: Path):
     assert "# Chapter 01 Notes" in chapter_notes_text
 
     # Course memlog
-    course_memlog = course_dir / "memlog.md"
+    course_memlog = (course_dir / ".tc" / "memlog.md") if (course_dir / ".tc" / "memlog.md").is_file() else (course_dir / "memlog.md")
     assert course_memlog.is_file()
     memlog_text = course_memlog.read_text(encoding="utf-8")
     assert "course: compilers-101" in memlog_text

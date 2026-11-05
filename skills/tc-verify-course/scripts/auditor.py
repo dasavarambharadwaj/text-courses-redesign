@@ -19,6 +19,17 @@ import graphlib
 import json
 import sys
 import tomllib
+import datetime
+import re
+
+try:
+    from toc_aligner import extract_toc_from_markdown
+except ImportError:
+    try:
+        from _tc.scripts.toc_aligner import extract_toc_from_markdown
+    except ImportError:
+        extract_toc_from_markdown = None
+
 from pathlib import Path
 from typing import Any
 
@@ -324,6 +335,189 @@ def audit_curriculum(
     }
 
 
+
+def audit_coverage(
+    course_slug: str,
+    workspace: Path | str = ".",
+) -> dict[str, Any]:
+    """Audit source-to-curriculum parity and emit courses/<slug>/coverage-ledger.md (CAP-5)."""
+    ws = Path(workspace).resolve()
+    course_dir = ws / "courses" / course_slug
+    if not course_dir.is_dir():
+        raise FileNotFoundError(f"Course directory not found: {course_dir}")
+
+    source_map_path = course_dir / "source-map.toml"
+    if not source_map_path.is_file():
+        try:
+            from source_mapper import compile_source_map
+            compile_source_map(course_slug, workspace=ws)
+        except Exception:
+            pass
+
+    source_map_data: dict[str, Any] = {}
+    if source_map_path.is_file():
+        try:
+            source_map_data = tomllib.loads(source_map_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    mapped_headings: dict[str, list[dict[str, Any]]] = {}
+    for ch in source_map_data.get("chapters", []):
+        ch_title = ch.get("title", "")
+        for sec in ch.get("sections", []):
+            sec_title = sec.get("title", "")
+            for c in sec.get("concepts", []):
+                for ptr in c.get("pointers", []):
+                    s_id = ptr.get("source_id", "")
+                    h = ptr.get("heading", "").strip().lower()
+                    lines = ptr.get("lines", [0, 0])
+                    if s_id not in mapped_headings:
+                        mapped_headings[s_id] = []
+                    mapped_headings[s_id].append({
+                        "heading": h,
+                        "lines": lines,
+                        "destination": f"{ch_title} » {sec_title}",
+                        "concept_id": c.get("id", ""),
+                        "concept_title": c.get("title", ""),
+                    })
+
+    sources_meta = source_map_data.get("sources", [])
+    if not sources_meta:
+        raw_dir = ws / "research" / course_slug / "sources" / "raw"
+        if not raw_dir.is_dir():
+            raw_dir = ws / "sources" / "raw"
+        if raw_dir.is_dir():
+            for p in sorted(raw_dir.glob("*.md")):
+                sources_meta.append({
+                    "id": p.stem,
+                    "title": p.stem.replace("_", " ").title(),
+                    "raw_path": str(p.relative_to(ws)).replace("\\", "/"),
+                })
+
+    sources_audited = len(sources_meta)
+    total_sections = 0
+    mapped_count = 0
+    dropped_count = 0
+    ledger_sections_report: list[dict[str, Any]] = []
+
+    course_toml_path = course_dir / "course.toml"
+    course_title = course_slug.replace('-', ' ').title()
+    if course_toml_path.is_file():
+        try:
+            c_data = tomllib.loads(course_toml_path.read_text(encoding="utf-8"))
+            if c_data.get("course", {}).get("title"):
+                course_title = c_data["course"]["title"]
+        except Exception:
+            pass
+
+    markdown_lines = [
+        f"# Coverage Audit Ledger: {course_title}",
+        "",
+        f"- **Audit Date**: {datetime.date.today().isoformat()}",
+        f"- **Course Slug**: `{course_slug}`",
+        f"- **Sources Audited**: {sources_audited}",
+    ]
+
+    for src in sources_meta:
+        src_id = src["id"]
+        src_title = src.get("title", src_id)
+        raw_rel = src.get("raw_path", "")
+        src_file = ws / raw_rel if raw_rel else None
+
+        source_toc: list[dict[str, Any]] = []
+        if src_file and src_file.is_file():
+            if extract_toc_from_markdown:
+                source_toc = extract_toc_from_markdown(src_file)
+            else:
+                lines = src_file.read_text(encoding="utf-8").splitlines()
+                for idx, line in enumerate(lines, 1):
+                    m = re.match(r"^(#{1,4})\s+(.+)$", line)
+                    if m:
+                        source_toc.append({
+                            "title": m.group(2).strip(),
+                            "level": len(m.group(1)),
+                            "line_start": idx,
+                            "line_end": idx,
+                        })
+
+        eval_toc = [e for e in source_toc if e.get("level", 2) >= 2]
+        if not eval_toc:
+            eval_toc = source_toc
+
+        markdown_lines.extend([
+            "",
+            f"## Source: {src_title}",
+            "",
+            "| Source Section | Source Title | Mapped Course Chapter / Section | Status |",
+            "| :--- | :--- | :--- | :--- |",
+        ])
+
+        src_mapped_entries = mapped_headings.get(src_id, [])
+
+        for idx, entry in enumerate(eval_toc, 1):
+            total_sections += 1
+            sec_title = entry["title"]
+            sec_lower = sec_title.lower()
+            l_start = entry.get("line_start", 0)
+            l_end = entry.get("line_end", 0)
+
+            matched_dest = None
+            for m in src_mapped_entries:
+                h_match = bool(m["heading"] and (m["heading"] in sec_lower or sec_lower in m["heading"]))
+                c_words = [w for w in re.split(r"[\s\-_]+", m["concept_title"].lower()) if len(w) >= 3]
+                concept_match = any(cw in sec_lower for cw in c_words) if c_words else False
+                line_overlap = not (l_end < m["lines"][0] or l_start > m["lines"][1]) if (l_start > 0 and m["lines"][0] > 0) else False
+
+                if h_match or line_overlap or concept_match:
+                    matched_dest = m["destination"]
+                    break
+
+            if matched_dest:
+                mapped_count += 1
+                status_str = "[✓] Mapped"
+                dest_str = matched_dest
+            else:
+                dropped_count += 1
+                status_str = "[!] Dropped"
+                dest_str = "None (Omitted)"
+
+            section_ref = f"§{idx}"
+            markdown_lines.append(f"| **{section_ref}** | {sec_title} | {dest_str} | {status_str} |")
+            ledger_sections_report.append({
+                "source_id": src_id,
+                "section_ref": section_ref,
+                "title": sec_title,
+                "destination": dest_str,
+                "status": status_str,
+                "mapped": bool(matched_dest),
+            })
+
+    coverage_ratio = (mapped_count / total_sections * 100.0) if total_sections > 0 else 100.0
+    is_passed = (dropped_count == 0)
+
+    summary_lines = [
+        f"- **Overall Coverage Ratio**: {coverage_ratio:.1f}% ({mapped_count} / {total_sections} source sections mapped)",
+        f"- **Status**: {'PASSED' if is_passed else 'FAILED'}",
+    ]
+    markdown_lines[5:5] = summary_lines
+
+    ledger_path = course_dir / "coverage-ledger.md"
+    ledger_path.write_text("\n".join(markdown_lines) + "\n", encoding="utf-8")
+
+    return {
+        "ok": is_passed,
+        "course_slug": course_slug,
+        "sources_audited": sources_audited,
+        "total_source_sections": total_sections,
+        "mapped_sections": mapped_count,
+        "dropped_sections": dropped_count,
+        "coverage_ratio": coverage_ratio,
+        "ledger_path": str(ledger_path),
+        "status": "PASSED" if is_passed else "FAILED",
+        "sections": ledger_sections_report,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="auditor.py",
@@ -335,6 +529,10 @@ def main() -> None:
     p_audit.add_argument("--manifest", required=True, help="Path to course.toml, manifest JSON, or course directory.")
     p_audit.add_argument("--research-slug", default=None, help="Optional research slug to cross-check against.")
     p_audit.add_argument("--workspace", default=".", help="Path to workspace root.")
+    
+    p_cov = subparsers.add_parser("coverage", help="Audit complete coverage ledger of source materials.")
+    p_cov.add_argument("--course", required=True, help="Course slug.")
+    p_cov.add_argument("--workspace", default=".", help="Path to workspace root.")
     p_audit.add_argument("--json", action="store_true", help="Output results in JSON format.")
 
     args = parser.parse_args()
@@ -348,6 +546,13 @@ def main() -> None:
             )
             exit_code = 0 if result["ok"] else 1
             output_json(result, exit_code)
+        elif args.subcommand == "coverage":
+            cov_res = audit_coverage(
+                course_slug=args.course,
+                workspace=args.workspace,
+            )
+            exit_code = 0 if cov_res["ok"] else 1
+            output_json(cov_res, exit_code)
         else:
             output_json({"error": f"Unknown subcommand: {args.subcommand}"}, 1)
 

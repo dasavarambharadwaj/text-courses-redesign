@@ -41,7 +41,7 @@ When invoked (`/tc-init` or `/tc-init --reconfigure`):
      - Otherwise, display the active learning cockpit:
        - **Current Learner Profile**: Role, experience level, density, active style profile.
        - **Active Progress**: Current course, chapter, section status.
-       - **Recommended Next Command**: Output the exact recommended action (`/tc-create`, `/tc-teach`, `/tc-test-me`, `/tc-practicals`).
+       - **Recommended Next Command**: Output the exact recommended action (`/tc-research`, `/tc-create`, `/tc-teach`, `/tc-test-me`, `/tc-practicals`).
        - Offer: *"Type [R] to reconfigure preferences, or run `<recommendation>` to continue."*
 
 ---
@@ -62,10 +62,14 @@ Ask the learner (single question — wait for response):
 What name or handle would you like to be addressed as?
 ```
 
-### Stage 2: Target Domain
-Ask the learner (single question — wait for response):
+### Stage 2: Target Domain & Deep Goals
+Ask the learner (single prompt — wait for response):
 ```text
 What specific subject, skill, or topic do you want to learn?
+Please describe it in depth:
+- What are your core focus areas or specific pain points?
+- What real-world projects, decisions, or artifacts do you want to build or master?
+(Take your time — the richer your description, the better your curriculum will be!)
 ```
 
 ### Stage 3: Role / Background (FR-1)
@@ -94,35 +98,32 @@ How much do you already know about this subject?
 [4] Custom (write-in: e.g. "start from basics then dive deep into internals", or your own mix)
 ```
 
-### Stage 5: Explanation Density (FR-1)
-Present the density menu with the dynamic `(Recommended)` tag (wait for response):
-```text
-How detailed would you like each lesson to be?
-[1] Short & Sweet (Quick summary, minimal words) (~60–100 words per concept)
-[2] Balanced with Examples (Practical explanations with clear examples) (~150–200 words per concept) (Recommended)
-[3] Deep-Dive Detailed (Comprehensive, deep exploration of internals) (~250–350 words per concept)
-```
+> [!NOTE]
+> Explanation depth is automatically derived from domain experience level:
+> - Beginner: Intuitive, step-by-step grounding with relatable metaphors.
+> - Familiar: Core mechanics, idiomatic conventions, and internal operations.
+> - Experienced: Architecture, trade-offs, edge-case failure modes, and boundary invariants.
 
-### Stage 6: Primary Master Teacher (FR-24)
-Present the 3 kid-friendly primary teaching personas with the dynamic `(Recommended)` tag (wait for response):
+### Stage 5: Primary Master Teacher & Hybrid Archetypes (FR-24)
+Present the 3 orthogonal primary teaching personas with the dynamic `(Recommended)` tag, allowing single selection or multi-select combinations (wait for response):
 ```text
-Who would you like as your primary master teacher?
+Who would you like as your primary master teacher? (You can choose one, or combine numbers like "1, 3" for Feynman + Turing!):
 [1] Feynman (The Everyday Explainer) ⚡ — Fun, simple, uses everyday stories and real-world analogies, zero confusing jargon (Recommended)
-[2] Hypatia (The Step-by-Step Mentor) 🦉 — Patient, gentle, guides you step-by-step from zero without skipping anything
-[3] Turing (The Practical Builder) 💻 — Logical, hands-on, focuses on building things, how it works under the hood, and real code
-[4] Other (write-in)
+[2] Hypatia (The Step-by-Step Mentor) 🦉 — Patient, gentle, builds step-by-step from first principles without skipping anything
+[3] Turing (The Applied Builder) 💻 — Hands-on, practical, focuses on building things, how it works under the hood, and real-world architecture
+[4] Other (write-in or custom blend)
 ```
 
-### Stage 7: Summary & Deterministic Compilation (FR-42)
+### Stage 6: Summary & Deterministic Compilation (FR-42)
 Do NOT ask more questions. Display a short, scannable summary in simple English so the learner never has to scroll up and down:
 
 ```text
 📋 Learner Profile Summary:
 - Name: <name>
 - Subject: <subject>
+- Goals: <goals>
 - Role: <role>
 - Experience: <experience>
-- Detail Level: <density>
 - Teacher: <teacher>
 ```
 
@@ -131,8 +132,9 @@ Save the preferences deterministically via the CLI:
 uv run _tc/scripts/bootstrapper.py set-preferences --path . \
   --role "<role>" \
   --experience "<experience>" \
-  --density "<density>" \
-  --teacher "<selected_teacher>"
+  --teacher "<selected_teacher>" \
+  --subject "<subject>" \
+  --goals "<goals>"
 ```
 
 Conclude immediately with the exact next action:
@@ -140,8 +142,10 @@ Conclude immediately with the exact next action:
 ✅ Preferences saved to profile/preferences.md!
 
 Next Action:
-Start by creating your first course:
-  /tc-create "<subject>"
+Perform comprehensive 5-Hat domain research before generating your course:
+  /tc-research "<subject>"
+
+(Tip: If you already have your own curated sources or want to fast-track, run: /tc-create "<subject>")
 ```
 
 ---
@@ -155,3 +159,5 @@ Start by creating your first course:
    - `forbidden`: `lesson-plan.md`, `notes.md`, `test-ledger.jsonl`, `portfolio/**`, `.tc/research/**`.
    - Token budget: `< 1,500 tokens`.
 3. **Immutability & Safety**: Never overwrite existing notes, manifests, or preferences on an existing workspace.
+4. **Scope-Aware Decomposition**: Broad multi-disciplinary learning targets (e.g., 'Software Architecture', 'Corporate Law', 'Internal Medicine') automatically trigger decomposition into 3–5 sovereign subjects in `roadmap/roadmap.toml` via the internal `tc-roadmap` engine. Highly focused topics bypass decomposition and proceed directly to `/tc-research`.
+4. **Scope-Aware Decomposition**: Broad multi-disciplinary learning targets (e.g., 'Software Architecture', 'Corporate Law', 'Internal Medicine') automatically trigger decomposition into 3–5 sovereign subjects in `roadmap/roadmap.toml` via the internal `tc-roadmap` engine. Highly focused topics bypass decomposition and proceed directly to `/tc-research`.

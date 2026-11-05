@@ -157,3 +157,20 @@ Next Action:
 Create your personalized course using this research:
   /tc-create "<topic>"
 ```
+
+### 4. Pure-Python Verbatim Ingestion & Pre-Flight Probe
+
+When the learner provides external textbooks or papers (PDFs, EPUBs, or markdown) in `research/<slug>/sources/`:
+
+1. **Pre-Flight Scanned PDF Probe**:
+   ```bash
+   uv run _tc/scripts/extractor.py probe --input research/<slug>/sources/book.pdf
+   ```
+2. **Pure-Python Verbatim Extraction**:
+   ```bash
+   uv run _tc/scripts/extractor.py extract --input research/<slug>/sources/book.pdf --output research/<slug>/sources/raw/
+   ```
+3. **Macro Semantic TOC Alignment**:
+   ```bash
+   uv run _tc/scripts/toc_aligner.py align --sources-dir research/<slug>/sources/raw/
+   ```

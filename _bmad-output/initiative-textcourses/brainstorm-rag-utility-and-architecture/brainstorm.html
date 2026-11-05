@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TextCourses: The Multi-Source Deterministic Compiler</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(148, 163, 184, 0.15);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-purple: #c084fc;
+      --accent-amber: #fbbf24;
+      --accent-rose: #f43f5e;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(192, 132, 252, 0.08) 0px, transparent 50%);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1rem;
+    }
+
+    p.subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 750px;
+      margin: 0 auto;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.75rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+
+    .card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .card-red { border-top: 4px solid var(--accent-rose); }
+    .card-emerald { border-top: 4px solid var(--accent-emerald); }
+    .card-blue { border-top: 4px solid var(--accent-blue); }
+    .card-purple { border-top: 4px solid var(--accent-purple); }
+
+    ul.bullet-list {
+      list-style: none;
+      margin-top: 0.75rem;
+    }
+
+    ul.bullet-list li {
+      position: relative;
+      padding-left: 1.5rem;
+      margin-bottom: 0.6rem;
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    ul.bullet-list li::before {
+      content: "•";
+      position: absolute;
+      left: 0.3rem;
+      font-weight: bold;
+    }
+
+    .card-red ul.bullet-list li::before { color: var(--accent-rose); }
+    .card-emerald ul.bullet-list li::before { color: var(--accent-emerald); }
+
+    /* Pipeline Flow */
+    .pipeline-section {
+      margin: 3.5rem 0;
+    }
+
+    .pipeline-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .pipeline-header h2 {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .flow-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      position: relative;
+    }
+
+    .step-box {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem 1.75rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      border-left: 4px solid var(--accent-blue);
+    }
+
+    .step-num {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 1.1rem;
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-content h4 {
+      font-size: 1.15rem;
+      margin-bottom: 0.35rem;
+      color: #ffffff;
+    }
+
+    .step-content p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .code-tag {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.35rem;
+      color: var(--accent-amber);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    /* Comparison Table */
+    .table-container {
+      overflow-x: auto;
+      margin: 2rem 0;
+      border-radius: 0.75rem;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.9);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    .tag-must { color: var(--accent-emerald); font-weight: 700; }
+    .tag-wont { color: var(--accent-rose); font-weight: 700; }
+
+    footer {
+      text-align: center;
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="badge">Architecture Shift & Brainstorm Synthesis</div>
+    <h1>The Multi-Source Deterministic Compiler</h1>
+    <p class="subtitle">Replacing runtime probabilistic RAG with compile-time symbol mapping, conveyor-belt digestion, and the Grounded Sensei vocabulary contract.</p>
+  </header>
+
+  <!-- Paradigm Shift -->
+  <div class="grid-2">
+    <div class="card card-red">
+      <h3>❌ The Traditional RAG Trap</h3>
+      <ul class="bullet-list">
+        <li><strong>Fuzzy Probabilistic Search</strong>: 10–20% of query-time vector searches retrieve the wrong chunks or miss synonyms.</li>
+        <li><strong>Fragmented Context</strong>: Arbitrary 500-token chunk boundaries split mathematical proofs and code blocks in half.</li>
+        <li><strong>Broken Pedagogical Sequence</strong>: Runtime search pulls Chapter 8 edge cases before Chapter 2 foundations are introduced.</li>
+        <li><strong>Heavy Compute Bloat</strong>: Demands vector databases, GPU embedding models, or fragile external cloud APIs.</li>
+      </ul>
+    </div>
+
+    <div class="card card-emerald">
+      <h3>✅ The Deterministic Compiler Paradigm</h3>
+      <ul class="bullet-list">
+        <li><strong>Deterministic Pointer Retrieval (O(1))</strong>: Pre-computed <span class="code-tag">source-map.toml</span> maps every concept directly to verified lines. Zero search latency.</li>
+        <li><strong>Multi-Source Peer Deduplication</strong>: Synthesizes 3 books and papers into <em>one</em> unified path. Overlapping topics taught only once.</li>
+        <li><strong>Conveyor-Belt Pipeline</strong>: Ingests 600-page textbooks chapter-by-chapter sequentially with zero context window rot.</li>
+        <li><strong>Potato-Proof & Sovereign</strong>: 100% standard library Python & local files. Zero GPU, zero vector DB, 0MB RAM overhead.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Pipeline Flow -->
+  <div class="pipeline-section">
+    <div class="pipeline-header">
+      <h2>How the 4-Pass Engine Works</h2>
+      <p style="color: var(--text-muted);">From raw heterogeneous books to pristine interactive lessons.</p>
+    </div>
+
+    <div class="flow-steps">
+      <div class="step-box" style="border-left-color: var(--accent-blue);">
+        <div class="step-num">P0</div>
+        <div class="step-content">
+          <h4>Pass 0: Verbatim Pure-Python Ingestion</h4>
+          <p>Extract raw text, code blocks, and formulas from PDFs/EPUBs using <span class="code-tag">pypdf / pdfplumber</span> directly into markdown. <strong>Strict rule</strong>: Zero LLM rewriting during extraction. Pre-flight probe halts on scanned image PDFs.</p>
+        </div>
+      </div>
+
+      <div class="step-box" style="border-left-color: var(--accent-purple);">
+        <div class="step-num">P1</div>
+        <div class="step-content">
+          <h4>Pass 1: Macro Semantic TOC Alignment</h4>
+          <p>Extract Table of Contents trees (<span class="code-tag">toc.json</span>) across all uploaded books with zero token bloat. Cluster overlapping topics, preserve unique niche chapters, and assemble a master acyclic Directed Acyclic Graph (DAG).</p>
+        </div>
+      </div>
+
+      <div class="step-box" style="border-left-color: var(--accent-amber);">
+        <div class="step-num">P2</div>
+        <div class="step-content">
+          <h4>Pass 2: The Conveyor-Belt Chapter Pipeline</h4>
+          <p>Processes the sources chapter-by-chapter. Feeds Chapter N with a tiny running prerequisite vocabulary ledger. Generates <span class="code-tag">source-map.toml</span> and audits 100% textbook coverage in <span class="code-tag">coverage-ledger.md</span>.</p>
+        </div>
+      </div>
+
+      <div class="step-box" style="border-left-color: var(--accent-emerald);">
+        <div class="step-num">P3</div>
+        <div class="step-content">
+          <h4>Pass 3: Grounded Sensei Lesson Delivery</h4>
+          <p>During <span class="code-tag">tc-teach</span>, loads the pre-mapped passages directly from <span class="code-tag">source-map.toml</span>. The books establish the factual floor; the Sensei delivers intuitive, plain-English instruction enforcing the <strong>Zero-Unearned-Jargon Contract</strong>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialectic Synthesis Feature -->
+  <div class="card card-purple" style="margin-bottom: 2.5rem;">
+    <h3>✨ The Killer Feature: Dialectic Multi-Source Synthesis</h3>
+    <p style="color: var(--text-muted); margin-bottom: 1rem;">When a learner provides multiple competing books (e.g. Kleppmann's DDIA and Petrov's Database Internals):</p>
+    <div style="background: rgba(0, 0, 0, 0.35); border-radius: 0.5rem; padding: 1.25rem; font-family: var(--font-mono); font-size: 0.9rem; line-height: 1.7;">
+      <span style="color: var(--accent-purple);"># Generated source-map.toml Concept Entry</span><br>
+      [[concepts]]<br>
+      id = <span style="color: var(--accent-emerald);">"lsm-tree-compaction"</span><br>
+      title = <span style="color: var(--accent-blue);">"Log-Structured Merge-Trees and Compaction"</span><br>
+      sources = [<br>
+      &nbsp;&nbsp;{ doc = <span style="color: var(--accent-amber);">"ddia.md"</span>, heading = <span style="color: #cbd5e1;">"SSTables and Compaction"</span>, lines = [412, 485] },<br>
+      &nbsp;&nbsp;{ doc = <span style="color: var(--accent-amber);">"db_internals.md"</span>, heading = <span style="color: #cbd5e1;">"Size-Tiered vs Leveled Compaction"</span>, lines = [890, 1020] }<br>
+      ]<br>
+      dialectic = <span style="color: var(--accent-emerald);">true</span>  <span style="color: #64748b;"># Synthesizes write-amplification vs read-amplification trade-offs</span>
+    </div>
+  </div>
+
+  <!-- MoSCoW Matrix -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Tier</th>
+          <th>Component</th>
+          <th>Architectural Decision</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag-must">MUST</span></td>
+          <td><code>source-map.toml</code></td>
+          <td>Pre-computed concept-to-exact-source line pointers; O(1) deterministic grounding during teaching.</td>
+        </tr>
+        <tr>
+          <td><span class="tag-must">MUST</span></td>
+          <td>Verbatim Ingestion</td>
+          <td>Pure Python text/code extraction with zero LLM summarization loss.</td>
+        </tr>
+        <tr>
+          <td><span class="tag-must">MUST</span></td>
+          <td>Multi-Source Deduplication</td>
+          <td>Identical topics taught only once; divergent approaches merged into dialectic lessons.</td>
+        </tr>
+        <tr>
+          <td><span class="tag-must">MUST</span></td>
+          <td>Vocabulary Contract</td>
+          <td>Teacher forbidden from using jargon unless taught in prior turns or introduced with everyday intuition first.</td>
+        </tr>
+        <tr>
+          <td><span class="tag-wont">WON'T</span></td>
+          <td>Runtime Vector RAG</td>
+          <td>Eliminated entirely for core curriculum in favor of compile-time deterministic mapping.</td>
+        </tr>
+        <tr>
+          <td><span class="tag-wont">WON'T</span></td>
+          <td>Heavy Vector DBs / GPUs</td>
+          <td>Strict zero ChromaDB, Pinecone, or GPU models. 100% potato-proof sovereign operation.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    <p>TextCourses Architecture Brainstorm • Initiative: <code>initiative-textcourses</code> • Status: <strong>Complete</strong></p>
+  </footer>
+</div>
+
+</body>
+</html>

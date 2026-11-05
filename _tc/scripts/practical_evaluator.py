@@ -68,13 +68,13 @@ def resolve_course_dir(course_arg: str | None) -> Path:
     """Resolve course directory from slug, path, or active repo scan."""
     if course_arg:
         p = Path(course_arg)
-        if (p / "course.toml").is_file():
+        if (p / ".tc" / "course.toml").is_file() or (p / "course.toml").is_file():
             return p.resolve()
         candidate = Path("courses") / course_arg
-        if (candidate / "course.toml").is_file():
+        if (candidate / ".tc" / "course.toml").is_file() or (candidate / "course.toml").is_file():
             return candidate.resolve()
         candidate_abs = _PROJECT_ROOT / "courses" / course_arg
-        if (candidate_abs / "course.toml").is_file():
+        if (candidate_abs / ".tc" / "course.toml").is_file() or (candidate_abs / "course.toml").is_file():
             return candidate_abs.resolve()
         raise FileNotFoundError(f"Course directory not found for '{course_arg}'")
 
@@ -86,7 +86,7 @@ def resolve_course_dir(course_arg: str | None) -> Path:
         courses_dir = _PROJECT_ROOT / "courses"
 
     if courses_dir.is_dir():
-        subdirs = [d for d in courses_dir.iterdir() if d.is_dir() and (d / "course.toml").is_file()]
+        subdirs = [d for d in courses_dir.iterdir() if d.is_dir() and ((d / ".tc" / "course.toml").is_file() or (d / "course.toml").is_file())]
         if len(subdirs) == 1:
             return subdirs[0].resolve()
         elif len(subdirs) > 1:
@@ -97,7 +97,7 @@ def resolve_course_dir(course_arg: str | None) -> Path:
 
 def load_course_toml(course_dir: Path) -> dict[str, Any]:
     """Load and parse course.toml."""
-    course_toml_path = course_dir / "course.toml"
+    course_toml_path = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     if not course_toml_path.is_file():
         raise FileNotFoundError(f"course.toml not found at {course_toml_path}")
     with open(course_toml_path, "rb") as f:
@@ -395,8 +395,25 @@ def cmd_review(args: argparse.Namespace) -> None:
             for sec in sections:
                 sec["status"] = "completed"
         try:
-            atomic_write_toml(course_dir / "course.toml", manifest)
+            atomic_write_toml(course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else (course_dir / "course.toml"), manifest)
             course_completed = True
+            # Mirror capstone approval to courses/<slug>/memlog.md
+            try:
+                c_mem = course_dir / "memlog.md"
+                if c_mem.is_file():
+                    with open(c_mem, "a", encoding="utf-8") as f:
+                        f.write(f"- (milestone) practical:capstone_passed:project-{project_id}\n")
+            except Exception:
+                pass
+            # Mirror capstone approval to global profile/memlog.md
+            try:
+                ws_root = course_dir.parent.parent
+                p_mem = ws_root / "profile" / "memlog.md"
+                if p_mem.is_file():
+                    with open(p_mem, "a", encoding="utf-8") as f:
+                        f.write(f"- (milestone) Course '{course_dir.name}' practical capstone approved (Project {project_id}).\n")
+            except Exception:
+                pass
         except Exception as e:
             output_json({
                 "ok": False,
@@ -417,12 +434,18 @@ def find_section_path(course_dir: Path, section_id: str) -> Path | None:
     """Find section directory given section ID like sec-01 or section-01."""
     sec_num_match = re.search(r"(\d+)", section_id)
     sec_num = int(sec_num_match.group(1)) if sec_num_match else None
-    for ch in sorted(course_dir.glob("chapter-*")):
-        if ch.is_dir():
-            for s in sorted(ch.glob("section-*")):
-                if s.is_dir():
-                    if section_id in s.name or (sec_num and f"{sec_num:02d}" in s.name):
-                        return s
+    search_roots = []
+    tc_plans = course_dir / ".tc" / "plans"
+    if tc_plans.is_dir():
+        search_roots.append(tc_plans)
+    search_roots.append(course_dir)
+    for root in search_roots:
+        for ch in sorted(root.glob("chapter-*")):
+            if ch.is_dir():
+                for s in sorted(ch.glob("section-*")):
+                    if s.is_dir():
+                        if section_id in s.name or (sec_num and f"{sec_num:02d}" in s.name):
+                            return s
     return None
 
 
@@ -506,21 +529,22 @@ def evaluate_practical_submission(
     invariants_missed = []
     score = 40  # Base score for providing non-empty submission
 
-    # Check 1: Non-trivial logic / functions / classes
+    # Check 1: Substantive structure (code primitives or structured domain analysis)
     has_code_or_structure = any(k in text for k in ["def ", "class ", "fn ", "function ", "struct ", "impl ", "let ", "var ", "const ", "return "])
-    if has_code_or_structure:
+    has_substance = has_code_or_structure or len(text.strip().split()) >= 20 or any(k in text.lower() for k in ["section", "clause", "analysis", "diagnosis", "hypothesis", "patient", "rule", "standard", "model", "protocol", "case", "argument"])
+    if has_substance:
         score += 20
-        invariants_met.append("Concrete implementation primitives (functions/classes/structs) present.")
+        invariants_met.append("Substantive implementation primitives, analytical clauses, or structured solution present.")
     else:
-        invariants_missed.append("Missing concrete code implementation or pseudo-code logic.")
+        invariants_missed.append("Submission lacks substantive analytical depth, structured arguments, or implementation logic.")
 
-    # Check 2: Error handling & defensive guards
-    has_error_handling = any(k in text for k in ["raise ", "throw ", "try:", "catch", "Result<", "Option<", "if not", "ValueError", "assert", "panic!"])
+    # Check 2: Defensive edge cases, contingency handling, or error guards
+    has_error_handling = any(k in text for k in ["raise ", "throw ", "try:", "catch", "Result<", "Option<", "if not", "ValueError", "assert", "panic!"]) or any(k in text.lower() for k in ["exception", "contingency", "risk", "failure", "mitigation", "contraindication", "liability", "breach", "limitation", "boundary", "precondition"])
     if has_error_handling:
         score += 20
-        invariants_met.append("Defensive error handling and fail-fast invariants implemented.")
+        invariants_met.append("Defensive error handling, contingency safeguards, or edge-case boundaries implemented.")
     else:
-        invariants_missed.append("Missing defensive guard clauses or fail-fast error validation.")
+        invariants_missed.append("Missing defensive boundary safeguards, failure mitigations, or error validation.")
 
     # Check 3: Boundary edge cases
     has_edge_checks = any(k in text for k in ["len(", "empty", "null", "None", "0", "-1", "boundary", "overflow"])

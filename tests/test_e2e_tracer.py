@@ -91,7 +91,7 @@ def test_complete_vertical_tracer(tmp_path: Path):
     create_data = extract_json(res_create.stdout)
     assert create_data["ok"] is True
     course_dir = workspace / "courses" / "distributed-raft"
-    course_manifest = course_dir / "course.toml"
+    course_manifest = (course_dir / ".tc" / "course.toml") if (course_dir / ".tc" / "course.toml").is_file() else (course_dir / "course.toml")
     assert course_manifest.is_file()
 
     # 5. tc teach session

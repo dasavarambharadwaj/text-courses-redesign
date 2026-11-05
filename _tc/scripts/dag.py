@@ -38,6 +38,7 @@ def resolve_manifest_path(path_arg: str | Path) -> Path:
     p = Path(path_arg)
     if p.is_dir():
         for cand in [
+            p / ".tc" / "course.toml",
             p / "course.toml",
             p / "roadmap.toml",
             p / "roadmap" / "roadmap.toml",

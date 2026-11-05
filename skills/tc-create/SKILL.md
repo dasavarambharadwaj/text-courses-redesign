@@ -89,6 +89,8 @@ Upon verified unanimous consensus, the course is written to disk:
 - `courses/<slug>/overview.md`: Human-readable syllabus overview with archetype details and brainstorm links.
 - `courses/<slug>/consensus-deliberation.md`: Full multi-round debate transcript between Daedalus, Marie, and Hypatia.
 - `courses/<slug>/curriculum-brainstorm.md`: Full 4-paradigm analysis, Critical Hat stress-test matrix, and hybrid rationale.
+- `courses/<slug>/source-map.toml`: Pedagogical symbol table mapping 100% of curriculum concepts to exact source line spans and dialectic synthesis notes ($O(1)$ deterministic grounding).
+- `courses/<slug>/coverage-ledger.md`: Parity audit matrix mathematically validating 100.0% coverage of uploaded peer books.
 - `courses/<slug>/memlog.md`: Initialized course pedagogical working memory.
 - `courses/<slug>/notes/chapter-XX.md`: Flat chapter textbook scaffolds (distilled upon section completion by `/tc-teach`).
 - `courses/<slug>/chapter-*/section-*/lesson-plan.md`: AI instructor lesson plans.

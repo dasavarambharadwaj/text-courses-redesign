@@ -434,6 +434,14 @@ def cmd_record(args: argparse.Namespace) -> None:
         append_course_memlog(course_dir, entry_type="milestone", text=f"test:passed:{sec_clean}:completed")
         if all_completed:
             append_course_memlog(course_dir, entry_type="milestone", text=f"course:completed:{course_slug}")
+            try:
+                ws_root = course_dir.parent.parent
+                p_mem = ws_root / "profile" / "memlog.md"
+                if p_mem.is_file():
+                    with open(p_mem, "a", encoding="utf-8") as f:
+                        f.write(f"- (milestone) Course '{course_slug}' graduated: all sections completed.\n")
+            except Exception:
+                pass
 
     output_json({
         "ok": True,

@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TextCourses — Vision & Direction Demo</title>
+<style>
+:root {
+  --bg: #0b0f19;
+  --bg2: #111827;
+  --bg3: rgba(17,24,39,0.85);
+  --surface: rgba(30,41,59,0.5);
+  --surface2: rgba(30,41,59,0.8);
+  --border: rgba(148,163,184,0.1);
+  --border2: rgba(148,163,184,0.2);
+  --text: #f1f5f9;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --blue: #38bdf8;
+  --purple: #a78bfa;
+  --emerald: #34d399;
+  --amber: #fbbf24;
+  --rose: #fb7185;
+  --cyan: #22d3ee;
+  --mono: 'JetBrains Mono','Fira Code','Consolas',monospace;
+  --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;overflow-x:hidden;
+  background-image:radial-gradient(ellipse at 20% 0%,rgba(56,189,248,0.06),transparent 50%),
+                    radial-gradient(ellipse at 80% 100%,rgba(167,139,250,0.06),transparent 50%);
+  background-attachment:fixed}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  background:rgba(11,15,25,0.88);border-bottom:1px solid var(--border);padding:.75rem 2rem;
+  display:flex;justify-content:space-between;align-items:center}
+.brand{font-weight:800;font-size:1.2rem;display:flex;align-items:center;gap:.6rem}
+.brand-tag{background:linear-gradient(135deg,var(--blue),var(--purple));color:#000;font-size:.65rem;
+  padding:.15rem .5rem;border-radius:99px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.nav-links{display:flex;gap:1.2rem;flex-wrap:wrap}
+.nav-links a{color:var(--text2);font-size:.85rem;font-weight:500;transition:color .2s}
+.nav-links a:hover{color:var(--blue);text-decoration:none}
+
+/* CONTAINER */
+.container{max-width:1180px;margin:0 auto;padding:0 1.5rem 6rem}
+
+/* SECTION HEADERS */
+.sec{margin-top:4rem}
+.sec-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--blue);margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+.sec-label.decision{color:var(--amber)}
+.sec-label.decision::before{content:'⚠️'}
+.sec-title{font-size:2rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.35rem;line-height:1.2}
+.sec-sub{color:var(--text2);font-size:1.05rem;margin-bottom:1.75rem;max-width:800px}
+
+/* HERO */
+.hero{text-align:center;padding:5rem 1rem 3rem}
+.hero-pill{display:inline-flex;align-items:center;gap:.4rem;background:rgba(56,189,248,0.08);
+  border:1px solid rgba(56,189,248,0.25);color:var(--blue);padding:.35rem 1rem;border-radius:99px;
+  font-size:.82rem;font-weight:600;margin-bottom:1.5rem}
+.hero h1{font-size:clamp(2rem,5vw,3.5rem);line-height:1.1;font-weight:900;letter-spacing:-.03em;
+  margin-bottom:1.25rem;background:linear-gradient(135deg,#fff 20%,#94a3b8 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:1.2rem;color:var(--text2);max-width:850px;margin:0 auto 1.5rem}
+.hero-em{color:var(--emerald);font-weight:700;-webkit-text-fill-color:var(--emerald)}
+
+/* STATS ROW */
+.stats{display:flex;justify-content:center;flex-wrap:wrap;gap:1rem;margin-top:2rem}
+.stat{background:var(--surface);border:1px solid var(--border);padding:.65rem 1.2rem;border-radius:12px;
+  text-align:center;min-width:130px}
+.stat .n{font-size:1.4rem;font-weight:800;font-family:var(--mono);color:var(--blue)}
+.stat .l{font-size:.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;
+  transition:all .25s}
+.card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.card h3{font-size:1.2rem;margin-bottom:.5rem}
+.card p,.card li{color:var(--text2);font-size:.92rem}
+.card ul{list-style:none;margin-top:.75rem}
+.card li{padding:.3rem 0;display:flex;gap:.5rem;align-items:flex-start}
+
+/* GRID LAYOUTS */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1.25rem}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem}
+.grid23{display:grid;grid-template-columns:1.3fr .7fr;gap:1.5rem}
+@media(max-width:800px){.grid23{grid-template-columns:1fr}}
+
+/* DECISION BOXES */
+.decision-box{background:rgba(251,191,36,0.04);border:2px dashed rgba(251,191,36,0.35);
+  border-radius:16px;padding:1.75rem;margin:1.5rem 0}
+.decision-box h3{color:var(--amber);display:flex;align-items:center;gap:.5rem;font-size:1.15rem}
+.decision-box h3::before{content:'🔶'}
+.decision-box p{color:var(--text2);font-size:.92rem;margin-top:.5rem}
+
+/* OPTION CARDS */
+.option{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem;
+  position:relative;transition:all .3s;cursor:pointer}
+.option:hover{border-color:var(--purple);box-shadow:0 0 20px rgba(167,139,250,.12)}
+.option-badge{position:absolute;top:1rem;right:1rem;font-size:.65rem;font-weight:700;
+  text-transform:uppercase;padding:.15rem .5rem;border-radius:6px;letter-spacing:.04em}
+.option-badge.rec{background:rgba(52,211,153,.15);color:var(--emerald)}
+.option-badge.exp{background:rgba(167,139,250,.15);color:var(--purple)}
+.option-badge.future{background:rgba(148,163,184,.1);color:var(--text3)}
+.option h4{font-size:1.1rem;margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem}
+.option p{color:var(--text2);font-size:.88rem}
+.option .pros{margin-top:.75rem}
+.option .pros li{font-size:.84rem;padding:.2rem 0}
+
+/* FLOW DIAGRAM BOXES */
+.flow-box{background:#060a10;border:1px solid var(--border);border-radius:14px;padding:1.5rem;
+  font-family:var(--mono);font-size:.82rem;line-height:1.7;overflow-x:auto;color:#cbd5e1}
+.flow-box .fc{color:var(--blue)}
+.flow-box .fs{color:var(--emerald)}
+.flow-box .fa{color:var(--amber)}
+.flow-box .fp{color:var(--purple)}
+.flow-box .fd{color:var(--text3)}
+
+/* CONTEXT ENGINE */
+.ctx-card{background:linear-gradient(135deg,rgba(56,189,248,.04),rgba(167,139,250,.04));
+  border:1px solid rgba(56,189,248,.15);border-radius:16px;padding:1.75rem}
+.ctx-card h4{color:var(--cyan);font-size:1rem;margin-bottom:.5rem}
+.ctx-card p{color:var(--text2);font-size:.9rem}
+.ctx-list{display:flex;flex-direction:column;gap:.4rem;margin-top:.75rem}
+.ctx-item{display:flex;align-items:center;gap:.5rem;font-size:.84rem;font-family:var(--mono);
+  color:var(--text2);padding:.35rem .6rem;background:rgba(0,0,0,.3);border-radius:8px}
+.ctx-item .tag{color:var(--blue);font-weight:600;min-width:120px}
+
+/* TABBED SECTIONS */
+.tabs{display:flex;gap:.4rem;background:var(--bg2);padding:.4rem;border-radius:12px;
+  border:1px solid var(--border);margin-bottom:1.25rem;flex-wrap:wrap}
+.tab-btn{background:none;border:none;color:var(--text2);padding:.6rem 1rem;border-radius:8px;
+  font-weight:600;font-size:.84rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+.tab-btn:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.tab-btn.active{background:var(--blue);color:#0b0f19;box-shadow:0 2px 10px rgba(56,189,248,.25)}
+.tab-panel{display:none;animation:fadeUp .3s ease}
+.tab-panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* PERSONA CARDS */
+.persona{text-align:center;background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:1.25rem;transition:all .3s}
+.persona:hover{border-color:var(--purple);transform:translateY(-3px);
+  box-shadow:0 8px 20px rgba(167,139,250,.1)}
+.persona .avatar{font-size:2.5rem;margin-bottom:.5rem}
+.persona h4{font-size:1.05rem}
+.persona .role{font-size:.72rem;color:var(--purple);text-transform:uppercase;font-weight:700;
+  letter-spacing:.04em;margin-bottom:.5rem}
+.persona p{font-size:.82rem;color:var(--text2)}
+
+/* PIPELINE VIS */
+.pipeline{display:flex;align-items:stretch;gap:0;margin:1.5rem 0;flex-wrap:wrap}
+.pipe-stage{flex:1;min-width:140px;padding:1rem;text-align:center;border:1px solid var(--border);
+  position:relative;background:var(--surface)}
+.pipe-stage:first-child{border-radius:12px 0 0 12px}
+.pipe-stage:last-child{border-radius:0 12px 12px 0}
+.pipe-stage .num{font-size:1.5rem;font-weight:800;font-family:var(--mono);color:var(--blue)}
+.pipe-stage .name{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  margin-top:.3rem;color:var(--text2)}
+.pipe-arrow{display:flex;align-items:center;color:var(--text3);font-size:1.2rem;padding:0 .15rem}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:3rem 1.5rem;text-align:center;color:var(--text3);font-size:.85rem}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">⚡ TextCourses<span class="brand-tag">Vision & Direction</span></div>
+  <div class="nav-links">
+    <a href="#vision">Vision</a>
+    <a href="#big-idea">Big Idea</a>
+    <a href="#engine">The Engine</a>
+    <a href="#context">Context System</a>
+    <a href="#ux-direction">UX Direction</a>
+    <a href="#faculty">Faculty</a>
+    <a href="#decisions">Decisions</a>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════════════════ HERO -->
+<header class="hero" id="vision">
+  <div class="hero-pill">🎯 textcourses.com — Product Vision & Direction</div>
+  <h1>Learning Experiences<br>Built Like Software Projects</h1>
+  <p>
+    Just like code projects are built commit by commit, with context, history, and state —
+    <span class="hero-em">learning experiences should be built the same way</span>.
+    Every interaction tracked. Every concept contextualized. Every learner's journey unique.
+  </p>
+  <p style="font-size:1rem;color:var(--text3);max-width:700px;margin:0 auto">
+    TextCourses is a skills-powered AI apprenticeship engine that creates, teaches, and verifies
+    personalized courses. The skills framework is the <strong>build system</strong>.
+    What users experience on <strong>textcourses.com</strong> is the next frontier.
+  </p>
+
+  <div class="stats">
+    <div class="stat"><div class="n">10</div><div class="l">AI Skills</div></div>
+    <div class="stat"><div class="n">5</div><div class="l">Faculty Personas</div></div>
+    <div class="stat"><div class="n">265</div><div class="l">Passing Tests</div></div>
+    <div class="stat"><div class="n">45</div><div class="l">Functional Reqs</div></div>
+    <div class="stat"><div class="n">18</div><div class="l">Python Scripts</div></div>
+    <div class="stat"><div class="n">100%</div><div class="l">Local-First</div></div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════ THE PROBLEM -->
+<section class="sec">
+  <div class="sec-label">The Problem</div>
+  <div class="sec-title">Why Current Learning Is Fundamentally Broken</div>
+  <div class="sec-sub">Two dominant paradigms, both deeply flawed</div>
+
+  <div class="grid2">
+    <div class="card" style="border-left:4px solid var(--rose)">
+      <h3>❌ Passive Video Courses (Coursera, Udemy)</h3>
+      <ul>
+        <li><span>•</span> One-size-fits-all rigid lectures that can't adapt to your background</li>
+        <li><span>•</span> 5-10% completion rates — passive watching kills retention</li>
+        <li><span>•</span> Outdated the moment library APIs change</li>
+        <li><span>•</span> Zero context about YOU — your pace, your gaps, your style</li>
+        <li><span>•</span> Locked inside proprietary cloud platforms</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left:4px solid var(--rose)">
+      <h3>❌ Amnesic AI Chat (ChatGPT, Claude, Gemini)</h3>
+      <ul>
+        <li><span>•</span> Forgets everything after a few turns — total context amnesia</li>
+        <li><span>•</span> Dumps 500-word walls of unverified text — illusion of learning</li>
+        <li><span>•</span> No curriculum, no milestones, no proof of what you actually learned</li>
+        <li><span>•</span> No persistent state — each session starts from scratch</li>
+        <li><span>•</span> Zero integration with your actual workspace or code</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ THE BIG IDEA -->
+<section class="sec" id="big-idea">
+  <div class="sec-label">The Paradigm Shift</div>
+  <div class="sec-title">Context-Based Learning: Built Like Software</div>
+  <div class="sec-sub">
+    Software projects have git history, state files, CI pipelines, and per-developer context.
+    Why doesn't learning?
+  </div>
+
+  <div class="grid23">
+    <div>
+      <div class="card" style="border-left:4px solid var(--emerald);margin-bottom:1.25rem">
+        <h3>✅ The TextCourses Thesis</h3>
+        <p style="margin-top:.5rem;font-size:.95rem;color:var(--text)">
+          <strong>Every single interaction a learner has is recorded, contextualized, and used to build
+          an extraordinary, personalized learning experience.</strong>
+        </p>
+        <ul style="margin-top:1rem">
+          <li><span style="color:var(--emerald)">→</span> <strong>Context accumulates</strong> — like git commits. Every concept taught, every question asked, every misconception identified is permanently logged.</li>
+          <li><span style="color:var(--emerald)">→</span> <strong>State persists</strong> — like project config files. Your progress, preferences, strengths, and weaknesses are tracked in structured data files.</li>
+          <li><span style="color:var(--emerald)">→</span> <strong>Quality is verified</strong> — like CI pipelines. Courses are stress-tested through adversarial debate before you see them. Your understanding is probed through diagnostic scenarios.</li>
+          <li><span style="color:var(--emerald)">→</span> <strong>Experience adapts</strong> — like feature flags. The teaching style, depth, pace, and even the AI teacher persona morphs based on YOUR accumulated context.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>🔧 The Skills Framework = The Build System</h3>
+        <p style="margin-top:.5rem">
+          The 10 TextCourses skills (<code>/tc-init</code>, <code>/tc-research</code>, <code>/tc-create</code>,
+          <code>/tc-teach</code>, etc.) are the <strong>intermediate build pipeline</strong> — like webpack or cargo —
+          that transforms raw knowledge into structured, verified, personalized learning experiences.
+        </p>
+        <p style="margin-top:.75rem;color:var(--text2)">
+          Each skill handles one specific phase of the pipeline. Together, they produce courses that get
+          posted to <strong>textcourses.com</strong> as the end-user product.
+        </p>
+      </div>
+    </div>
+
+    <div>
+      <div class="ctx-card" style="height:100%">
+        <h4>📊 The Context Graph Per Learner</h4>
+        <p>Every user builds a rich context graph over time:</p>
+        <div class="ctx-list">
+          <div class="ctx-item"><span class="tag">profile</span> Role, experience, preferred style</div>
+          <div class="ctx-item"><span class="tag">preferences</span> Density, pace, practical focus</div>
+          <div class="ctx-item"><span class="tag">session.jsonl</span> Every turn of every conversation</div>
+          <div class="ctx-item"><span class="tag">memlog.md</span> Milestone history & handoff events</div>
+          <div class="ctx-item"><span class="tag">ledger.toml</span> Test scores & mastery proof</div>
+          <div class="ctx-item"><span class="tag">notes.md</span> Permanent personal textbook</div>
+          <div class="ctx-item"><span class="tag">misconceptions</span> Tracked & retested automatically</div>
+          <div class="ctx-item"><span class="tag">handoffs</span> Which teachers worked for you</div>
+          <div class="ctx-item"><span class="tag">practical_results</span> Code evaluation verdicts</div>
+        </div>
+        <p style="margin-top:1rem;font-size:.82rem;color:var(--cyan)">
+          ↑ This is not a theoretical feature list. <strong>All of this is already implemented</strong>
+          in the skills engine with 265 passing tests.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ THE ENGINE -->
+<section class="sec" id="engine">
+  <div class="sec-label">The Build Pipeline</div>
+  <div class="sec-title">How a Learning Experience Gets Built</div>
+  <div class="sec-sub">6-stage autonomous pipeline — from raw topic to mastered, verified knowledge</div>
+
+  <div class="pipeline">
+    <div class="pipe-stage"><div class="num">01</div><div class="name">Init & Profile</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage"><div class="num">02</div><div class="name">5-Hat Research</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage"><div class="num">03</div><div class="name">Triad Creation</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage"><div class="num">04</div><div class="name">Socratic Teach</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage"><div class="num">05</div><div class="name">Practical Labs</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-stage"><div class="num">06</div><div class="name">Mastery Verify</div></div>
+  </div>
+
+  <!-- TABBED PIPELINE DETAIL -->
+  <div class="tabs" id="pipeline-tabs">
+    <button class="tab-btn active" onclick="showTab('pipeline',0)">01 Init</button>
+    <button class="tab-btn" onclick="showTab('pipeline',1)">02 Research</button>
+    <button class="tab-btn" onclick="showTab('pipeline',2)">03 Create</button>
+    <button class="tab-btn" onclick="showTab('pipeline',3)">04 Teach</button>
+    <button class="tab-btn" onclick="showTab('pipeline',4)">05 Practicals</button>
+    <button class="tab-btn" onclick="showTab('pipeline',5)">06 Verify</button>
+  </div>
+
+  <div class="tab-panel active" data-group="pipeline">
+    <div class="grid23">
+      <div class="card">
+        <h3>⚡ Stage 1: Onboarding & Learner Profile (<code>/tc-init</code>)</h3>
+        <p>Zero-friction, turn-by-turn intake. One question per turn — never cognitive overload.</p>
+        <ul>
+          <li>→ Captures: Role (10 options), Experience Level, Explanation Density, Preferred Teacher</li>
+          <li>→ Scans existing workspace for active courses and unfinished sections</li>
+          <li>→ Recommends the single best next action deterministically</li>
+          <li>→ Profile evolves at chapter boundaries based on interaction patterns</li>
+        </ul>
+        <p style="margin-top:1rem;color:var(--cyan);font-size:.85rem"><strong>Context captured:</strong> <code>profile/preferences.md</code>, <code>profile/memlog.md</code></p>
+      </div>
+      <div class="flow-box">
+<span class="fd">// What gets stored per user at init</span>
+<span class="fc">profile/preferences.md</span>
+  <span class="fa">role:</span> <span class="fs">"Backend Engineer"</span>
+  <span class="fa">experience:</span> <span class="fs">"experienced"</span>
+  <span class="fa">density:</span> <span class="fs">"deep-dive"</span>
+  <span class="fa">teacher:</span> <span class="fs">"Feynman"</span>
+  <span class="fa">practicals:</span> <span class="fs">true</span>
+
+<span class="fc">profile/memlog.md</span>
+  <span class="fd">// Global milestone log across ALL courses</span>
+  <span class="fs">- (init) workspace bootstrapped</span>
+  <span class="fs">- (milestone) raft-consensus ch1 complete</span>
+  <span class="fs">- (handoff) Turing→Feynman for WAL</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-group="pipeline">
+    <div class="grid23">
+      <div class="card">
+        <h3>🔬 Stage 2: Autonomous 5-Hat Research (<code>/tc-research</code>)</h3>
+        <p>Marie Curie leads multi-round autonomous research with 5 critical perspectives.</p>
+        <ul>
+          <li>→ Searches official docs, RFCs, GitHub repos, YouTube transcripts</li>
+          <li>→ 5 Critical Hats stress-test every finding: Industry Practitioner, Academic Purist, Beginner Friction Hunter, Edge-Case Engineer, Modern Ecosystem Reviewer</li>
+          <li>→ Discovers community-consensus gold-standard textbooks and courses</li>
+          <li>→ Builds sovereign local search index (SQLite FTS5, &lt;50MB RAM)</li>
+          <li>→ Writes authoritative dossier with provenance citations</li>
+        </ul>
+        <p style="margin-top:1rem;color:var(--cyan);font-size:.85rem"><strong>Context captured:</strong> <code>research/&lt;topic&gt;/dossier.md</code>, <code>sources.json</code>, <code>five-hats-critique.md</code></p>
+      </div>
+      <div class="flow-box">
+<span class="fd">// Research output structure</span>
+<span class="fc">research/distributed-consensus/</span>
+  ├── <span class="fs">dossier.md</span>       <span class="fd"># Full domain taxonomy</span>
+  ├── <span class="fs">sources.json</span>    <span class="fd"># URLs, citations, timestamps</span>
+  ├── <span class="fs">five-hats-critique.md</span> <span class="fd"># 5-perspective review</span>
+  ├── <span class="fs">gold-standards.md</span>   <span class="fd"># Community consensus books</span>
+  └── <span class="fc">sources/</span>
+      ├── <span class="fc">repos/</span>     <span class="fd"># Cloned GitHub courseware</span>
+      ├── <span class="fc">transcripts/</span> <span class="fd"># YouTube lecture transcripts</span>
+      └── <span class="fs">index.db</span>   <span class="fd"># SQLite FTS5 sovereign search</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-group="pipeline">
+    <div class="grid23">
+      <div class="card">
+        <h3>🛠️ Stage 3: Triad Consensus Course Creation (<code>/tc-create</code>)</h3>
+        <p>Never stalls asking "how do you want this course?". Autonomously builds and debates.</p>
+        <ul>
+          <li>→ Brainstorms 4 distinct curriculum paths (First-Principles, Project-First, Problem-Driven, Metaphor-First)</li>
+          <li>→ Adversarial Triad Debate: <strong>Daedalus</strong> (Architect) proposes, <strong>Marie</strong> (Scout) fact-checks, <strong>Hypatia</strong> (Auditor) catches cognitive leaps</li>
+          <li>→ Course cannot be created if any Triad member dissents</li>
+          <li>→ Scaffolds chapters, sections, concept checklists, and practical specs</li>
+          <li>→ Also supports 5 Universal Curriculum Archetypes (Applied Creation, Forensic Dilemma, Axiomatic Primitives, Spiral Immersion, Reverse Engineering)</li>
+        </ul>
+      </div>
+      <div class="flow-box">
+<span class="fd">// Triad Consensus — 3 AI personas debate</span>
+
+<span class="fp">Daedalus</span> (Architect):
+  "Chapter 1 should cover leader election
+   before log replication..."
+
+<span class="fc">Marie Curie</span> (Scout):
+  "The etcd v3.5 API changed the election
+   timeout semantics. Updating section..."
+
+<span class="fa">Hypatia</span> (Auditor):
+  "Section 3 uses 'quorum' without defining
+   it. Add prerequisite in Section 2."
+
+<span class="fd">// Result: Zero-gap curriculum on disk</span>
+<span class="fs">courses/raft-consensus/course.toml</span>
+<span class="fs">courses/raft-consensus/curriculum-brainstorm.md</span>
+<span class="fs">courses/raft-consensus/ch-01/sec-01/lesson-plan.md</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-group="pipeline">
+    <div class="grid23">
+      <div class="card">
+        <h3>🦉 Stage 4: Socratic Teaching & Adaptive Fork (<code>/tc-teach</code>)</h3>
+        <p>The core learning loop. One concept at a time. Zero jargon leakage. Full context tracking.</p>
+        <ul>
+          <li>→ Delivers exactly ONE concept per turn with physical analogy + worked example + fatal anti-pattern</li>
+          <li>→ Atomically toggles <code>- [ ]</code> to <code>- [x]</code> in lesson-plan.md (survives interruptions)</li>
+          <li>→ Logs every turn to <code>session.jsonl</code> — persistent across sessions</li>
+          <li>→ Every turn ends with Next-Action Fork: <code>[1] Next</code> <code>[2] Test Me</code> <code>[3] Re-explain</code> <code>[4] Custom</code></li>
+          <li>→ Detects repeated friction → offers adaptive teacher handoff (e.g., Turing→Feynman)</li>
+          <li>→ Auto-compiles permanent textbook <code>notes.md</code> on section completion</li>
+        </ul>
+      </div>
+      <div class="flow-box">
+<span class="fd">// session.jsonl — every turn is tracked</span>
+{"<span class="fa">turn</span>":1,"<span class="fa">concept</span>":"<span class="fs">mutex_intro</span>",
+ "<span class="fa">teacher</span>":"<span class="fp">Hypatia</span>",
+ "<span class="fa">learner_input</span>":"<span class="fs">next</span>",
+ "<span class="fa">friction_count</span>":0}
+
+{"<span class="fa">turn</span>":2,"<span class="fa">concept</span>":"<span class="fs">deadlock_scenarios</span>",
+ "<span class="fa">teacher</span>":"<span class="fp">Hypatia</span>",
+ "<span class="fa">learner_input</span>":"<span class="fs">re-explain</span>",
+ "<span class="fa">friction_count</span>":1}
+
+{"<span class="fa">turn</span>":3,"<span class="fa">concept</span>":"<span class="fs">deadlock_scenarios</span>",
+ "<span class="fa">teacher</span>":"<span class="fp">Feynman</span>",
+ "<span class="fa">learner_input</span>":"<span class="fs">next</span>",
+ "<span class="fa">handoff</span>":"<span class="fs">Hypatia→Feynman</span>",
+ "<span class="fa">breakthrough</span>":true}
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-group="pipeline">
+    <div class="grid23">
+      <div class="card">
+        <h3>🛠️ Stage 5: In-Loop Practical Labs (<code>/tc-practicals</code>)</h3>
+        <p>Real code challenges evaluated by AI against 5 invariants. No faking competence.</p>
+        <ul>
+          <li>→ Daedalus scaffolds <code>practical.md</code> with functional requirements + boundary constraints</li>
+          <li>→ Learner writes genuine code in their workspace</li>
+          <li>→ AI evaluates: Syntax, Boundary Conditions, Defensive Guards, Error Safety, Idiomatic Craft</li>
+          <li>→ PASS verdict required before section can lock as complete</li>
+          <li>→ If <code>test-ledger.jsonl</code> shows recurring misconceptions, practical exercises target those weak areas</li>
+        </ul>
+      </div>
+      <div class="flow-box">
+<span class="fd">// practical-result.json — per evaluation</span>
+{
+  "<span class="fa">verdict</span>": "<span class="fs">PASS</span>",
+  "<span class="fa">score</span>": 87,
+  "<span class="fa">rubric</span>": {
+    "<span class="fa">syntax</span>": "<span class="fs">pass</span>",
+    "<span class="fa">boundary_checks</span>": "<span class="fs">pass</span>",
+    "<span class="fa">defensive_guards</span>": "<span class="fs">pass</span>",
+    "<span class="fa">error_safety</span>": "<span class="fs">warn</span>",
+    "<span class="fa">idiomatic_craft</span>": "<span class="fs">pass</span>"
+  },
+  "<span class="fa">feedback</span>": "<span class="fs">Consider adding
+    explicit fsync error handling...</span>"
+}
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-group="pipeline">
+    <div class="grid23">
+      <div class="card">
+        <h3>📐 Stage 6: Diagnostic Testing & Mastery Ledger (<code>/tc-test-me</code>)</h3>
+        <p>100% question-based. Zero code pasting. Tests deep mental models, not surface recall.</p>
+        <ul>
+          <li>→ Alan Turing poses Bloom's Taxonomy scenario dilemmas (Comprehension → Analysis → Evaluation)</li>
+          <li>→ Diagnoses specific misconceptions and tags them for future retesting</li>
+          <li>→ Records to tamper-evident <code>ledger.toml</code> with timestamps and scores</li>
+          <li>→ Cumulative Boundary Rule: NEVER tests concepts from future sections</li>
+          <li>→ Misconception data feeds back into practicals and future teaching</li>
+        </ul>
+      </div>
+      <div class="flow-box">
+<span class="fd">// ledger.toml — tamper-evident proof</span>
+[[assessments]]
+<span class="fa">timestamp</span> = <span class="fs">"2026-11-01T14:23:00Z"</span>
+<span class="fa">section</span> = <span class="fs">"ch01-sec02"</span>
+<span class="fa">bloom_level</span> = <span class="fs">"analysis"</span>
+<span class="fa">question</span> = <span class="fs">"Under what locking
+  order is deadlock impossible?"</span>
+<span class="fa">outcome</span> = <span class="fs">"mastered"</span>
+<span class="fa">score</span> = <span class="fs">0.92</span>
+
+<span class="fd">// Misconception tracking feeds back</span>
+<span class="fa">misconception</span> = <span class="fs">"CONFUSION_LOCK_ORDER"</span>
+<span class="fa">remediation</span> = <span class="fs">"Retested in ch02 practical"</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ CONTEXT ENGINE -->
+<section class="sec" id="context">
+  <div class="sec-label">The Secret Weapon</div>
+  <div class="sec-title">The Context Accumulation Engine</div>
+  <div class="sec-sub">
+    This is what makes TextCourses fundamentally different from everything else.
+    Every interaction builds a richer context graph that powers increasingly personalized experiences.
+  </div>
+
+  <div class="grid3">
+    <div class="ctx-card">
+      <h4>🧠 Dual-Register Memory</h4>
+      <p><strong>Human-First Notes</strong> (<code>notes.md</code>) — permanent, plain-English textbook written for the learner. Locked on disk once compiled. Yours forever.</p>
+      <p style="margin-top:.5rem"><strong>AI-First Memory</strong> (<code>memlog.md</code>, <code>session.jsonl</code>) — ultra-dense, token-minimal telemetry. Feeds the AI exactly what happened without blowing up context windows.</p>
+    </div>
+    <div class="ctx-card">
+      <h4>🔄 Feedback Loops</h4>
+      <p>Misconceptions from <code>/tc-test-me</code> feed into <code>/tc-practicals</code> to target weak areas. Friction patterns in <code>/tc-teach</code> trigger adaptive teacher handoffs. Style profiles evolve at chapter boundaries.</p>
+      <p style="margin-top:.5rem;color:var(--amber);font-size:.82rem"><strong>The more you learn, the better it teaches.</strong></p>
+    </div>
+    <div class="ctx-card">
+      <h4>📦 Portable & Sovereign</h4>
+      <p>All context lives in plain files: Markdown, TOML, JSONL, SQLite. Zero cloud databases. Zero vendor lock-in. Git-trackable. Transferable between machines. <strong>You own your learning data.</strong></p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1.5rem;border-left:4px solid var(--cyan)">
+    <h3>🔗 The Context Chain — How Each Step Feeds The Next</h3>
+    <div class="flow-box" style="margin-top:1rem;background:transparent;border:none;padding:0">
+<span class="fc">Profile (preferences.md)</span>
+  │ feeds into ↓
+<span class="fc">Research (dossier.md)</span> ← adapts hat priority for beginners
+  │ feeds into ↓
+<span class="fc">Course Creation (curriculum-brainstorm.md)</span> ← Triad uses profile + research
+  │ feeds into ↓
+<span class="fc">Teaching (session.jsonl + memlog.md)</span> ← loads profile style + course state
+  │ feeds into ↓
+<span class="fc">Diagnostics (ledger.toml)</span> ← reads completed notes, tracks misconceptions
+  │ feeds into ↓
+<span class="fc">Practicals (practical-result.json)</span> ← weights exercises toward weak areas
+  │ feeds back into ↓
+<span class="fc">Next Teaching Session</span> ← loads last 15 memlog lines + misconception tags
+  │ feeds back into ↓
+<span class="fc">Profile Evolution</span> ← suggests style adjustment at chapter boundaries
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ UX DIRECTIONS -->
+<section class="sec" id="ux-direction">
+  <div class="sec-label decision">Decision Required — UX Direction</div>
+  <div class="sec-title">What Will Users Experience on textcourses.com?</div>
+  <div class="sec-sub">
+    The skills engine is the intermediate build system. But what is the end-user surface?
+    Here are the viable directions — each with different trade-offs.
+  </div>
+
+  <div class="decision-box">
+    <h3>Core Decision: What Is textcourses.com?</h3>
+    <p>
+      The skills framework runs locally in AI coding agents today. But <code>textcourses.com</code>
+      is a domain — it implies a web presence. The fundamental question is:
+      <strong>Does the web surface host the learning itself, or serve as a catalog/community layer
+      over local learning?</strong>
+    </p>
+  </div>
+
+  <div class="tabs" id="ux-tabs">
+    <button class="tab-btn active" onclick="showTab('ux',0)">Option A: Web Learning Platform</button>
+    <button class="tab-btn" onclick="showTab('ux',1)">Option B: Catalog + Local Engine</button>
+    <button class="tab-btn" onclick="showTab('ux',2)">Option C: Hybrid Progressive</button>
+    <button class="tab-btn" onclick="showTab('ux',3)">Option D: Community Blueprint Registry</button>
+  </div>
+
+  <!-- OPTION A -->
+  <div class="tab-panel active" data-group="ux">
+    <div class="option" style="margin-bottom:1.25rem">
+      <span class="option-badge exp">Ambitious</span>
+      <h4>🌐 Option A: Full Web Learning Platform</h4>
+      <p>textcourses.com IS the learning experience. Users sign up, select a course, and learn in a web-based chat/workspace interface powered by the skills engine on the backend.</p>
+      <div class="grid2" style="margin-top:1.25rem">
+        <div>
+          <p style="color:var(--emerald);font-weight:700;font-size:.82rem;margin-bottom:.5rem">✅ PROS</p>
+          <ul class="pros">
+            <li><span style="color:var(--emerald)">+</span> Lowest friction — anyone with a browser can start learning instantly</li>
+            <li><span style="color:var(--emerald)">+</span> Full control over the UX/UI experience</li>
+            <li><span style="color:var(--emerald)">+</span> Context engine runs server-side — richer analytics and personalization</li>
+            <li><span style="color:var(--emerald)">+</span> Direct monetization path (freemium, subscription)</li>
+            <li><span style="color:var(--emerald)">+</span> Social features possible (leaderboards, cohorts)</li>
+          </ul>
+        </div>
+        <div>
+          <p style="color:var(--rose);font-weight:700;font-size:.82rem;margin-bottom:.5rem">⚠️ CONS / TRADE-OFFS</p>
+          <ul class="pros">
+            <li><span style="color:var(--rose)">−</span> Major infrastructure investment (servers, auth, databases)</li>
+            <li><span style="color:var(--rose)">−</span> Contradicts "sovereign local-first" philosophy</li>
+            <li><span style="color:var(--rose)">−</span> AI API costs scale with users</li>
+            <li><span style="color:var(--rose)">−</span> Competing with established platforms (Coursera, etc.)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="flow-box">
+<span class="fd">// Option A — User Flow</span>
+<span class="fc">User</span> → visits textcourses.com → <span class="fs">Sign Up / Login</span>
+  → <span class="fa">Select Topic</span> ("Distributed Systems")
+  → <span class="fp">Web Chat UI</span> runs /tc-init intake in browser
+  → <span class="fc">Backend</span> executes skills engine (tc-research, tc-create)
+  → <span class="fp">Web Chat UI</span> delivers Socratic lessons (/tc-teach)
+  → <span class="fa">Progress Dashboard</span> shows context graph, milestones
+  → <span class="fs">Notes & Portfolio</span> downloadable as local files or git repo
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="tab-panel" data-group="ux">
+    <div class="option" style="margin-bottom:1.25rem">
+      <span class="option-badge rec">Recommended — MVP</span>
+      <h4>📚 Option B: Course Catalog + Local Skills Engine</h4>
+      <p>textcourses.com is a beautiful course catalog and marketing site. Users browse topics, then install the skills into their local AI agent to learn. The website sells the vision; the local engine delivers it.</p>
+      <div class="grid2" style="margin-top:1.25rem">
+        <div>
+          <p style="color:var(--emerald);font-weight:700;font-size:.82rem;margin-bottom:.5rem">✅ PROS</p>
+          <ul class="pros">
+            <li><span style="color:var(--emerald)">+</span> Zero infrastructure cost — static site (Astro/Next.js)</li>
+            <li><span style="color:var(--emerald)">+</span> Preserves sovereign local-first philosophy perfectly</li>
+            <li><span style="color:var(--emerald)">+</span> Users bring their own AI (OpenAI, Anthropic, local models)</li>
+            <li><span style="color:var(--emerald)">+</span> Open-source community can contribute course blueprints</li>
+            <li><span style="color:var(--emerald)">+</span> Fast to ship — website is just marketing + docs</li>
+          </ul>
+        </div>
+        <div>
+          <p style="color:var(--rose);font-weight:700;font-size:.82rem;margin-bottom:.5rem">⚠️ CONS / TRADE-OFFS</p>
+          <ul class="pros">
+            <li><span style="color:var(--rose)">−</span> Higher friction — requires local setup (AI agent + uv)</li>
+            <li><span style="color:var(--rose)">−</span> Limits audience to developers & technical users</li>
+            <li><span style="color:var(--rose)">−</span> Harder to monetize directly</li>
+            <li><span style="color:var(--rose)">−</span> No centralized analytics on learning outcomes</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="flow-box">
+<span class="fd">// Option B — User Flow</span>
+<span class="fc">User</span> → visits textcourses.com → <span class="fs">Browses course catalog</span>
+  → Sees: "Distributed Systems", "Rust Internals", "Data Science"
+  → Clicks <span class="fa">"Start Learning"</span>
+  → Gets <span class="fp">install command</span>: npx skills add textcourses/distributed-systems
+  → Opens their AI agent (Cursor, Claude Code, Antigravity, etc.)
+  → Types <span class="fc">/tc-init</span> → learns locally with full sovereignty
+  → <span class="fs">Progress lives in their git repo</span>
+  → Optionally publishes portfolio to textcourses.com community
+    </div>
+  </div>
+
+  <!-- OPTION C -->
+  <div class="tab-panel" data-group="ux">
+    <div class="option" style="margin-bottom:1.25rem">
+      <span class="option-badge exp">Best of Both Worlds</span>
+      <h4>🔀 Option C: Hybrid Progressive Platform</h4>
+      <p>textcourses.com offers a lightweight web learning experience (no local setup required) AND supports power users who want to run locally. Web users get a streamlined UI; power users get full sovereignty. Context syncs optionally.</p>
+      <div class="grid2" style="margin-top:1.25rem">
+        <div>
+          <p style="color:var(--emerald);font-weight:700;font-size:.82rem;margin-bottom:.5rem">✅ PROS</p>
+          <ul class="pros">
+            <li><span style="color:var(--emerald)">+</span> Captures both casual learners AND power users</li>
+            <li><span style="color:var(--emerald)">+</span> "Try in browser, graduate to local" funnel</li>
+            <li><span style="color:var(--emerald)">+</span> Optional context sync between web ↔ local</li>
+            <li><span style="color:var(--emerald)">+</span> Multiple monetization paths</li>
+          </ul>
+        </div>
+        <div>
+          <p style="color:var(--rose);font-weight:700;font-size:.82rem;margin-bottom:.5rem">⚠️ CONS / TRADE-OFFS</p>
+          <ul class="pros">
+            <li><span style="color:var(--rose)">−</span> Most complex to build — two surfaces to maintain</li>
+            <li><span style="color:var(--rose)">−</span> Context sync between web and local is non-trivial</li>
+            <li><span style="color:var(--rose)">−</span> Risk of diluting the core value proposition</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="flow-box">
+<span class="fd">// Option C — Dual-Surface Flow</span>
+
+<span class="fc">Casual User Path (Zero Setup):</span>
+  textcourses.com → <span class="fs">Click "Learn Now"</span> → Web chat UI
+  → Socratic lessons in browser → Progress saved to cloud account
+  → <span class="fa">Export to local git repo</span> anytime
+
+<span class="fc">Power User Path (Full Sovereignty):</span>
+  textcourses.com → <span class="fs">Click "Install Locally"</span>
+  → npx skills add textcourses/... → Local AI agent
+  → Full filesystem control → <span class="fa">Optional sync</span> to web dashboard
+
+<span class="fp">Context Bridge:</span>
+  Web progress ←→ Local files via <span class="fs">tc-sync</span> command
+  Export: web → git repo | Import: git repo → web dashboard
+    </div>
+  </div>
+
+  <!-- OPTION D -->
+  <div class="tab-panel" data-group="ux">
+    <div class="option" style="margin-bottom:1.25rem">
+      <span class="option-badge future">Long-Term Vision</span>
+      <h4>🏛️ Option D: Community Blueprint Registry</h4>
+      <p>textcourses.com becomes the "npm registry" for learning blueprints. Expert educators and engineers publish vetted course blueprints (roadmaps, curricula, research dossiers). Users install and learn locally. Community upvotes and reviews quality.</p>
+      <div class="grid2" style="margin-top:1.25rem">
+        <div>
+          <p style="color:var(--emerald);font-weight:700;font-size:.82rem;margin-bottom:.5rem">✅ PROS</p>
+          <ul class="pros">
+            <li><span style="color:var(--emerald)">+</span> Network effects — community creates content</li>
+            <li><span style="color:var(--emerald)">+</span> Expert-curated blueprints add massive value</li>
+            <li><span style="color:var(--emerald)">+</span> Verifiable proof-of-work portfolios publishable</li>
+            <li><span style="color:var(--emerald)">+</span> Could become the standard for AI-assisted education</li>
+          </ul>
+        </div>
+        <div>
+          <p style="color:var(--rose);font-weight:700;font-size:.82rem;margin-bottom:.5rem">⚠️ CONS / TRADE-OFFS</p>
+          <ul class="pros">
+            <li><span style="color:var(--rose)">−</span> Requires critical mass of contributors to be valuable</li>
+            <li><span style="color:var(--rose)">−</span> Quality control and moderation overhead</li>
+            <li><span style="color:var(--rose)">−</span> Chicken-and-egg problem: needs users to attract authors</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="flow-box">
+<span class="fd">// Option D — Registry Flow</span>
+
+<span class="fc">Blueprint Author</span> (Expert/Educator):
+  Creates curriculum → <span class="fs">tc-create + tc-research + tc-verify</span>
+  → Publishes to textcourses.com registry
+  → Community reviews, upvotes, forks
+
+<span class="fc">Learner</span>:
+  Browses textcourses.com → <span class="fs">Finds "Canonical Raft Blueprint" (★ 4.8)</span>
+  → <span class="fa">npx skills add textcourses/raft-canonical</span>
+  → Learns locally with full context engine
+  → Publishes signed completion certificate to profile
+
+<span class="fp">Monetization:</span>
+  Free blueprints (community) + <span class="fa">Premium blueprints</span> (expert-authored)
+  + <span class="fa">Enterprise team licenses</span> (onboarding standardization)
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ FACULTY -->
+<section class="sec" id="faculty">
+  <div class="sec-label">The AI Faculty</div>
+  <div class="sec-title">5 Distinct Teaching Personas</div>
+  <div class="sec-sub">Each with a unique pedagogical voice. Learners choose their teacher. Adaptive handoffs when stuck.</div>
+
+  <div class="grid3" style="grid-template-columns:repeat(5,1fr)">
+    <div class="persona">
+      <div class="avatar">🦉</div>
+      <h4>Hypatia</h4>
+      <div class="role">Empathetic Tutor</div>
+      <p>Gentle stepping stones. Everyday analogies. Zero jargon. Default for beginners.</p>
+    </div>
+    <div class="persona">
+      <div class="avatar">⚡</div>
+      <h4>Feynman</h4>
+      <div class="role">The Intuitionist</div>
+      <p>Vivid mental models. Cuts through academic gatekeeping. Plain and direct.</p>
+    </div>
+    <div class="persona">
+      <div class="avatar">📐</div>
+      <h4>Turing</h4>
+      <div class="role">The Formalist</div>
+      <p>Mathematical precision. State machine invariants. Ruthless about edge cases.</p>
+    </div>
+    <div class="persona">
+      <div class="avatar">🛠️</div>
+      <h4>Daedalus</h4>
+      <div class="role">Master Craftsman</div>
+      <p>Working code. Defensive programming. Production patterns. Lab evaluator.</p>
+    </div>
+    <div class="persona">
+      <div class="avatar">🔬</div>
+      <h4>Marie Curie</h4>
+      <div class="role">Investigator</div>
+      <p>Official docs. RFCs. Empirical verification. 5-hat research dossiers.</p>
+    </div>
+  </div>
+
+  <div class="decision-box" style="margin-top:1.5rem">
+    <h3>Decision: How Do Personas Appear on textcourses.com?</h3>
+    <p>
+      Currently, personas are text-based identities in skill prompts. For a web experience,
+      they could become:
+    </p>
+    <div class="grid3" style="margin-top:1rem">
+      <div class="card">
+        <h3>🅰️ Chat Avatars</h3>
+        <p>Simple avatar icons in a chat UI. Minimal visual investment. Each persona has a distinct color/icon.</p>
+        <p style="color:var(--emerald);font-size:.82rem;margin-top:.5rem">Low effort. Ships fast.</p>
+      </div>
+      <div class="card">
+        <h3>🅱️ Illustrated Characters</h3>
+        <p>Custom-illustrated character designs with distinct visual personalities. More premium feel.</p>
+        <p style="color:var(--amber);font-size:.82rem;margin-top:.5rem">Medium effort. Strong brand.</p>
+      </div>
+      <div class="card">
+        <h3>🅲️ AI-Generated Video Avatars</h3>
+        <p>Animated talking-head avatars (HeyGen, Synthesia style). Most immersive but potentially uncanny valley.</p>
+        <p style="color:var(--rose);font-size:.82rem;margin-top:.5rem">High effort. Risk of gimmick.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ OPEN DECISIONS -->
+<section class="sec" id="decisions">
+  <div class="sec-label decision">Decisions Required</div>
+  <div class="sec-title">Key Product Decisions That Shape textcourses.com</div>
+  <div class="sec-sub">These are the strategic forks that need your decision before building the user-facing product.</div>
+
+  <div style="display:flex;flex-direction:column;gap:1.25rem">
+
+    <div class="decision-box">
+      <h3>Decision 1: Primary Surface — Web vs Local vs Hybrid?</h3>
+      <p>See UX Direction options above. This is THE foundational decision. Everything else cascades from it.</p>
+      <p style="margin-top:.5rem;color:var(--text3);font-size:.85rem">
+        <strong>Recommendation:</strong> Start with <strong>Option B</strong> (Catalog + Local) as MVP.
+        Evolve to <strong>Option C</strong> (Hybrid) as the product matures and demand validates web learning.
+        <strong>Option D</strong> (Registry) is the long-term north star from the PRD vision.
+      </p>
+    </div>
+
+    <div class="decision-box">
+      <h3>Decision 2: Monetization Model</h3>
+      <p>How does textcourses.com generate revenue?</p>
+      <div class="grid3" style="margin-top:1rem">
+        <div class="card">
+          <h3>💰 Freemium SaaS</h3>
+          <p>Free basic courses. Paid premium content, advanced personas, priority AI, team features.</p>
+        </div>
+        <div class="card">
+          <h3>🏪 Marketplace</h3>
+          <p>Expert educators publish paid blueprints. TextCourses takes a platform cut (like Gumroad/Udemy).</p>
+        </div>
+        <div class="card">
+          <h3>🏢 Enterprise Licenses</h3>
+          <p>Companies pay for standardized onboarding tracks with progress dashboards and team analytics.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="decision-box">
+      <h3>Decision 3: Target Audience Scope</h3>
+      <p>The current engine is heavily technical (code, systems, engineering). Should textcourses.com expand to non-technical domains?</p>
+      <div class="grid2" style="margin-top:1rem">
+        <div class="card">
+          <h3>🎯 Technical Only (Current)</h3>
+          <p>Software engineering, data science, systems, DevOps. Strong moat. Clear audience. The practicals and code evaluation features are differentiators.</p>
+        </div>
+        <div class="card">
+          <h3>🌍 Domain-Agnostic (Expansion)</h3>
+          <p>Finance, medicine, law, languages, music theory. The PRD already calls out "domain-agnostic." The 5 curriculum archetypes are universal. But practicals and code eval become irrelevant.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="decision-box">
+      <h3>Decision 4: Content Creation Model</h3>
+      <p>Who creates the courses that users learn from on textcourses.com?</p>
+      <div class="grid3" style="margin-top:1rem">
+        <div class="card">
+          <h3>🤖 AI-Generated (Current)</h3>
+          <p>The skills engine autonomously researches and creates courses per user. Every course is unique. Scalable but quality varies.</p>
+        </div>
+        <div class="card">
+          <h3>👩‍🏫 Expert-Authored</h3>
+          <p>Domain experts use the skills as authoring tools to create vetted, curated blueprints. Higher quality, but doesn't scale.</p>
+        </div>
+        <div class="card">
+          <h3>🔀 Hybrid Seeded</h3>
+          <p>Experts author blueprints as templates. The AI personalizes delivery per user's context, style, and pace. Best of both.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="decision-box">
+      <h3>Decision 5: Context Data — Where Does It Live?</h3>
+      <p>The context accumulation engine is the core differentiator. But for a web platform, where does learner context data live?</p>
+      <div class="grid3" style="margin-top:1rem">
+        <div class="card">
+          <h3>💻 100% Local</h3>
+          <p>All files on learner's machine. Maximum sovereignty. Zero cloud dependency. Current model.</p>
+        </div>
+        <div class="card">
+          <h3>☁️ Cloud-First</h3>
+          <p>Server-side storage. Enables web UI, cross-device access, analytics. Contradicts sovereignty.</p>
+        </div>
+        <div class="card">
+          <h3>🔄 Local-First + Optional Sync</h3>
+          <p>Local is primary. Optional encrypted sync to cloud for backup, cross-device, and web access. User controls what syncs.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="decision-box">
+      <h3>Decision 6: Proof of Learning — Certificates & Portfolios</h3>
+      <p>How do learners prove what they learned?</p>
+      <div class="grid2" style="margin-top:1rem">
+        <div class="card">
+          <h3>📜 Signed Certificates</h3>
+          <p>Cryptographically signed completion certificates verified against the tamper-evident ledger. Publishable to LinkedIn, GitHub, textcourses.com profile.</p>
+        </div>
+        <div class="card">
+          <h3>💼 Portfolio Artifacts</h3>
+          <p>Real code projects from <code>/tc-practicals</code> with 4-lens AI review reports. Genuine proof-of-work, not just a badge. Publishable as git repos.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ WHERE WE ARE -->
+<section class="sec">
+  <div class="sec-label">Current State</div>
+  <div class="sec-title">What's Already Built vs What's Next</div>
+
+  <div class="grid2">
+    <div class="card" style="border-left:4px solid var(--emerald)">
+      <h3>✅ Already Built & Tested</h3>
+      <ul>
+        <li><span style="color:var(--emerald)">✓</span> 10 complete AI skills (SKILL.md + Python scripts)</li>
+        <li><span style="color:var(--emerald)">✓</span> 18 deterministic Python engine scripts</li>
+        <li><span style="color:var(--emerald)">✓</span> 265 passing automated tests</li>
+        <li><span style="color:var(--emerald)">✓</span> Full context accumulation system (session.jsonl, memlog.md, ledger.toml)</li>
+        <li><span style="color:var(--emerald)">✓</span> 5-Hat research engine with sovereign RAG indexer</li>
+        <li><span style="color:var(--emerald)">✓</span> Triad consensus course creation</li>
+        <li><span style="color:var(--emerald)">✓</span> Socratic teaching with adaptive fork</li>
+        <li><span style="color:var(--emerald)">✓</span> Practical evaluation with AI grading</li>
+        <li><span style="color:var(--emerald)">✓</span> Diagnostic testing with Bloom's taxonomy</li>
+        <li><span style="color:var(--emerald)">✓</span> SHA-256 integrity tracking (cross-platform)</li>
+        <li><span style="color:var(--emerald)">✓</span> Complete PRD (45 FRs), Architecture Spine, Product Brief</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left:4px solid var(--amber)">
+      <h3>🔶 Next: Decisions & textcourses.com</h3>
+      <ul>
+        <li><span style="color:var(--amber)">○</span> Choose UX direction (Options A–D above)</li>
+        <li><span style="color:var(--amber)">○</span> Design textcourses.com website (catalog, marketing, docs)</li>
+        <li><span style="color:var(--amber)">○</span> Choose monetization model</li>
+        <li><span style="color:var(--amber)">○</span> Define target audience scope</li>
+        <li><span style="color:var(--amber)">○</span> Build web UI if Option A/C chosen</li>
+        <li><span style="color:var(--amber)">○</span> Community blueprint registry (Option D long-term)</li>
+        <li><span style="color:var(--amber)">○</span> Proof-of-learning certificates</li>
+        <li><span style="color:var(--amber)">○</span> Spaced repetition scheduling (v2 per PRD)</li>
+        <li><span style="color:var(--amber)">○</span> Multiplayer / cohort features (v2 per PRD)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <p><strong>TextCourses (textcourses.com)</strong> — Context-Based Learning Experiences, Built Like Software Projects</p>
+  <p style="margin-top:.4rem">Open Source • MIT Licensed • Skills-Powered • Sovereign Local-First</p>
+  <p style="margin-top:.8rem;font-size:.78rem;color:var(--text3)">
+    This is a living demo document. Items marked with 🔶 require decisions.
+    Generated from the TextCourses PRD, Product Brief, and Architecture Spine.
+  </p>
+</footer>
+
+<script>
+function showTab(group, index) {
+  const tabsEl = document.getElementById(group + '-tabs');
+  if (tabsEl) {
+    const buttons = tabsEl.querySelectorAll('.tab-btn');
+    buttons.forEach((b, i) => b.classList.toggle('active', i === index));
+  }
+  const panels = document.querySelectorAll('.tab-panel[data-group="' + group + '"]');
+  panels.forEach((p, i) => p.classList.toggle('active', i === index));
+}
+</script>
+</body>
+</html>

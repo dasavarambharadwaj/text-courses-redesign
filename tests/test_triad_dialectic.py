@@ -85,7 +85,7 @@ def test_adversarial_triad_consensus_scaffolding(tmp_path: Path):
     assert course_dir.is_dir()
 
     # Check consensus-deliberation.md
-    delib_file = course_dir / "consensus-deliberation.md"
+    delib_file = (course_dir / ".tc" / "consensus-deliberation.md") if (course_dir / ".tc" / "consensus-deliberation.md").is_file() else (course_dir / "consensus-deliberation.md")
     assert delib_file.is_file(), "consensus-deliberation.md was not created"
     delib_text = delib_file.read_text(encoding="utf-8")
 

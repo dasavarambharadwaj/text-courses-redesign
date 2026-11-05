@@ -1,9 +1,18 @@
 ---
 name: tc-verify-course
-description: "Audit curriculum DAG acyclicity, prerequisite sequencing, and vocabulary introduction contracts."
+description: "[INTERNAL ENGINE] Audit curriculum DAG acyclicity, prerequisite sequencing, and vocabulary introduction contracts. Invoked automatically during course compilation."
 ---
 
 # `tc-verify-course`: Pre-Flight Curriculum Auditor & Vocabulary Validator
+
+> [!NOTE]
+> **INTERNAL ENGINE TOOL**: This skill is an internal validation engine invoked automatically by `/tc-create` and `course_builder.py` before finalizing a course. It is not intended to be run directly as a public slash command by learners.
+
+
+
+> [!NOTE]
+
+> **INTERNAL ENGINE TOOL**: This skill is an internal validation engine invoked automatically by `/tc-create` and `course_builder.py` before finalizing a course. It is not intended to be run directly as a public slash command by learners.
 
 `tc-verify-course` serves as the Auditor in the Triad Consensus Loop. It verifies that proposed courses are pedagogically sound, free of circular prerequisite dependencies, grounded in researched technical ground truth, and strictly adhere to vocabulary introduction contracts before files are written to disk.
 
@@ -57,3 +66,13 @@ The auditor classifies all findings by severity:
 When running within the Triad Consensus Loop:
 - If `CRITICAL` findings occur: The candidate curriculum is rejected, findings are fed back to `tc-create` (Architect) to regenerate or repair prerequisites, and reconciliation events are logged.
 - If `0 CRITICAL` findings: The course is approved for final disk scaffolding.
+
+### 4. Complete Coverage Verification Ledger (auditor.py coverage)
+
+Audit source-to-curriculum parity and verify that 100% of uploaded textbook chapters and sections are mapped:
+
+```bash
+uv run _tc/scripts/auditor.py coverage --course <course_slug>
+```
+
+This generates `courses/<slug>/coverage-ledger.md` and fails validation (exit code 1) if any source section was dropped.

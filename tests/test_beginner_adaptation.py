@@ -80,7 +80,7 @@ def test_course_builder_beginner_scaffolding(tmp_path: Path):
     data = json.loads(res.stdout)
     assert data["ok"] is True
 
-    course_toml = tmp_path / "courses" / "intro-python" / "course.toml"
+    course_toml = (tmp_path / "courses" / "intro-python" / ".tc" / "course.toml") if (tmp_path / "courses" / "intro-python" / ".tc" / "course.toml").is_file() else (tmp_path / "courses" / "intro-python" / "course.toml")
     assert course_toml.is_file()
     content = course_toml.read_text(encoding="utf-8")
     assert 'competency_level = "beginner"' in content

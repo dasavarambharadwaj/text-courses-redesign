@@ -24,6 +24,7 @@ import os
 import re
 import shutil
 import sqlite3
+import tomllib
 import sys
 from pathlib import Path
 from typing import Any
@@ -75,6 +76,7 @@ def find_rag_db_path(slug: str, workspace: Path | str = ".") -> Path:
     """Find location of index.db preferring courses/<slug>/rag-db with fallbacks."""
     ws = Path(workspace).resolve()
     candidates = [
+        ws / "courses" / slug / ".tc" / "rag-db" / "index.db",
         ws / "courses" / slug / "rag-db" / "index.db",
         ws / "research" / slug / "rag-db" / "index.db",
         ws / "research" / slug / "sources" / "rag-db" / "index.db",
@@ -90,6 +92,7 @@ def find_catalog_path(slug: str, workspace: Path | str = ".") -> Path:
     """Find location of catalog.json preferring courses/<slug>/rag-db with fallbacks."""
     ws = Path(workspace).resolve()
     candidates = [
+        ws / "courses" / slug / ".tc" / "rag-db" / "catalog.json",
         ws / "courses" / slug / "rag-db" / "catalog.json",
         ws / "research" / slug / "rag-db" / "catalog.json",
         ws / "research" / slug / "sources" / "rag-db" / "catalog.json",
@@ -105,6 +108,7 @@ def find_manifest_path(slug: str, workspace: Path | str = ".") -> Path:
     """Find location of manifest.json preferring courses/<slug>/rag-db with fallbacks."""
     ws = Path(workspace).resolve()
     candidates = [
+        ws / "courses" / slug / ".tc" / "rag-db" / "manifest.json",
         ws / "courses" / slug / "rag-db" / "manifest.json",
         ws / "research" / slug / "rag-db" / "manifest.json",
         ws / "research" / slug / "sources" / "rag-db" / "manifest.json",
@@ -1389,6 +1393,85 @@ def get_sources_manifest(slug: str, workspace: Path | str = ".") -> dict[str, An
 # CLI Entrypoint
 # ---------------------------------------------------------------------------
 
+def run_verify_grounding(slug: str, workspace: Path | str = ".") -> dict[str, Any]:
+    """Verify that all syllabus concepts in course.toml are corroborated by RAG index citations."""
+    ws = Path(workspace).resolve()
+    course_toml = (ws / "courses" / slug / ".tc" / "course.toml") if (ws / "courses" / slug / ".tc" / "course.toml").is_file() else (ws / "courses" / slug / "course.toml")
+    if not course_toml.is_file():
+        return {
+            "ok": False,
+            "error": f"Course manifest not found at {course_toml}",
+            "corroboration_score": 0.0,
+        }
+
+    try:
+        with open(course_toml, "rb") as f:
+            cdata = tomllib.load(f)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to parse course.toml: {e}", "corroboration_score": 0.0}
+
+    # Extract all section titles and concepts
+    concepts: list[str] = []
+    for ch in cdata.get("chapters", []):
+        for sec in ch.get("sections", []):
+            title = sec.get("title", "")
+            if title:
+                concepts.append(title)
+            sec_dir = ws / "courses" / slug / ch.get("slug", "") / sec.get("slug", "")
+            lp = sec_dir / "lesson-plan.md"
+            if lp.is_file():
+                try:
+                    for line in lp.read_text(encoding="utf-8").splitlines():
+                        if line.strip().startswith("- ["):
+                            c_text = line.split("]", 1)[-1].strip()
+                            if c_text:
+                                concepts.append(c_text)
+                except Exception:
+                    pass
+
+    concepts = list(dict.fromkeys(concepts))
+    if not concepts:
+        return {"ok": True, "slug": slug, "corroboration_score": 100.0, "total_concepts": 0, "corroborated": 0, "unsupported": []}
+
+    corroborated: list[dict[str, Any]] = []
+    unsupported: list[str] = []
+
+    for c in concepts:
+        try:
+            res = run_query_index(slug=slug, query=c, top_k=1, workspace=ws)
+            hits = res.get("hits", [])
+            if hits:
+                corroborated.append({"concept": c, "top_source": hits[0].get("source_file"), "score": hits[0].get("score")})
+            else:
+                unsupported.append(c)
+        except Exception:
+            unsupported.append(c)
+
+    score = round((len(corroborated) / len(concepts)) * 100.0, 1)
+    return {
+        "ok": True,
+        "slug": slug,
+        "corroboration_score": score,
+        "total_concepts": len(concepts),
+        "corroborated_count": len(corroborated),
+        "unsupported_count": len(unsupported),
+        "unsupported_concepts": unsupported,
+    }
+
+
+def cmd_verify_grounding(args: argparse.Namespace) -> None:
+    """CLI handler for verify-grounding."""
+    result = run_verify_grounding(slug=args.slug, workspace=args.workspace)
+    if getattr(args, "json", False):
+        output_json(result, 0 if result.get("ok") else 1)
+    else:
+        print(f"Grounding Corroboration for '{args.slug}': {result.get('corroboration_score', 0.0)}%")
+        print(f"Total concepts audited: {result.get('total_concepts', 0)}")
+        print(f"Corroborated by sources: {result.get('corroborated_count', 0)}")
+        if result.get("unsupported_count", 0) > 0:
+            print(f"Warning: {result.get('unsupported_count')} concepts lacked direct source citations.")
+
+
 def main() -> None:
     """CLI dispatcher for indexer.py."""
     parser = argparse.ArgumentParser(
@@ -1425,6 +1508,12 @@ def main() -> None:
     p_man.add_argument("--slug", required=True, help="Course slug")
     p_man.add_argument("--workspace", default=".", help="Workspace root path")
     p_man.add_argument("--json", action="store_true", help="Output results in JSON format")
+
+    # verify-grounding
+    p_vground = subparsers.add_parser("verify-grounding", help="Verify syllabus concepts against index.db citations")
+    p_vground.add_argument("--slug", required=True, help="Course slug")
+    p_vground.add_argument("--workspace", default=".", help="Workspace root path")
+    p_vground.add_argument("--json", action="store_true", help="Output results in JSON format")
 
     args = parser.parse_args()
 
