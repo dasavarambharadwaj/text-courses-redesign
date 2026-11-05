@@ -20,17 +20,19 @@ TextCourses is an open-source, filesystem-native learning framework designed for
 ## Quickstart: Zero to First Lesson in 60 Seconds
 
 ### 1. Install TextCourses Skills
-Install all 10 TextCourses skills into your AI coding agent (Antigravity, Claude Code, Cursor, Codex, OpenCode, Amp, etc.):
+Install all 12 TextCourses skills into your AI coding agent (Antigravity, Claude Code, Cursor, Codex, OpenCode, Amp, etc.):
 ```bash
-# Install all skills into your AI agent in this project
+# Recommended across all shells (Bash, Zsh, PowerShell, Windows cmd):
 npx skills add dasavarambharadwaj/text-courses-redesign --all
 
-# Or globally across all workspaces (-g)
+# Or globally across all workspaces (-g):
 npx skills add dasavarambharadwaj/text-courses-redesign --all -g
 
-# Or explicitly using the GitHub repository URL:
-npx skills add https://github.com/dasavarambharadwaj/text-courses-redesign --skill '*' --agent '*'
+# Or via full repository URL:
+npx skills add https://github.com/dasavarambharadwaj/text-courses-redesign --all
 ```
+> [!NOTE]
+> In Windows Command Prompt (`cmd.exe`), single quotes (`'`) are treated as literal text and cause `--agent '*'` to fail with `Invalid agents: '*'`. Always use `--all` (which expands automatically) or double quotes: `--skill "*" --agent "*"`.
 
 ### 2. Prerequisites
 - Python 3.11+
@@ -39,45 +41,36 @@ npx skills add https://github.com/dasavarambharadwaj/text-courses-redesign --ski
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-### 3. Initialize Your Workspace
-In your AI coding agent chat or terminal:
+### 3. Start Learning with the Unified `/tc` Skill (Recommended)
+Simply invoke `/tc` in your AI agent chat:
 ```bash
-# Via Slash Command in Chat
-/tc-init
-
-# Or directly via CLI
-uv run _tc/scripts/tc.py init --workspace .
+/tc
 ```
-This sets up your `profile/preferences.md` (role, experience level, preferred tutor, and hands-on practical focus).
-
-### 4. Research Any Topic Autonomously
-Before creating a course, let **Marie Curie** research official docs, specifications, and modern practices:
-```bash
-/tc-research distributed-systems
-```
-This generates an authoritative dossier in `research/distributed-systems/dossier.md` stress-tested through 5 critical hats.
-
-### 5. Create Your Personalized Course
-Let the Faculty Triad (Daedalus, Marie, Hypatia) autonomously debate and scaffold your curriculum:
-```bash
-/tc-create "Distributed Consensus & Raft"
-```
-TextCourses synthesizes 4 distinct curricular paradigms and scaffolds `courses/distributed-consensus/` with zero stalling.
-
-### 6. Begin Conversational Socratic Learning
-```bash
-/tc-teach
-```
-Your faculty tutor will deliver one concept at a time, check off concepts in `lesson-plan.md`, log conversational turns to `session.jsonl`, and provide the dynamic **Next-Action Fork** at the end of every message!
+The unified `/tc` conversational dispatcher guides you through the full learning lifecycle:
+- **Intake & Profiling**: Captures your domain background and practical focus.
+- **Material Acquisition Gate**: Detects missing reference books with options to drop in `.pdf`/`.epub` files or proceed with open docs.
+- **Curriculum Approval Gate**: Previews the synthesized syllabus before scaffolding.
+- **Conversational Lesson Delivery**: Teaches concept-by-concept with analogies and an immediate **4-Option Action Fork** (`[1] Advance`, `[2] Deepen`, `[3] Clarify`, `[4] Practical`).
 
 ---
 
-## The 10 TextCourses Skills
+### Alternative: Step-by-Step Power-User Skills
+If you prefer triggering each pipeline stage individually:
+1. **/tc-init**: Workspace profiling and diagnostic scanner.
+2. **/tc-research <topic>**: Autonomous 5-hat documentation research.
+3. **/tc-create <topic>**: Faculty Triad consensus curriculum compiler.
+4. **/tc-teach**: In-loop conversational instruction and checklist advancement.
+
+---
+
+## The TextCourses Skills (12 Skills)
 
 Installed via `npx skills add dasavarambharadwaj/text-courses-redesign --all` and ready to trigger directly in chat:
 
 | Skill Command | Lead Persona | What It Does |
 | :--- | :--- | :--- |
+| **`/tc`** | 🦉 Faculty Sensei | **The Master Front Door**: Unified dispatcher guiding intake, book acquisition, syllabus approval, and lesson turns. |
+| **`/tc-index`** | 📚 Denis Diderot | Sovereign RAG engine: indexes local docs, extracts tables of contents, and builds local vector/BM25 catalogs. |
 | **`/tc-init`** | Workspace Bootstrapper | Scans workspace progress, interviews your goals, and tells you what to do next. |
 | **`/tc-research`** | 🔬 Marie Curie | Autonomously searches the web, analyzes 5 critical hats, and writes topic dossiers. |
 | **`/tc-create`** | 🛠️ Daedalus | Synthesizes 4 curriculum paths, debates Triad consensus, and scaffolds course files. |
