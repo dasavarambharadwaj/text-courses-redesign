@@ -132,7 +132,7 @@ def test_bootstrapper_and_preferences_teacher_persistence(tmp_path: Path):
     res = subprocess.run(cmd, capture_output=True, text=True)
     assert res.returncode == 0
 
-    pref_file = ws / "profile" / "preferences.md"
+    pref_file = ws / "_tc" / "profile" / "preferences.md"
     assert pref_file.is_file()
     text = pref_file.read_text(encoding="utf-8")
     assert 'teacher: "socrates"' in text

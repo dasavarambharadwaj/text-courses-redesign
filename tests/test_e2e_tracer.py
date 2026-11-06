@@ -50,8 +50,14 @@ def test_complete_vertical_tracer(tmp_path: Path):
     assert res_init.returncode == 0, res_init.stderr
     init_data = extract_json(res_init.stdout)
     assert init_data["ok"] is True
-    assert (workspace / "profile" / "preferences.md").is_file()
-    assert (workspace / "profile" / "memlog.md").is_file()
+    assert (
+        (workspace / "_tc" / "profile" / "preferences.md").is_file()
+        or (workspace / "profile" / "preferences.md").is_file()
+    )
+    assert (
+        (workspace / "_tc" / "profile" / "memlog.md").is_file()
+        or (workspace / "profile" / "memlog.md").is_file()
+    )
 
     # 2. Add sample research material and run indexer
     research_dir = workspace / "research" / "distributed-raft" / "sources"

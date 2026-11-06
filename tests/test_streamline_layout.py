@@ -40,15 +40,16 @@ def test_bootstrap_workspace_creates_streamlined_layout(tmp_path: Path):
     assert (tmp_path / "_tc" / "scripts").is_dir()
     assert (tmp_path / "_tc" / "config.json").is_file()
 
-    # Check profile and global memlog
-    assert (tmp_path / "profile").is_dir()
-    assert (tmp_path / "profile" / "preferences.md").is_file()
-    assert (tmp_path / "profile" / "memlog.md").is_file()
-    profile_memlog_content = (tmp_path / "profile" / "memlog.md").read_text(encoding="utf-8")
+    # Check canonical profile and global memlog
+    assert (tmp_path / "_tc" / "profile").is_dir()
+    assert (tmp_path / "_tc" / "profile" / "preferences.md").is_file()
+    assert (tmp_path / "_tc" / "profile" / "memlog.md").is_file()
+    profile_memlog_content = (tmp_path / "_tc" / "profile" / "memlog.md").read_text(encoding="utf-8")
     assert "type: global-memlog" in profile_memlog_content
 
-    # Check roadmap dir
-    assert (tmp_path / "roadmap").is_dir()
+    # Check canonical roadmap dir and memlog
+    assert (tmp_path / "_tc" / "roadmap").is_dir()
+    assert (tmp_path / "_tc" / "roadmap" / "memlog.md").is_file()
 
 
 def test_course_scaffolding_creates_flat_notes_and_memlog(tmp_path: Path):

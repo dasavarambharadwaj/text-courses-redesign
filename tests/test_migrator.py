@@ -54,7 +54,7 @@ def test_check_health_needs_migration(tmp_path: Path):
     assert data["ok"] is True
     assert data["status"] == "needs_migration"
     assert data["current_version"] == "0.1.0"
-    assert data["target_version"] == "0.2.0"
+    assert data["target_version"] == "0.3.0"
     assert "portfolio" in data["missing_directories"]
 
 
@@ -163,16 +163,16 @@ def test_apply_with_confirm_apply_succeeds(tmp_path: Path):
     data = json.loads(res.stdout)
     assert data["ok"] is True
     assert data["migrated"] is True
-    assert data["version"] == "0.2.0"
+    assert data["version"] == "0.3.0"
 
     # Verify mutations
     assert (tmp_path / "portfolio").is_dir()
-    assert (tmp_path / ".tc" / "cache").is_dir()
-    assert (tmp_path / ".tc" / "research").is_dir()
+    assert (tmp_path / "_tc" / "cache").is_dir()
+    assert (tmp_path / "_tc" / "research").is_dir()
 
     # Verify config updated
-    updated_config = json.loads((tc_dir / "config.json").read_text(encoding="utf-8"))
-    assert updated_config["version"] == "0.2.0"
+    updated_config = json.loads((tmp_path / "_tc" / "config.json").read_text(encoding="utf-8"))
+    assert updated_config["version"] == "0.3.0"
     assert updated_config["settings"]["test"] == 123
 
     # Verify temporary migration-plan.md was cleaned up

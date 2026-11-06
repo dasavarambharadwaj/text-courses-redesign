@@ -432,23 +432,19 @@ def bootstrap_workspace(
     created_files: list[str] = []
     preserved_files: list[str] = []
 
-    # Required directories
+    # Required canonical directories (root _tc/ layout)
     dirs_to_create = [
         target_path / "_tc",
-        target_path / "_tc" / "cache",
-        target_path / "_tc" / "research",
         target_path / "_tc" / "scripts",
-        target_path / ".tc",
-        target_path / ".tc" / "cache",
-        target_path / ".tc" / "research",
-        target_path / "roadmap",
-        target_path / "profile",
-        target_path / "research",
-        target_path / "sources",
-        target_path / "plan",
-        target_path / "plan" / "sources",
+        target_path / "_tc" / "cache",
+        target_path / "_tc" / "profile",
+        target_path / "_tc" / "roadmap",
+        target_path / "_tc" / "research",
+        target_path / "_tc" / "courses",
+        target_path / "_tc" / "status",
         target_path / "courses",
         target_path / "portfolio",
+        target_path / "status-board",
     ]
 
     for d in dirs_to_create:
@@ -456,10 +452,10 @@ def bootstrap_workspace(
             d.mkdir(parents=True, exist_ok=True)
             created_dirs.append(str(d.relative_to(target_path)))
 
-    # _tc/config.json and legacy .tc/config.json
+    # _tc/config.json (canonical 0.3.0 schema)
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     config_data = {
-        "version": "0.2.0",
+        "version": "0.3.0",
         "framework": "TextCourses",
         "created_at": now_iso,
         "updated_at": now_iso,
@@ -469,12 +465,12 @@ def bootstrap_workspace(
             "density": "example_driven",
         },
     }
-    for config_file in [target_path / "_tc" / "config.json", target_path / ".tc" / "config.json"]:
-        if not config_file.exists():
-            atomic_write_json(config_file, config_data)
-            created_files.append(str(config_file.relative_to(target_path)))
-        else:
-            preserved_files.append(str(config_file.relative_to(target_path)))
+    config_file = target_path / "_tc" / "config.json"
+    if not config_file.exists():
+        atomic_write_json(config_file, config_data)
+        created_files.append(str(config_file.relative_to(target_path)))
+    else:
+        preserved_files.append(str(config_file.relative_to(target_path)))
 
     # Copy engine scripts
     src_dir = Path(source_scripts_dir).resolve() if source_scripts_dir else find_canonical_scripts_dir()
@@ -501,7 +497,7 @@ def bootstrap_workspace(
             pass
         created_files.append(str(target_bootstrapper.relative_to(target_path)))
 
-    # profile/preferences.md and legacy plan/preferences.md
+    # _tc/profile/preferences.md
     pref_content = compile_preferences_content(
         role=role,
         domain_experience=domain_experience,
@@ -510,15 +506,20 @@ def bootstrap_workspace(
         teacher=teacher,
         extra_notes=extra_notes,
     )
-    for pref_file in [target_path / "profile" / "preferences.md", target_path / "plan" / "preferences.md"]:
-        if not pref_file.exists():
-            atomic_write_text(pref_file, pref_content)
-            created_files.append(str(pref_file.relative_to(target_path)))
-        else:
-            preserved_files.append(str(pref_file.relative_to(target_path)))
+    pref_file = target_path / "_tc" / "profile" / "preferences.md"
+    if not pref_file.exists():
+        atomic_write_text(pref_file, pref_content)
+        created_files.append(str(pref_file.relative_to(target_path)))
+    else:
+        preserved_files.append(str(pref_file.relative_to(target_path)))
 
-    # profile/memlog.md (Global pedagogical memory log)
-    global_memlog = target_path / "profile" / "memlog.md"
+    # If legacy profile/preferences.md or plan/preferences.md already exists, preserve without overwrite
+    for leg_pref in [target_path / "profile" / "preferences.md", target_path / "plan" / "preferences.md"]:
+        if leg_pref.is_file():
+            preserved_files.append(str(leg_pref.relative_to(target_path)))
+
+    # _tc/profile/memlog.md (Global pedagogical memory log)
+    global_memlog = target_path / "_tc" / "profile" / "memlog.md"
     if not global_memlog.exists():
         atomic_write_text(
             global_memlog,
@@ -527,6 +528,17 @@ def bootstrap_workspace(
         created_files.append(str(global_memlog.relative_to(target_path)))
     else:
         preserved_files.append(str(global_memlog.relative_to(target_path)))
+
+    # _tc/roadmap/memlog.md (Roadmap memory log)
+    roadmap_memlog = target_path / "_tc" / "roadmap" / "memlog.md"
+    if not roadmap_memlog.exists():
+        atomic_write_text(
+            roadmap_memlog,
+            "---\ntype: roadmap-memlog\nversion: 1.0.0\n---\n\n# Roadmap Learning Memlog\n- (milestone) Roadmap initialized.\n",
+        )
+        created_files.append(str(roadmap_memlog.relative_to(target_path)))
+    else:
+        preserved_files.append(str(roadmap_memlog.relative_to(target_path)))
 
     # WORKSPACE_GUIDE.md and root README.md
     workspace_guide = target_path / "WORKSPACE_GUIDE.md"
@@ -581,20 +593,30 @@ def scan_workspace(path: Path | str) -> dict[str, Any]:
 
     # If no course manifests found, check research dossiers and roadmap
     if not course_files:
-        roadmap_file = target_path / "plan" / "roadmap.toml"
+        roadmap_file = target_path / "_tc" / "roadmap" / "roadmap.toml"
+        if not roadmap_file.is_file():
+            roadmap_file = target_path / "plan" / "roadmap.toml"
         if not roadmap_file.is_file():
             roadmap_file = target_path / "roadmap.toml"
+        if not roadmap_file.is_file():
+            roadmap_file = target_path / "roadmap" / "roadmap.toml"
 
-        research_dir = target_path / "research"
+        research_dir = target_path / "_tc" / "research"
         dossier_files = []
         if research_dir.is_dir():
             dossier_files = list(research_dir.glob("*/dossier.md"))
         if not dossier_files:
-            alt_res = target_path / ".tc" / "research"
+            alt_res = target_path / "research"
             if alt_res.is_dir():
                 dossier_files = list(alt_res.glob("*/dossier.md"))
+        if not dossier_files:
+            alt_res2 = target_path / ".tc" / "research"
+            if alt_res2.is_dir():
+                dossier_files = list(alt_res2.glob("*/dossier.md"))
 
-        pref_file = target_path / "profile" / "preferences.md"
+        pref_file = target_path / "_tc" / "profile" / "preferences.md"
+        if not pref_file.is_file():
+            pref_file = target_path / "profile" / "preferences.md"
         if not pref_file.is_file():
             pref_file = target_path / "plan" / "preferences.md"
         target_subj = ""
@@ -827,12 +849,17 @@ def cmd_status(args: argparse.Namespace) -> None:
     except Exception as e:
         output_json({"ok": False, "error": f"Failed to inspect workspace: {e}"}, exit_code=1)
 
-    pref_file = target_path / "profile" / "preferences.md"
+    pref_file = target_path / "_tc" / "profile" / "preferences.md"
+    if not pref_file.is_file():
+        pref_file = target_path / "profile" / "preferences.md"
     if not pref_file.is_file():
         pref_file = target_path / "plan" / "preferences.md"
     pref_data = parse_preferences_file(pref_file) if pref_file.is_file() else {}
 
     is_bootstrapped = (
+        (target_path / "_tc").is_dir()
+        and (target_path / "courses").is_dir()
+    ) or (
         (target_path / ".tc").is_dir()
         and (target_path / "plan").is_dir()
         and (target_path / "courses").is_dir()
@@ -854,7 +881,9 @@ def cmd_status(args: argparse.Namespace) -> None:
 def cmd_preferences(args: argparse.Namespace) -> None:
     """CLI handler to read preferences from profile/preferences.md or plan/preferences.md."""
     target_path = Path(args.path).resolve()
-    pref_file = target_path / "profile" / "preferences.md"
+    pref_file = target_path / "_tc" / "profile" / "preferences.md"
+    if not pref_file.is_file():
+        pref_file = target_path / "profile" / "preferences.md"
     if not pref_file.is_file():
         pref_file = target_path / "plan" / "preferences.md"
     if not pref_file.is_file():
@@ -865,13 +894,18 @@ def cmd_preferences(args: argparse.Namespace) -> None:
 
 
 def cmd_set_preferences(args: argparse.Namespace) -> None:
-    """CLI handler to write or update preferences in profile/ and plan/."""
+    """CLI handler to write or update preferences in _tc/profile/ and legacy paths."""
     target_path = Path(args.path).resolve()
-    pref_paths = [target_path / "profile" / "preferences.md", target_path / "plan" / "preferences.md"]
+    primary_pref = target_path / "_tc" / "profile" / "preferences.md"
+    pref_candidates = [
+        primary_pref,
+        target_path / "profile" / "preferences.md",
+        target_path / "plan" / "preferences.md",
+    ]
 
     teacher = getattr(args, "teacher", None)
     if not teacher:
-        for p_file in pref_paths:
+        for p_file in pref_candidates:
             if p_file.is_file():
                 existing = parse_preferences_file(p_file)
                 if "teacher" in existing:
@@ -884,14 +918,14 @@ def cmd_set_preferences(args: argparse.Namespace) -> None:
     subject = getattr(args, "subject", None) or getattr(args, "topic", "")
     goals = getattr(args, "goals", None) or getattr(args, "description", "")
     if not subject:
-        for p_file in pref_paths:
+        for p_file in pref_candidates:
             if p_file.is_file():
                 existing = parse_preferences_file(p_file)
                 if "target_subject" in existing:
                     subject = existing["target_subject"]
                     break
     if not goals:
-        for p_file in pref_paths:
+        for p_file in pref_candidates:
             if p_file.is_file():
                 existing = parse_preferences_file(p_file)
                 if "learning_goals" in existing:
@@ -908,14 +942,19 @@ def cmd_set_preferences(args: argparse.Namespace) -> None:
         learning_goals=goals or "",
         extra_notes=getattr(args, "notes", ""),
     )
-    for p_file in pref_paths:
-        p_file.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_text(p_file, content)
+    # Always write to canonical _tc/profile/preferences.md
+    primary_pref.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(primary_pref, content)
+
+    # If legacy files already exist on disk, update them to keep in sync
+    for legacy_p in [target_path / "profile" / "preferences.md", target_path / "plan" / "preferences.md"]:
+        if legacy_p.is_file():
+            atomic_write_text(legacy_p, content)
 
     output_json({
         "ok": True,
-        "message": f"Updated preferences at {pref_paths[0]}",
-        "path": str(pref_paths[0]),
+        "message": f"Updated preferences at {primary_pref}",
+        "path": str(primary_pref),
     }, exit_code=0)
 
 
@@ -938,7 +977,7 @@ def main() -> None:
 
     # bootstrap subcommand
     p_boot = subparsers.add_parser("bootstrap", help="Initialize workspace folder layout and deploy runtime scripts")
-    p_boot.add_argument("--path", "--workspace", dest="path", default=".", help="Target workspace root path (default: current directory)")
+    p_boot.add_argument("--path", "--workspace", "--target", dest="path", default=".", help="Target workspace root path (default: current directory)")
     p_boot.add_argument("--json", action="store_true", help="Output results in JSON format")
     p_boot.add_argument("--source-scripts", default=None, help="Explicit path to canonical runtime scripts directory")
     p_boot.add_argument("--role", default=DEFAULT_ROLES[0], help="Learner role")
@@ -953,7 +992,7 @@ def main() -> None:
 
     # init alias for bootstrap
     p_init = subparsers.add_parser("init", help="Alias for bootstrap")
-    p_init.add_argument("--path", "--workspace", dest="path", default=".", help="Target workspace root path (default: current directory)")
+    p_init.add_argument("--path", "--workspace", "--target", dest="path", default=".", help="Target workspace root path (default: current directory)")
     p_init.add_argument("--json", action="store_true", help="Output results in JSON format")
     p_init.add_argument("--source-scripts", default=None, help="Explicit path to canonical runtime scripts directory")
     p_init.add_argument("--role", default=DEFAULT_ROLES[0], help="Learner role")
@@ -968,22 +1007,22 @@ def main() -> None:
 
     # scan subcommand
     p_scan = subparsers.add_parser("scan", help="Scan workspace progress and recommend next action")
-    p_scan.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_scan.add_argument("--path", "--workspace", "--target", dest="path", default=".", help="Target workspace root path (default: current directory)")
     p_scan.set_defaults(func=cmd_scan)
 
     # status subcommand
     p_stat = subparsers.add_parser("status", help="Get comprehensive workspace status report")
-    p_stat.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_stat.add_argument("--path", "--workspace", "--target", dest="path", default=".", help="Target workspace root path (default: current directory)")
     p_stat.set_defaults(func=cmd_status)
 
     # preferences subcommand
-    p_pref = subparsers.add_parser("preferences", help="Read learner preferences from plan/preferences.md")
-    p_pref.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_pref = subparsers.add_parser("preferences", help="Read learner preferences from _tc/profile/preferences.md")
+    p_pref.add_argument("--path", "--workspace", "--target", dest="path", default=".", help="Target workspace root path (default: current directory)")
     p_pref.set_defaults(func=cmd_preferences)
 
     # set-preferences subcommand
-    p_set_pref = subparsers.add_parser("set-preferences", help="Set or update learner preferences in plan/preferences.md")
-    p_set_pref.add_argument("--path", default=".", help="Target workspace root path (default: current directory)")
+    p_set_pref = subparsers.add_parser("set-preferences", help="Set or update learner preferences in _tc/profile/preferences.md")
+    p_set_pref.add_argument("--path", "--workspace", "--target", dest="path", default=".", help="Target workspace root path (default: current directory)")
     p_set_pref.add_argument("--role", default=DEFAULT_ROLES[0], help="Learner role")
     p_set_pref.add_argument("--experience", default=DEFAULT_EXPERIENCE_LEVELS[1], help="Domain experience level")
     p_set_pref.add_argument("--density", default=DEFAULT_DENSITIES[1], help="Explanation density")

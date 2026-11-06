@@ -19,14 +19,14 @@ def test_bootstrap_scaffolds_research_dir_and_guide(tmp_path: Path):
     data = json.loads(res.stdout)
     assert data["ok"] is True
 
-    # Check directory structure
-    assert (ws / "research").is_dir()
-    assert (ws / "sources").is_dir()
-    assert (ws / "courses").is_dir()
-    assert (ws / "profile").is_dir()
-    assert (ws / "roadmap").is_dir()
-    assert (ws / "portfolio").is_dir()
+    # Check canonical directory structure
     assert (ws / "_tc").is_dir()
+    assert (ws / "_tc" / "research").is_dir()
+    assert (ws / "_tc" / "profile").is_dir()
+    assert (ws / "_tc" / "roadmap").is_dir()
+    assert (ws / "courses").is_dir()
+    assert (ws / "portfolio").is_dir()
+    assert (ws / "status-board").is_dir()
 
     # Check guide
     guide_path = ws / "WORKSPACE_GUIDE.md"

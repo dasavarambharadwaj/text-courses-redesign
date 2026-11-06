@@ -71,26 +71,31 @@ def test_bootstrap_empty_workspace(tmp_path: Path):
     assert data["status"] == "bootstrapped"
     assert ws.exists()
 
-    # Required directory layout
-    assert (ws / ".tc").is_dir()
-    assert (ws / ".tc" / "cache").is_dir()
-    assert (ws / ".tc" / "research").is_dir()
-    assert (ws / "plan").is_dir()
-    assert (ws / "plan" / "sources").is_dir()
+    # Required canonical directory layout
+    assert (ws / "_tc").is_dir()
+    assert (ws / "_tc" / "cache").is_dir()
+    assert (ws / "_tc" / "research").is_dir()
+    assert (ws / "_tc" / "profile").is_dir()
+    assert (ws / "_tc" / "roadmap").is_dir()
+    assert (ws / "_tc" / "courses").is_dir()
+    assert (ws / "_tc" / "status").is_dir()
+    assert (ws / "_tc" / "scripts").is_dir()
     assert (ws / "courses").is_dir()
     assert (ws / "portfolio").is_dir()
-    assert (ws / "_tc" / "scripts").is_dir()
+    assert (ws / "status-board").is_dir()
+    assert not (ws / ".tc").exists()
+    assert not (ws / "plan").exists()
 
-    # .tc/config.json
-    config_file = ws / ".tc" / "config.json"
+    # _tc/config.json
+    config_file = ws / "_tc" / "config.json"
     assert config_file.is_file()
     config_data = json.loads(config_file.read_text(encoding="utf-8"))
     assert config_data["framework"] == "TextCourses"
-    assert config_data["version"] == "0.2.0"
+    assert config_data["version"] == "0.3.0"
     assert "created_at" in config_data
 
-    # plan/preferences.md
-    pref_file = ws / "plan" / "preferences.md"
+    # _tc/profile/preferences.md
+    pref_file = ws / "_tc" / "profile" / "preferences.md"
     assert pref_file.is_file()
     pref_content = pref_file.read_text(encoding="utf-8")
     assert pref_content.startswith("---")
@@ -116,8 +121,8 @@ def test_init_alias_command(tmp_path: Path):
     assert result.returncode == 0
     data = json.loads(result.stdout)
     assert data["ok"] is True
-    assert (ws / ".tc" / "config.json").is_file()
-    assert (ws / "plan" / "preferences.md").is_file()
+    assert (ws / "_tc" / "config.json").is_file()
+    assert (ws / "_tc" / "profile" / "preferences.md").is_file()
 
 
 def test_bootstrap_does_not_overwrite_existing(tmp_path: Path):
@@ -533,7 +538,7 @@ def test_cli_set_preferences_with_subject_and_goals(tmp_path: Path):
         "--goals", "Drafting SaaS enterprise contracts and indemnity negotiation.",
     )
     assert res.returncode == 0
-    pref_file = ws / "profile" / "preferences.md"
+    pref_file = ws / "_tc" / "profile" / "preferences.md"
     content = pref_file.read_text(encoding="utf-8")
     assert 'target_subject: "Corporate Law & Contracts"' in content
     assert 'learning_goals: "Drafting SaaS enterprise contracts and indemnity negotiation."' in content
