@@ -60,7 +60,7 @@ def load_manifest_data(path_or_str: Path | str | dict[str, Any]) -> tuple[dict[s
     candidate = Path(path_or_str)
     if candidate.exists():
         if candidate.is_dir():
-            target = candidate / "course.toml"
+            target = candidate / ".tc" / "course.toml" if (candidate / ".tc" / "course.toml").is_file() else candidate / "course.toml"
             if not target.exists():
                 raise FileNotFoundError(f"No course.toml found in {candidate}")
             candidate = target
@@ -346,7 +346,7 @@ def audit_coverage(
     if not course_dir.is_dir():
         raise FileNotFoundError(f"Course directory not found: {course_dir}")
 
-    source_map_path = course_dir / "source-map.toml"
+    source_map_path = course_dir / ".tc" / "source-map.toml" if (course_dir / ".tc" / "source-map.toml").is_file() else course_dir / "source-map.toml"
     if not source_map_path.is_file():
         try:
             from source_mapper import compile_source_map
@@ -400,7 +400,7 @@ def audit_coverage(
     dropped_count = 0
     ledger_sections_report: list[dict[str, Any]] = []
 
-    course_toml_path = course_dir / "course.toml"
+    course_toml_path = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     course_title = course_slug.replace('-', ' ').title()
     if course_toml_path.is_file():
         try:
@@ -501,7 +501,7 @@ def audit_coverage(
     ]
     markdown_lines[5:5] = summary_lines
 
-    ledger_path = course_dir / "coverage-ledger.md"
+    ledger_path = course_dir / ".tc" / "coverage-ledger.md" if (course_dir / ".tc").is_dir() else course_dir / "coverage-ledger.md"
     ledger_path.write_text("\n".join(markdown_lines) + "\n", encoding="utf-8")
 
     return {

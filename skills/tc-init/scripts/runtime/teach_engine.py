@@ -183,7 +183,7 @@ def append_course_memlog(
     by: str | None = None,
 ) -> None:
     """Append a token-minimal entry directly into courses/<slug>/memlog.md."""
-    memlog_file = course_dir / "memlog.md"
+    memlog_file = course_dir / ".tc" / "memlog.md" if (course_dir / ".tc" / "memlog.md").is_file() else course_dir / "memlog.md"
     if not memlog_file.exists():
         return
 
@@ -204,7 +204,7 @@ def append_session_event(
     entry: dict[str, Any],
 ) -> None:
     """Record structured conversational turn event into courses/<slug>/session.jsonl."""
-    session_file = course_dir / "session.jsonl"
+    session_file = course_dir / ".tc" / "session.jsonl" if (course_dir / ".tc").is_dir() else course_dir / "session.jsonl"
     clean_entry = {
         "timestamp": entry.get("timestamp") or datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "section_id": entry.get("section_id", ""),
@@ -229,7 +229,7 @@ def load_session_history(
     limit: int = 5,
 ) -> list[dict[str, Any]]:
     """Load the most recent `limit` conversational events from courses/<slug>/session.jsonl."""
-    session_file = course_dir / "session.jsonl"
+    session_file = course_dir / ".tc" / "session.jsonl" if (course_dir / ".tc").is_dir() else course_dir / "session.jsonl"
     if not session_file.is_file():
         return []
 
@@ -253,7 +253,10 @@ def load_session_history(
 
 
 def find_section_directory(course_dir: Path, chapter_id: Any, section_id: Any) -> Path | None:
-    """Locate the actual section directory on disk for given chapter and section IDs."""
+    """Locate the actual section directory on disk for given chapter and section IDs.
+    
+    Checks courses/<slug>/.tc/plans/ first, then falls back to courses/<slug>/.
+    """
     ch_id_str = str(chapter_id) if chapter_id is not None else ""
     sec_id_str = str(section_id) if section_id is not None else ""
     ch_num_m = re.search(r"(\d+)", ch_id_str)
@@ -261,32 +264,39 @@ def find_section_directory(course_dir: Path, chapter_id: Any, section_id: Any) -
     ch_num = int(ch_num_m.group(1)) if ch_num_m else None
     sec_num = int(sec_num_m.group(1)) if sec_num_m else None
 
-    for ch_path in sorted(course_dir.glob("chapter-*")):
-        if not ch_path.is_dir():
-            continue
-        c_m = re.search(r"chapter[-_]?0*(\d+)", ch_path.name, re.IGNORECASE)
-        if c_m and ch_num is not None and int(c_m.group(1)) != ch_num:
-            continue
+    search_roots = []
+    tc_plans = course_dir / ".tc" / "plans"
+    if tc_plans.is_dir():
+        search_roots.append(tc_plans)
+    search_roots.append(course_dir)
 
-        for sec_path in sorted(ch_path.glob("section-*")):
-            if not sec_path.is_dir():
+    for root in search_roots:
+        for ch_path in sorted(root.glob("chapter-*")):
+            if not ch_path.is_dir():
                 continue
-            s_m = re.search(r"sec(?:tion)?[-_]?0*(\d+)", sec_path.name, re.IGNORECASE)
-            if s_m and sec_num is not None and int(s_m.group(1)) == sec_num:
-                return sec_path
+            c_m = re.search(r"chapter[-_]?0*(\d+)", ch_path.name, re.IGNORECASE)
+            if c_m and ch_num is not None and int(c_m.group(1)) != ch_num:
+                continue
 
-        # Subdirectory fallback without section- prefix
-        if sec_id_str:
-            for sec_path in ch_path.glob("*"):
-                if sec_path.is_dir() and sec_id_str.lower() in sec_path.name.lower():
+            for sec_path in sorted(ch_path.glob("section-*")):
+                if not sec_path.is_dir():
+                    continue
+                s_m = re.search(r"sec(?:tion)?[-_]?0*(\d+)", sec_path.name, re.IGNORECASE)
+                if s_m and sec_num is not None and int(s_m.group(1)) == sec_num:
                     return sec_path
+
+            # Subdirectory fallback without section- prefix
+            if sec_id_str:
+                for sec_path in ch_path.glob("*"):
+                    if sec_path.is_dir() and sec_id_str.lower() in sec_path.name.lower():
+                        return sec_path
 
     return None
 
 
 def resolve_active_section(course_dir: Path, explicit_section: str | None = None) -> dict[str, Any]:
     """Find active in-progress or next uncompleted section in course.toml."""
-    manifest_path = course_dir / "course.toml"
+    manifest_path = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     if not manifest_path.is_file():
         raise FileNotFoundError(f"No course.toml found in {course_dir}")
 
@@ -394,7 +404,7 @@ def get_teaching_session(
     preferences = load_preferences(ws)
 
     # Check course manifest for beginner or practical flags
-    course_toml_path = course_dir / "course.toml"
+    course_toml_path = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     course_data: dict[str, Any] = {}
     if course_toml_path.is_file():
         try:
@@ -453,7 +463,7 @@ def get_teaching_session(
 
     # 1. Trailing memlog entries
     recent_memlog: list[str] = []
-    memlog_file = course_dir / "memlog.md"
+    memlog_file = course_dir / ".tc" / "memlog.md" if (course_dir / ".tc" / "memlog.md").is_file() else course_dir / "memlog.md"
     if memlog_file.is_file():
         try:
             m_lines = [l.strip() for l in memlog_file.read_text(encoding="utf-8").splitlines() if l.strip().startswith("- ")]
@@ -463,7 +473,7 @@ def get_teaching_session(
 
     # 2. Grounded Source Excerpts for Active Concept (O(1) Symbol Table & Dialectic)
     rag_excerpts: list[dict[str, Any]] = []
-    source_map_path = course_dir / "source-map.toml"
+    source_map_path = course_dir / ".tc" / "source-map.toml" if (course_dir / ".tc" / "source-map.toml").is_file() else course_dir / "source-map.toml"
     is_dialectic = False
     dialectic_notes = ""
 
@@ -696,7 +706,7 @@ def advance_lesson_concept(
     notes_compilation = None
 
     # Check practical gate if practical focus is enabled
-    course_toml_path = course_dir / "course.toml"
+    course_toml_path = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     course_data: dict[str, Any] = {}
     if course_toml_path.is_file():
         try:

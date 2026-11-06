@@ -84,13 +84,22 @@ def create_acquisition_gate(
 
     prompt_lines = [
         f"📚 **Gold Standard Material Found**: Research recommends {books_str} as the landmark authority for this topic.",
+    ]
+
+    if found:
+        prompt_lines.append("")
+        prompt_lines.append("### Auto-Harvested Official Specifications (Already Downloaded):")
+        for s in found[:8]:
+            prompt_lines.append(f"- ✅ {s}")
+
+    prompt_lines.extend([
         "",
         "If you have a copy (PDF or EPUB), drop it anywhere into this workspace, and I will compile it directly into your course.",
         "Or simply choose an option below to proceed:",
         "",
         "- `[1]` **Proceed with Open Docs**: Build curriculum using official documentation, academic papers, and lecture transcripts.",
         "- `[2]` **I'll Drop Files**: Pause and wait for me to drop a PDF or EPUB into the workspace.",
-    ]
+    ])
     prompt_text = "\n".join(prompt_lines)
 
     gate_data = {

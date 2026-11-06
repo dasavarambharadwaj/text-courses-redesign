@@ -50,6 +50,9 @@ def resolve_memlog_path(args: argparse.Namespace) -> Path:
     if getattr(args, "path", None):
         p = Path(args.path)
         if p.is_dir():
+            tc_m = p / ".tc" / DEFAULT_MEMLOG_NAME
+            if tc_m.is_file():
+                return tc_m
             return p / DEFAULT_MEMLOG_NAME
         return p
     if getattr(args, "workspace", None):

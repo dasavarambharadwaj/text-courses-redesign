@@ -113,7 +113,7 @@ after = [
 id = 12
 slug = "epic-consumer-ux-and-unified-tc"
 title = "Consumer UX, Unified /tc Dispatcher & Clean Workspace Substrate"
-covers = ["CAP-1", "CAP-2", "CAP-3", "CAP-4", "CAP-5", "CAP-6"]
+covers = ["CAP-1", "CAP-2", "CAP-3", "CAP-4", "CAP-5", "CAP-6", "CAP-7", "CAP-8", "CAP-9", "CAP-10", "FR-46", "FR-47", "FR-48", "FR-49", "FR-50"]
 after = [
   { epic = 11, needs = "multi_source_compiler.py and deterministic consensus compiler" }
 ]

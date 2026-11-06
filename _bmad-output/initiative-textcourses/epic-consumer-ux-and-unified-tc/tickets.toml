@@ -1,4 +1,4 @@
-next_id = 7
+next_id = 17
 
 [[entry]]
 id = 1
@@ -59,3 +59,103 @@ risk = "medium"
 covers = ["CAP-1", "CAP-2", "CAP-3", "CAP-4", "CAP-5", "CAP-6"]
 description = "Implement comprehensive end-to-end integration tests for the unified consumer UX workflow, verify zero regressions across all 296+ existing unit/integration tests, and validate strict Zero-BMad compliance across all scripts, skills, and tests."
 verify = "Full pytest suite passes with 0 failures; Zero-BMad scan verifies 0 occurrences of 'bmad' in _tc/scripts/, skills/, and tests/; unit tests in tests/test_consumer_ux_e2e.py pass."
+
+[[entry]]
+id = 7
+type = "story"
+title = "Root _tc/ Storage Migration, Clean Canvas & Scoped Memlogs Engine"
+after = []
+risk = "medium"
+covers = ["CAP-4", "FR-29"]
+description = "Implement root _tc/ storage migration tool (tc-migrate), clean workspace canvas preserving only courses/<slug>/notes/, and hierarchical scoped memlogs at workspace, research, course, chapter, and section levels."
+verify = "Legacy workspace files migrate cleanly to _tc/ with consent; unit tests in tests/test_storage_contract.py and tests/test_memlog_scopes.py pass."
+
+[[entry]]
+id = 8
+type = "story"
+title = "Single Public /tc Export, Internal Skill Boundary & Dispatcher Continuation"
+after = [7]
+risk = "high"
+covers = ["CAP-1", "FR-46"]
+description = "Package exactly one public skill (skills/tc/), encapsulate internal engines under _tc/skills/, and fix the tc.py dispatch continuation so proceed_open transitions to course creation rather than dead-ending."
+verify = "skills/ contains solely tc/; skills-lock.json exports solely tc; dispatch(\"1\") advances to blueprint state; unit tests in tests/test_public_surface.py and tests/test_dispatcher_continuation.py pass."
+
+[[entry]]
+id = 9
+type = "story"
+title = "5-Stage Intake, Execution Mode Selection & Unattended Auto Creation"
+after = [8]
+risk = "medium"
+covers = ["CAP-7", "FR-47"]
+description = "Expand conversational intake to capture topic, preferences, and execution mode (--mode interactive|auto), storing the mode in _tc/profile/preferences.md and allowing auto mode to bypass creation checkpoints while logging decisions."
+verify = "Intake persists selected mode; auto mode executes creation pipeline without pausing; unit tests in tests/test_mode_selection.py pass."
+
+[[entry]]
+id = 10
+type = "story"
+title = "Multi-Source Discovery, Interactive Source Proposal & Material Fallback Loop"
+after = [9]
+risk = "medium"
+covers = ["CAP-8", "FR-43"]
+description = "Implement multi-channel source discovery (books, papers, GitHub, web) producing _tc/research/<slug>/source-proposal.md with interactive options (approve, more research, drop-in, or stop) and automatic fallback handling."
+verify = "Scout generates structured source proposal; user input triggers fetch-all or additional search iterations; unit tests in tests/test_source_approval_loop.py pass."
+
+[[entry]]
+id = 11
+type = "story"
+title = "Zero-Loss Markdown Conversion & Conversion Coverage Ledger Engine"
+after = [10]
+risk = "medium"
+covers = ["CAP-3", "FR-48"]
+description = "Implement type-specific extractors for multi-format sources producing _tc/research/<slug>/sources/markdown/ accompanied by conversion-ledger.json and .md enforcing 100% text coverage with explicit omission logging."
+verify = "Converted markdown matches source character/text content; omissions block progression without explicit approval; unit tests in tests/test_conversion_coverage.py pass."
+
+[[entry]]
+id = 12
+type = "story"
+title = "Canonical 4-Hat Adversarial Research Debate & Decision Log"
+after = [11]
+risk = "medium"
+covers = ["CAP-5", "FR-30", "FR-31"]
+description = "Implement a genuine 4-hat adversarial debate protocol (Curriculum Architect, Empirical Investigator, Logic Auditor, AI-Era Strategist) recording multi-round challenges in _tc/research/<slug>/debate.jsonl with an executive summary."
+verify = "Multi-agent debate transcript logs real challenges and consensus settlements; unit tests in tests/test_deliberation_summary.py and research debate tests pass."
+
+[[entry]]
+id = 13
+type = "story"
+title = "Course Blueprint Approval Gate & High-Density Grounded Section Plans"
+after = [12]
+risk = "medium"
+covers = ["CAP-2", "AD-4"]
+description = "Scaffolding engine generates _tc/courses/<slug>/blueprint.md for Gate 2 review prior to file generation, followed by high-density section plans detailing teaching flow, source coverage citations, and verification criteria."
+verify = "Gate 2 displays complete syllabus and halts for approval in interactive mode (auto-proceeds in auto); section plans contain explicit source citations; unit tests in tests/test_interactive_gates.py pass."
+
+[[entry]]
+id = 14
+type = "story"
+title = "Mandatory Section-Close Gate, Visible Notes Compilation & Ephemeral Session Scrub"
+after = [13]
+risk = "high"
+covers = ["CAP-6", "CAP-9", "FR-11", "FR-49"]
+description = "Implement mandatory section sign-off gate across both interactive and auto modes, compiling readable courses/<slug>/notes/chapter-XX.md, updating scoped memlogs, and permanently deleting the section transcript on approval."
+verify = "Section completion pauses at close gate requiring approval in all modes; approved close verifies notes on disk and scrubs session transcript; unit tests in tests/test_section_close_gate.py pass."
+
+[[entry]]
+id = 15
+type = "story"
+title = "Self-Contained Local Interactive Status Dashboard Generator"
+after = [14]
+risk = "medium"
+covers = ["CAP-10", "FR-50"]
+description = "Implement static generator writing status-board/index.html from _tc/status/state.json on init and every state mutation, displaying roadmap, active pointer, research/conversion coverage, debate log, and memlogs with zero network dependencies."
+verify = "status-board/index.html opens directly from file:// with zero external network requests and renders complete workspace snapshot; unit tests in tests/test_status_dashboard.py pass."
+
+[[entry]]
+id = 16
+type = "story"
+title = "Learner Vision Contract 12-Point E2E Integration Suite & Zero Regressions"
+after = [15]
+risk = "medium"
+covers = ["CAP-1", "CAP-2", "CAP-3", "CAP-4", "CAP-5", "CAP-6", "CAP-7", "CAP-8", "CAP-9", "CAP-10", "FR-46", "FR-47", "FR-48", "FR-49", "FR-50"]
+description = "Implement automated end-to-end integration test suite verifying all 12 points of the learner vision contract against real runtime execution, confirming 100% passing across the 326+ test baseline and strict Zero-BMad compliance."
+verify = "pytest tests/test_vision_contract.py passes 12/12 test points; full test suite passes with 0 regressions; zero references to BMad exist in public runtime packages."

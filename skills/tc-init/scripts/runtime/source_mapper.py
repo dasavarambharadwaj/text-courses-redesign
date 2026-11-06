@@ -187,7 +187,7 @@ def compile_source_map(
 
     # 1. Load course.toml if not passed
     if course_data is None:
-        c_toml = course_dir / "course.toml"
+        c_toml = (course_dir / ".tc" / "course.toml") if (course_dir / ".tc" / "course.toml").is_file() else (course_dir / "course.toml")
         if c_toml.is_file():
             try:
                 course_data = tomllib.loads(c_toml.read_text(encoding="utf-8"))
@@ -328,8 +328,12 @@ def compile_source_map(
         "chapters": compiled_chapters,
     }
 
-    # Write source-map.toml
-    out_path = course_dir / "source-map.toml"
+    # Write source-map.toml (encapsulate into .tc/ if available)
+    tc_dir = course_dir / ".tc"
+    if tc_dir.is_dir():
+        out_path = tc_dir / "source-map.toml"
+    else:
+        out_path = course_dir / "source-map.toml"
     out_path.write_text(tomli_w.dumps(source_map), encoding="utf-8")
 
     return source_map
@@ -342,7 +346,9 @@ def read_source_pointer(
 ) -> list[dict[str, Any]]:
     """Instant O(1) lookup of exact source lines for a concept from source-map.toml."""
     ws = Path(workspace).resolve()
-    map_file = ws / "courses" / course_slug / "source-map.toml"
+    map_file = ws / "courses" / course_slug / ".tc" / "source-map.toml"
+    if not map_file.is_file():
+        map_file = ws / "courses" / course_slug / "source-map.toml"
     if not map_file.is_file():
         return []
 

@@ -319,6 +319,151 @@ def extract_document(
         }
 
 
+DEFAULT_EXCLUDE_DIRS = {
+    ".git",
+    ".tc",
+    "_tc",
+    "tests",
+    "node_modules",
+    ".pytest_cache",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    "target",
+    "build",
+    "dist",
+}
+
+
+def discover_workspace_documents(
+    workspace_root: Path | str,
+    search_dirs: list[str] | None = None,
+    exclude_dirs: set[str] | None = None,
+    supported_extensions: tuple[str, ...] = (".pdf", ".epub"),
+) -> list[Path]:
+    """Scan workspace root and standard drop-in directories for books/documents.
+
+    Discovers PDFs and EPUBs in:
+    - workspace root
+    - books/
+    - sources/ (excluding sources/extracted and sources/raw)
+    - research/
+    - docs/
+    """
+    root = Path(workspace_root).resolve()
+    if not root.exists():
+        return []
+
+    excludes = exclude_dirs or DEFAULT_EXCLUDE_DIRS
+    if search_dirs is None:
+        search_dirs = [".", "books", "sources", "research", "docs"]
+
+    found: list[Path] = []
+    seen_paths: set[Path] = set()
+
+    for s_dir in search_dirs:
+        target = (root / s_dir).resolve() if s_dir != "." else root
+        if not target.exists():
+            continue
+
+        if target == root:
+            # Check immediate children of root (do not recurse root indefinitely)
+            for item in target.iterdir():
+                if item.is_file() and item.suffix.lower() in supported_extensions:
+                    p = item.resolve()
+                    if p not in seen_paths:
+                        seen_paths.add(p)
+                        found.append(p)
+        else:
+            # For specific directories (books, sources, research, docs), walk recursively
+            for current_root, dirs, files in os.walk(target):
+                current_path = Path(current_root)
+                # Filter out excluded directory names
+                dirs[:] = [
+                    d for d in dirs
+                    if d not in excludes and d != "extracted" and d != "raw" and not d.startswith(".")
+                ]
+                for f in files:
+                    ext = Path(f).suffix.lower()
+                    if ext in supported_extensions:
+                        p = (current_path / f).resolve()
+                        if p not in seen_paths:
+                            seen_paths.add(p)
+                            found.append(p)
+
+    return sorted(found, key=lambda p: str(p).lower())
+
+
+def auto_ingest_workspace(
+    workspace_root: Path | str,
+    target_dir: Path | str | None = None,
+    density_threshold: int = 50,
+) -> dict[str, Any]:
+    """Automatically discover dropped PDFs/EPUBs and extract them to markdown.
+
+    Returns structured summary with extracted files and empathetic guidance for scanned images.
+    """
+    root = Path(workspace_root).resolve()
+    if target_dir is None:
+        target_dir = root / "sources" / "extracted"
+    else:
+        target_dir = Path(target_dir).resolve()
+
+    discovered = discover_workspace_documents(root)
+    extracted: list[dict[str, Any]] = []
+    scanned: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+
+    for doc_path in discovered:
+        # Pre-flight probe for PDF
+        if doc_path.suffix.lower() == ".pdf":
+            probe = probe_pdf(doc_path, density_threshold=density_threshold)
+            if not probe.get("ok") and probe.get("is_scanned_image"):
+                scanned.append({
+                    "path": str(doc_path),
+                    "filename": doc_path.name,
+                    "avg_chars_per_page": probe.get("avg_chars_per_page", 0.0),
+                    "density_threshold": density_threshold,
+                    "guidance": (
+                        f"⚠️ '{doc_path.name}' appears to be a scanned bitmap image without a digital text layer. "
+                        f"TextCourses requires searchable digital text to compile your lesson plans and deterministic "
+                        f"symbol table. Please provide a digital text PDF, EPUB, or Markdown file."
+                    ),
+                })
+                continue
+
+        # Extract document
+        out_file = target_dir / f"{doc_path.stem}.md"
+        res = extract_document(doc_path, output_path=out_file, density_threshold=density_threshold)
+        if res.get("ok"):
+            extracted.append({
+                "source_file": str(doc_path),
+                "filename": doc_path.name,
+                "output_file": str(out_file),
+                "total_characters": res.get("total_characters", 0),
+                "page_count": res.get("page_count"),
+            })
+        else:
+            errors.append({
+                "source_file": str(doc_path),
+                "filename": doc_path.name,
+                "error": res.get("error", "Unknown extraction error"),
+                "code": res.get("code", "EXTRACTION_ERROR"),
+            })
+
+    return {
+        "ok": len(errors) == 0,
+        "total_discovered": len(discovered),
+        "total_extracted": len(extracted),
+        "total_scanned": len(scanned),
+        "has_scanned_warnings": len(scanned) > 0,
+        "extracted": extracted,
+        "scanned": scanned,
+        "errors": errors,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="extractor.py — Pure-Python Verbatim Ingestion & Pre-Flight Probe")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
@@ -335,6 +480,13 @@ def main() -> None:
     p_ext.add_argument("--output", "-o", help="Output directory or markdown file path")
     p_ext.add_argument("--threshold", type=int, default=50, help="Minimum characters per page for PDF probe")
     p_ext.add_argument("--json", action="store_true", help="Output results in JSON format")
+
+    # auto-ingest
+    p_auto = subparsers.add_parser("auto-ingest", help="Auto-discover and extract dropped PDFs/EPUBs in workspace")
+    p_auto.add_argument("--workspace", "-w", default=".", help="Workspace root path (default: current directory)")
+    p_auto.add_argument("--output", "-o", help="Target directory for extracted markdown (default: sources/extracted)")
+    p_auto.add_argument("--threshold", type=int, default=50, help="Minimum average characters per page (default: 50)")
+    p_auto.add_argument("--json", action="store_true", help="Output results in JSON format")
 
     args = parser.parse_args()
 
@@ -360,6 +512,22 @@ def main() -> None:
             else:
                 print(f"❌ Extraction FAILED: {res.get('error')}")
                 sys.exit(1)
+
+    elif args.subcommand == "auto-ingest":
+        res = auto_ingest_workspace(args.workspace, target_dir=args.output, density_threshold=args.threshold)
+        if args.json:
+            output_json(res, 0 if res.get("ok") else 1)
+        else:
+            print(f"📦 Discovered {res['total_discovered']} documents.")
+            for ext_item in res.get("extracted", []):
+                print(f"  ✅ Extracted: {ext_item['filename']} -> {ext_item['output_file']}")
+            for scan_item in res.get("scanned", []):
+                print(f"  {scan_item['guidance']}")
+            for err_item in res.get("errors", []):
+                print(f"  ❌ Error with {err_item['filename']}: {err_item['error']}")
+            if not res.get("ok"):
+                sys.exit(1)
+
 
 
 if __name__ == "__main__":

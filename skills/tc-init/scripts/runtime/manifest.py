@@ -56,6 +56,46 @@ def atomic_write_toml(filepath: Path, data: dict[str, Any]) -> None:
         raise RuntimeError(f"Atomic write failed for {filepath}: {e}") from e
 
 
+
+
+def get_engine_dir(course_dir: Path | str, create: bool = False) -> Path:
+    """Return the encapsulated engine directory (.tc/) for a course, creating if requested."""
+    cd = Path(course_dir).resolve()
+    tc_dir = cd / ".tc"
+    if create:
+        tc_dir.mkdir(parents=True, exist_ok=True)
+    return tc_dir
+
+
+def find_course_file(course_dir: Path | str, filename: str) -> Path:
+    """Resolve a course file by checking .tc/ first, then falling back to course root."""
+    cd = Path(course_dir).resolve()
+    tc_file = cd / ".tc" / filename
+    if tc_file.exists():
+        return tc_file
+    return cd / filename
+
+
+def resolve_manifest_path(target_path: Path | str) -> Path:
+    """Resolve course.toml or roadmap.toml checking .tc/ first, then course root."""
+    p = Path(target_path).resolve()
+    if p.is_file():
+        return p
+    tc_course = p / ".tc" / "course.toml"
+    if tc_course.is_file():
+        return tc_course
+    root_course = p / "course.toml"
+    if root_course.is_file():
+        return root_course
+    tc_roadmap = p / ".tc" / "roadmap.toml"
+    if tc_roadmap.is_file():
+        return tc_roadmap
+    root_roadmap = p / "roadmap.toml"
+    if root_roadmap.is_file():
+        return root_roadmap
+    return root_course
+
+
 def load_toml(filepath: Path) -> dict[str, Any]:
     """Read and parse a TOML file safely."""
     filepath = Path(filepath)
@@ -127,11 +167,7 @@ def cmd_init_roadmap(args: argparse.Namespace) -> None:
 def cmd_get_status(args: argparse.Namespace) -> None:
     """Read progress state from course.toml or roadmap.toml."""
     target_path = Path(args.path)
-    manifest_path = (
-        target_path / "course.toml" if (target_path / "course.toml").exists()
-        else target_path / "roadmap.toml" if (target_path / "roadmap.toml").exists()
-        else target_path
-    )
+    manifest_path = resolve_manifest_path(target_path)
 
     try:
         data = load_toml(manifest_path)
@@ -188,7 +224,7 @@ def cmd_get_status(args: argparse.Namespace) -> None:
 def cmd_advance(args: argparse.Namespace) -> None:
     """Atomically update section status in course.toml."""
     target_path = Path(args.path)
-    manifest_path = target_path / "course.toml" if target_path.is_dir() else target_path
+    manifest_path = resolve_manifest_path(target_path)
 
     if args.status not in VALID_STATUSES:
         output_json({
@@ -205,9 +241,11 @@ def cmd_advance(args: argparse.Namespace) -> None:
     found_section = False
 
     for ch in chapters:
-        if ch.get("id") == args.chapter:
+        ch_match = (ch.get("id") == args.chapter or str(ch.get("id")) == str(args.chapter) or str(ch.get("id")) == f"chapter-{args.chapter:02d}")
+        if ch_match:
             for sec in ch.get("sections", []):
-                if sec.get("id") == args.section:
+                sec_match = (sec.get("id") == args.section or str(sec.get("id")) == str(args.section) or str(sec.get("id")) == f"sec-{args.section:02d}")
+                if sec_match:
                     sec["status"] = args.status
                     sec["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
                     found_section = True

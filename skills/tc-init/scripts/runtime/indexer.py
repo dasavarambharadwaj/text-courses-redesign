@@ -76,6 +76,7 @@ def find_rag_db_path(slug: str, workspace: Path | str = ".") -> Path:
     """Find location of index.db preferring courses/<slug>/rag-db with fallbacks."""
     ws = Path(workspace).resolve()
     candidates = [
+        ws / "courses" / slug / ".tc" / "rag-db" / "index.db",
         ws / "courses" / slug / "rag-db" / "index.db",
         ws / "research" / slug / "rag-db" / "index.db",
         ws / "research" / slug / "sources" / "rag-db" / "index.db",
@@ -91,6 +92,7 @@ def find_catalog_path(slug: str, workspace: Path | str = ".") -> Path:
     """Find location of catalog.json preferring courses/<slug>/rag-db with fallbacks."""
     ws = Path(workspace).resolve()
     candidates = [
+        ws / "courses" / slug / ".tc" / "rag-db" / "catalog.json",
         ws / "courses" / slug / "rag-db" / "catalog.json",
         ws / "research" / slug / "rag-db" / "catalog.json",
         ws / "research" / slug / "sources" / "rag-db" / "catalog.json",
@@ -106,6 +108,7 @@ def find_manifest_path(slug: str, workspace: Path | str = ".") -> Path:
     """Find location of manifest.json preferring courses/<slug>/rag-db with fallbacks."""
     ws = Path(workspace).resolve()
     candidates = [
+        ws / "courses" / slug / ".tc" / "rag-db" / "manifest.json",
         ws / "courses" / slug / "rag-db" / "manifest.json",
         ws / "research" / slug / "rag-db" / "manifest.json",
         ws / "research" / slug / "sources" / "rag-db" / "manifest.json",
@@ -1393,7 +1396,7 @@ def get_sources_manifest(slug: str, workspace: Path | str = ".") -> dict[str, An
 def run_verify_grounding(slug: str, workspace: Path | str = ".") -> dict[str, Any]:
     """Verify that all syllabus concepts in course.toml are corroborated by RAG index citations."""
     ws = Path(workspace).resolve()
-    course_toml = ws / "courses" / slug / "course.toml"
+    course_toml = (ws / "courses" / slug / ".tc" / "course.toml") if (ws / "courses" / slug / ".tc" / "course.toml").is_file() else (ws / "courses" / slug / "course.toml")
     if not course_toml.is_file():
         return {
             "ok": False,

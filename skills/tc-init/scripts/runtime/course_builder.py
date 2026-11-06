@@ -67,6 +67,14 @@ except ImportError:
         run_query_index = None
 
 try:
+    from extractor import auto_ingest_workspace
+except ImportError:
+    try:
+        from _tc.scripts.extractor import auto_ingest_workspace
+    except ImportError:
+        auto_ingest_workspace = None
+
+try:
     from source_mapper import compile_source_map
 except ImportError:
     try:
@@ -997,6 +1005,36 @@ def run_triad_consensus_loop(
     return candidate_data, audit_result
 
 
+def generate_bounded_deliberation_summary(
+    slug: str,
+    title: str,
+    total_chapters: int,
+    total_sections: int,
+    dedup_count: int = 0,
+    coverage_pct: float = 100.0,
+    max_words: int = 40,
+) -> str:
+    """Generate a token-bounded summary of background Triad consensus (strictly <= 40 words)."""
+    if dedup_count > 0:
+        summary = (
+            f"🏛️ Daedalus, 🔬 Marie, and ⚖️ Hypatia synthesized a {total_chapters}-chapter, "
+            f"{total_sections}-section curriculum, deduplicating {dedup_count} overlapping topics "
+            f"and verifying {coverage_pct:.0f}% textbook coverage in background deliberation."
+        )
+    else:
+        summary = (
+            f"🏛️ Daedalus, 🔬 Marie, and ⚖️ Hypatia synthesized a {total_chapters}-chapter, "
+            f"{total_sections}-section curriculum, verifying {coverage_pct:.0f}% textbook "
+            f"coverage in background deliberation."
+        )
+
+    words = summary.split()
+    if len(words) > max_words:
+        summary = " ".join(words[: max_words - 1]) + "..."
+
+    return summary
+
+
 def scaffold_course_files(
     workspace: Path,
     course_data: dict[str, Any],
@@ -1012,8 +1050,14 @@ def scaffold_course_files(
     course_dir = workspace / "courses" / slug
     course_dir.mkdir(parents=True, exist_ok=True)
 
-    # Populate courses/<slug>/rag-db/ with sovereign index, catalog, and file manifest
-    course_rag_db = course_dir / "rag-db"
+    # Two-Tier Clean Architecture: Encapsulate all machine substrate files into .tc/
+    tc_dir = course_dir / ".tc"
+    tc_dir.mkdir(parents=True, exist_ok=True)
+    plans_dir = tc_dir / "plans"
+    plans_dir.mkdir(parents=True, exist_ok=True)
+
+    # Populate .tc/rag-db/ with sovereign index, catalog, and file manifest
+    course_rag_db = tc_dir / "rag-db"
     course_rag_db.mkdir(parents=True, exist_ok=True)
 
     src_db = find_rag_db_path(slug, workspace) if find_rag_db_path else None
@@ -1037,8 +1081,8 @@ def scaffold_course_files(
         except Exception:
             pass
 
-    # 1. Write course.toml
-    course_toml_path = course_dir / "course.toml"
+    # 1. Write course.toml into .tc/ (Two-Tier encapsulation)
+    course_toml_path = tc_dir / "course.toml"
     atomic_write_toml(course_toml_path, course_data)
 
     # 2. Write overview.md
@@ -1088,7 +1132,7 @@ def scaffold_course_files(
             unanimous=True,
         )
 
-    atomic_write_text(course_dir / "consensus-deliberation.md", delib_content)
+    atomic_write_text(tc_dir / "consensus-deliberation.md", delib_content)
 
     # 4. Write curriculum-brainstorm.md (FR-35)
     b_content = brainstorm_md
@@ -1096,7 +1140,7 @@ def scaffold_course_files(
         preferences = load_learner_preferences(workspace)
         b_data = brainstorm_curriculum_paths(slug, title, preferences=preferences)
         b_content = b_data["markdown"]
-    atomic_write_text(course_dir / "curriculum-brainstorm.md", b_content)
+    atomic_write_text(tc_dir / "curriculum-brainstorm.md", b_content)
 
     # 4. Scaffold flat chapter textbook notes directory
     notes_dir = course_dir / "notes"
@@ -1110,7 +1154,7 @@ def scaffold_course_files(
             )
 
     # 5. Initialize course pedagogical memory (memlog.md)
-    course_memlog = course_dir / "memlog.md"
+    course_memlog = tc_dir / "memlog.md"
     if not course_memlog.exists():
         atomic_write_text(
             course_memlog,
@@ -1121,7 +1165,7 @@ def scaffold_course_files(
     for ch_idx, ch in enumerate(course_data.get("chapters", []), 1):
         ch_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", ch["title"].lower()).strip("-")
         ch_dir_name = f"chapter-{ch_idx:02d}-{ch_slug}"
-        ch_path = course_dir / ch_dir_name
+        ch_path = plans_dir / ch_dir_name
 
         for s_idx, sec in enumerate(ch.get("sections", []), 1):
             sec_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", sec["title"].lower()).strip("-")
@@ -1178,6 +1222,14 @@ def create_course(
 
     course_title = title or slug.replace("-", " ").title()
 
+    # Auto-ingest any dropped PDFs/EPUBs in workspace
+    if auto_ingest_workspace:
+        try:
+            auto_ingest_workspace(ws)
+        except Exception:
+            pass
+
+
     # Step 1: Pre-course research check (Marie)
     research_digest: dict[str, Any] | None = None
     try:
@@ -1227,16 +1279,28 @@ def create_course(
         brainstorm_md=brainstorm_md,
     )
 
+    delib_summary = generate_bounded_deliberation_summary(
+        slug=slug,
+        title=course_title,
+        total_chapters=len(course_data["chapters"]),
+        total_sections=audit_results.get("total_sections", 0),
+        dedup_count=audit_results.get("dedup_count", 0),
+        coverage_pct=audit_results.get("coverage_pct", 100.0),
+        max_words=40,
+    )
+
     return {
         "ok": True,
         "consensus_reached": True,
+        "deliberation_summary": delib_summary,
+        "deliberation_summary_words": len(delib_summary.split()),
         "unanimous": audit_results.get("unanimous", True),
         "slug": slug,
         "title": course_title,
         "archetype": archetype,
         "course_path": str(course_dir),
-        "deliberation_path": str(course_dir / "consensus-deliberation.md"),
-        "brainstorm_path": str(course_dir / "curriculum-brainstorm.md"),
+        "deliberation_path": str((course_dir / ".tc" / "consensus-deliberation.md") if (course_dir / ".tc" / "consensus-deliberation.md").is_file() else (course_dir / "consensus-deliberation.md")),
+        "brainstorm_path": str((course_dir / ".tc" / "curriculum-brainstorm.md") if (course_dir / ".tc" / "curriculum-brainstorm.md").is_file() else (course_dir / "curriculum-brainstorm.md")),
         "gap_topics_covered": audit_results.get("gap_topics", []),
         "total_chapters": len(course_data["chapters"]),
         "total_sections": audit_results.get("total_sections", 0),
@@ -1293,7 +1357,7 @@ def main() -> None:
 
         elif args.subcommand == "deliberation":
             ws = Path(args.workspace).resolve()
-            delib_file = ws / "courses" / args.slug / "consensus-deliberation.md"
+            delib_file = (ws / "courses" / args.slug / ".tc" / "consensus-deliberation.md") if (ws / "courses" / args.slug / ".tc" / "consensus-deliberation.md").is_file() else (ws / "courses" / args.slug / "consensus-deliberation.md")
             if not delib_file.is_file():
                 output_json({"ok": False, "error": f"No deliberation file found at {delib_file}"}, 1)
             content = delib_file.read_text(encoding="utf-8")

@@ -1,0 +1,2121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TextCourses — Actual Runtime Flow</title>
+<meta name="description" content="An evidence-based map of what TextCourses actually does at runtime, compared with the 12-point learner vision and the reconcile-flow course-correct proposal.">
+<script>document.documentElement.classList.add("js");</script>
+<style>
+  :root{
+    --bg:#070b14;
+    --bg-2:#0a1120;
+    --panel:#0d1729;
+    --panel-2:#101d33;
+    --panel-3:#0a1424;
+    --line:#22324d;
+    --line-soft:#17243a;
+    --text:#e8eef8;
+    --muted:#a7b6cb;
+    --faint:#71839b;
+    --cyan:#67e8f9;
+    --cyan-dim:#164e63;
+    --amber:#f6c453;
+    --amber-dim:#4a3510;
+    --red:#fb7185;
+    --red-dim:#4c1421;
+    --green:#34d399;
+    --green-dim:#123c30;
+    --violet:#b9a6ff;
+    --violet-dim:#2d2450;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:"Segoe UI",Inter,system-ui,-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+    --serif:Georgia,"Times New Roman",serif;
+    --radius:18px;
+    --radius-sm:12px;
+    --shadow:0 18px 60px rgba(0,0,0,.28);
+    --max:1180px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:92px}
+  body{
+    margin:0;
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:16px;
+    line-height:1.65;
+    background:
+      radial-gradient(1100px 620px at 82% -8%, rgba(103,232,249,.08), transparent 62%),
+      radial-gradient(900px 560px at 8% -4%, rgba(246,196,83,.06), transparent 58%),
+      linear-gradient(180deg,#070b14 0%,#070b14 28%,#08101d 100%);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    opacity:.30;
+    background-image:radial-gradient(rgba(255,255,255,.12) .6px, transparent .6px);
+    background-size:5px 5px;
+    mix-blend-mode:soft-light;
+    z-index:0;
+  }
+  ::selection{background:rgba(103,232,249,.24);color:#fff}
+  a{color:var(--cyan);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,kbd,pre{font-family:var(--mono)}
+  code{font-size:.88em;color:#d8e6f5;background:rgba(103,232,249,.07);border:1px solid rgba(103,232,249,.13);padding:.12em .38em;border-radius:6px;white-space:normal;overflow-wrap:anywhere}
+  pre{
+    margin:1rem 0;
+    padding:1rem 1.1rem;
+    overflow:auto;
+    background:#050a12;
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    color:#c7d7e8;
+    font-size:.82rem;
+    line-height:1.65;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  pre code{background:none;border:0;padding:0;white-space:pre;color:inherit}
+  p{margin:.7rem 0}
+  ul,ol{margin:.7rem 0;padding-left:1.35rem}
+  li{margin:.35rem 0}
+  hr{border:0;border-top:1px solid var(--line);margin:2rem 0}
+  strong{color:#f4f8fc}
+
+  .reading-progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--amber),var(--cyan));z-index:100;box-shadow:0 0 18px rgba(103,232,249,.55)}
+
+  .site-header{
+    position:sticky;top:0;z-index:50;
+    border-bottom:1px solid rgba(34,50,77,.72);
+    background:rgba(7,11,20,.82);
+    backdrop-filter:blur(16px);
+  }
+  .header-inner{
+    max-width:var(--max);
+    margin:0 auto;
+    padding:.72rem 1.25rem;
+    display:flex;
+    align-items:center;
+    gap:1.25rem;
+  }
+  .brand{
+    display:flex;align-items:center;gap:.7rem;
+    color:var(--text);font-weight:700;letter-spacing:-.02em;white-space:nowrap;
+  }
+  .brand:hover{text-decoration:none}
+  .brand-mark{
+    width:30px;height:30px;border-radius:9px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg,rgba(246,196,83,.22),rgba(103,232,249,.16));
+    border:1px solid rgba(246,196,83,.36);
+    color:var(--amber);font-family:var(--mono);font-size:.78rem;
+  }
+  .brand small{display:block;color:var(--faint);font-size:.67rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;margin-top:-2px}
+  .top-nav{
+    display:flex;gap:.25rem;margin-left:auto;overflow:auto;
+    scrollbar-width:none;
+  }
+  .top-nav::-webkit-scrollbar{display:none}
+  .top-nav a{
+    color:var(--muted);font-size:.78rem;font-weight:600;letter-spacing:.02em;
+    padding:.42rem .62rem;border-radius:999px;white-space:nowrap;
+    border:1px solid transparent;
+  }
+  .top-nav a:hover{text-decoration:none;color:var(--text);background:rgba(255,255,255,.04)}
+  .top-nav a.active{color:var(--amber);background:rgba(246,196,83,.09);border-color:rgba(246,196,83,.22)}
+  .header-note{font-family:var(--mono);font-size:.68rem;color:var(--faint);white-space:nowrap;border-left:1px solid var(--line);padding-left:1rem}
+  .header-note b{color:var(--red);font-weight:600}
+
+  main{position:relative;z-index:1;max-width:var(--max);margin:0 auto;padding:0 1.25rem 4rem}
+  .hero{padding:5.2rem 0 3.2rem;position:relative}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:.55rem;
+    color:var(--amber);
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
+    border:1px solid rgba(246,196,83,.24);background:rgba(246,196,83,.06);
+    padding:.36rem .6rem;border-radius:999px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 12px rgba(246,196,83,.8)}
+  h1{
+    margin:1.2rem 0 1.1rem;
+    max-width:980px;
+    font-size:clamp(2.55rem,6.6vw,5.7rem);
+    line-height:.98;
+    letter-spacing:-.055em;
+    font-weight:760;
+  }
+  h1 .soft{color:var(--faint)}
+  h1 .strike{position:relative;white-space:nowrap;color:var(--text)}
+  h1 .strike::after{
+    content:"";position:absolute;left:-.04em;right:-.04em;top:.55em;height:.08em;
+    background:linear-gradient(90deg,var(--red),rgba(251,113,133,.15));
+    transform:rotate(-2.2deg);border-radius:4px;
+  }
+  .lede{max-width:790px;font-size:clamp(1.02rem,2vw,1.24rem);color:var(--muted);line-height:1.7}
+  .lede strong{color:var(--text)}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.45rem}
+  .chip{
+    display:inline-flex;align-items:center;gap:.45rem;
+    padding:.35rem .6rem;border-radius:999px;
+    background:rgba(255,255,255,.025);border:1px solid var(--line);
+    color:var(--muted);font-family:var(--mono);font-size:.68rem;letter-spacing:.02em;
+  }
+  .chip b{color:var(--text);font-weight:600}
+  .chip.red{border-color:rgba(251,113,133,.28);background:rgba(251,113,133,.055);color:#ffd2d9}
+  .chip.amber{border-color:rgba(246,196,83,.25);background:rgba(246,196,83,.055);color:#ffe7ad}
+
+  .hero-stats{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:.8rem;
+    margin:2.5rem 0 0;
+  }
+  .stat{
+    padding:1.05rem 1rem .95rem;
+    background:linear-gradient(180deg,rgba(16,29,51,.9),rgba(10,20,36,.9));
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+  }
+  .stat .num{font-family:var(--mono);font-size:1.7rem;line-height:1.1;letter-spacing:-.03em;color:var(--text)}
+  .stat .num.amber{color:var(--amber)}
+  .stat .num.red{color:var(--red)}
+  .stat .num.cyan{color:var(--cyan)}
+  .stat .label{margin-top:.45rem;color:var(--muted);font-size:.78rem;line-height:1.45}
+  .stat .sub{margin-top:.2rem;color:var(--faint);font-size:.67rem;font-family:var(--mono)}
+
+  .section{margin:4.6rem 0 0;scroll-margin-top:96px}
+  .section-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,360px);gap:2rem;align-items:end;margin-bottom:1.35rem}
+  .kicker{color:var(--cyan);font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.45rem}
+  h2{margin:0;font-size:clamp(1.85rem,3.8vw,3rem);line-height:1.08;letter-spacing:-.045em;font-weight:730}
+  h2 .muted{color:var(--faint)}
+  .section-head p{margin:0;color:var(--muted);font-size:.88rem;line-height:1.65}
+  h3{margin:2rem 0 .6rem;font-size:1.26rem;line-height:1.3;letter-spacing:-.02em}
+  h3 .tag{vertical-align:middle}
+  h4{margin:0 0 .45rem;font-size:.95rem;letter-spacing:-.01em}
+  .lead{font-size:1.02rem;color:var(--muted);max-width:860px}
+  .small{font-size:.8rem;color:var(--muted)}
+  .tiny{font-size:.7rem;color:var(--faint);font-family:var(--mono);letter-spacing:.01em}
+  .mono{font-family:var(--mono)}
+  .nowrap{white-space:nowrap}
+
+  .panel{
+    background:linear-gradient(180deg,rgba(15,27,47,.94),rgba(10,20,36,.94));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:1.35rem 1.4rem;
+    box-shadow:var(--shadow);
+  }
+  .panel.flat{box-shadow:none}
+  .grid{display:grid;gap:1rem}
+  .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .split{display:grid;grid-template-columns:1.15fr .85fr;gap:1.2rem;align-items:start}
+  .callout{
+    border:1px solid rgba(103,232,249,.25);
+    border-left:3px solid var(--cyan);
+    background:rgba(103,232,249,.045);
+    border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+    padding:.95rem 1rem;
+    color:#cfe8ef;
+    font-size:.88rem;
+  }
+  .callout.warn{border-color:rgba(246,196,83,.28);border-left-color:var(--amber);background:rgba(246,196,83,.045);color:#f5e4b8}
+  .callout.danger{border-color:rgba(251,113,133,.28);border-left-color:var(--red);background:rgba(251,113,133,.045);color:#ffd6dd}
+  .callout.neutral{border-color:var(--line);border-left-color:var(--faint);background:rgba(255,255,255,.025);color:var(--muted)}
+  .callout b{color:var(--text)}
+  .callout .label{display:block;font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.35rem;color:inherit;opacity:.8}
+
+  .verdict-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;margin-top:1.1rem}
+  .verdict-card{
+    position:relative;padding:1.15rem 1.15rem 1.05rem;
+    background:linear-gradient(180deg,rgba(16,29,51,.86),rgba(10,20,36,.86));
+    border:1px solid var(--line);border-radius:var(--radius-sm);
+    overflow:hidden;
+  }
+  .verdict-card::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:linear-gradient(180deg,var(--red),rgba(251,113,133,.1))}
+  .verdict-card.amber::before{background:linear-gradient(180deg,var(--amber),rgba(246,196,83,.1))}
+  .verdict-card.cyan::before{background:linear-gradient(180deg,var(--cyan),rgba(103,232,249,.1))}
+  .verdict-card.violet::before{background:linear-gradient(180deg,var(--violet),rgba(185,166,255,.1))}
+  .verdict-card h4{font-size:.98rem}
+  .verdict-card p{margin:.4rem 0 0;font-size:.82rem;color:var(--muted);line-height:1.62}
+  .verdict-card .mini{display:block;margin-top:.7rem;font-family:var(--mono);font-size:.64rem;color:var(--faint);letter-spacing:.04em}
+
+  .status{
+    display:inline-flex;align-items:center;gap:.35rem;
+    padding:.23rem .52rem;border-radius:999px;
+    border:1px solid var(--line);
+    font-family:var(--mono);font-size:.64rem;letter-spacing:.03em;
+    white-space:nowrap;
+  }
+  .status::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+  .status.missing{color:#ffb3bf;background:rgba(251,113,133,.08);border-color:rgba(251,113,133,.22)}
+  .status.violated{color:#ff9bb0;background:rgba(251,113,133,.10);border-color:rgba(251,113,133,.3)}
+  .status.not-enforced{color:#d7c8ff;background:rgba(185,166,255,.075);border-color:rgba(185,166,255,.23)}
+  .status.partial{color:#ffdf9c;background:rgba(246,196,83,.075);border-color:rgba(246,196,83,.23)}
+  .status.present{color:#9ef3cf;background:rgba(52,211,153,.075);border-color:rgba(52,211,153,.22)}
+
+  .tag{
+    display:inline-block;padding:.14rem .4rem;border-radius:5px;
+    font-family:var(--mono);font-size:.62rem;letter-spacing:.04em;
+    color:var(--muted);border:1px solid var(--line);background:rgba(255,255,255,.025);
+    white-space:nowrap;
+  }
+  .tag.p0{color:#ffc3cc;border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.08)}
+  .tag.p1{color:#ffe1a6;border-color:rgba(246,196,83,.3);background:rgba(246,196,83,.07)}
+  .tag.p2{color:#b9e8f8;border-color:rgba(103,232,249,.25);background:rgba(103,232,249,.06)}
+
+  .method-steps{counter-reset:step;display:grid;gap:.7rem;margin:1rem 0}
+  .method-step{display:grid;grid-template-columns:34px minmax(0,1fr);gap:.8rem;align-items:start;padding:.8rem 0;border-top:1px solid var(--line-soft)}
+  .method-step:first-child{border-top:0}
+  .method-step::before{counter-increment:step;content:counter(step,decimal-leading-zero);font-family:var(--mono);font-size:.68rem;color:var(--amber);border:1px solid rgba(246,196,83,.25);background:rgba(246,196,83,.05);width:30px;height:30px;border-radius:8px;display:grid;place-items:center}
+  .method-step p{margin:0;font-size:.86rem;color:var(--muted)}
+  .method-step b{color:var(--text)}
+
+  .naming-map{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0;margin-top:.9rem;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
+  .naming-map .key,.naming-map .val{padding:.72rem .85rem;border-top:1px solid var(--line-soft);font-size:.8rem}
+  .naming-map .key{background:rgba(255,255,255,.025);border-right:1px solid var(--line-soft);font-family:var(--mono);color:var(--cyan);white-space:nowrap}
+  .naming-map .val{color:var(--muted)}
+  .naming-map .key:first-child,.naming-map .val:first-child{border-top:0}
+  .naming-map .val b{color:var(--text)}
+
+  .filter-row{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin:1rem 0 1.1rem}
+  .filter-row .filter-label{font-family:var(--mono);font-size:.66rem;color:var(--faint);margin-right:.25rem;letter-spacing:.08em;text-transform:uppercase}
+  .filter-btn{
+    appearance:none;cursor:pointer;
+    border:1px solid var(--line);background:rgba(255,255,255,.025);color:var(--muted);
+    padding:.32rem .62rem;border-radius:999px;font-family:var(--mono);font-size:.66rem;
+    transition:background .2s,border-color .2s,color .2s;
+  }
+  .filter-btn:hover{border-color:rgba(103,232,249,.35);color:var(--text)}
+  .filter-btn.active{border-color:rgba(246,196,83,.4);background:rgba(246,196,83,.09);color:var(--amber)}
+  .filter-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+  .quote-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem}
+  .quote-card{
+    position:relative;display:flex;flex-direction:column;
+    padding:1.15rem 1.15rem 1rem;
+    background:linear-gradient(180deg,rgba(15,27,47,.94),rgba(9,18,33,.94));
+    border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .quote-card::after{
+    content:"”";position:absolute;right:1rem;top:-.35rem;
+    font-family:var(--serif);font-size:4.8rem;line-height:1;color:rgba(103,232,249,.07);pointer-events:none;
+  }
+  .quote-card[data-status="violated"]{border-color:rgba(251,113,133,.25)}
+  .quote-card[data-status="missing"]{border-color:rgba(251,113,133,.18)}
+  .quote-card[data-status="partial"]{border-color:rgba(246,196,83,.2)}
+  .quote-card[data-status="not-enforced"]{border-color:rgba(185,166,255,.2)}
+  .quote-head{display:flex;justify-content:space-between;gap:.75rem;align-items:center;margin-bottom:.8rem}
+  .quote-point{font-family:var(--mono);font-size:.65rem;color:var(--faint);letter-spacing:.08em;text-transform:uppercase}
+  .quote-title{font-size:.84rem;color:var(--text);font-weight:650;margin-left:.45rem;letter-spacing:-.01em}
+  .blockquote{
+    position:relative;z-index:1;flex:1;
+    margin:0;padding:0 0 0 .9rem;
+    border-left:2px solid rgba(103,232,249,.35);
+    font-family:var(--serif);font-size:.94rem;line-height:1.7;color:#d9e5f3;
+  }
+  .blockquote.long{font-size:.89rem}
+  .quote-foot{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--line-soft)}
+  .quote-foot .runtime{font-size:.72rem;color:var(--faint);line-height:1.45}
+  .quote-foot .runtime b{color:var(--muted);font-weight:600}
+
+  .flow-lanes{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin:1.15rem 0}
+  .lane{border:1px solid var(--line);border-radius:var(--radius);background:rgba(10,20,36,.62);padding:1rem}
+  .lane-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.85rem}
+  .lane-head .lane-title{font-size:.86rem;font-weight:650}
+  .lane-head .lane-kind{font-family:var(--mono);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase}
+  .lane-a .lane-kind{color:var(--cyan)}
+  .lane-b .lane-kind{color:var(--amber)}
+  .lane-nodes{display:grid;gap:.55rem}
+  .lane-node{
+    display:flex;align-items:flex-start;gap:.6rem;
+    padding:.55rem .65rem;border:1px solid var(--line-soft);border-radius:9px;
+    background:rgba(255,255,255,.018);font-size:.76rem;color:var(--muted);
+  }
+  .lane-node .n{font-family:var(--mono);font-size:.62rem;color:var(--faint);border:1px solid var(--line);border-radius:5px;padding:.08rem .28rem;flex:0 0 auto;margin-top:.08rem}
+  .lane-node b{color:var(--text)}
+  .lane-note{margin:.75rem 0 0;font-size:.72rem;color:var(--faint);line-height:1.55}
+
+  .timeline{position:relative;margin:1.2rem 0 0;padding-left:1.45rem}
+  .timeline::before{content:"";position:absolute;left:.35rem;top:.4rem;bottom:.4rem;width:1px;background:linear-gradient(180deg,rgba(103,232,249,.45),rgba(34,50,77,.45) 50%,rgba(251,113,133,.5))}
+  .t-item{position:relative;padding:0 0 1.25rem 0}
+  .t-item:last-child{padding-bottom:0}
+  .t-item::before{content:"";position:absolute;left:-1.29rem;top:.35rem;width:8px;height:8px;border-radius:50%;background:var(--cyan);border:2px solid #07101d;box-shadow:0 0 0 1px rgba(103,232,249,.45)}
+  .t-item.warn::before{background:var(--amber);box-shadow:0 0 0 1px rgba(246,196,83,.45)}
+  .t-item.fail::before{background:var(--red);box-shadow:0 0 0 1px rgba(251,113,133,.5)}
+  .t-item .t-kicker{font-family:var(--mono);font-size:.61rem;color:var(--faint);letter-spacing:.07em;text-transform:uppercase}
+  .t-item h4{margin:.12rem 0 .3rem;font-size:.9rem}
+  .t-item p{margin:0;font-size:.8rem;color:var(--muted);line-height:1.6}
+  .t-item .t-code{display:inline-block;margin-top:.4rem;font-family:var(--mono);font-size:.68rem;color:#bcd0e5;background:rgba(0,0,0,.18);border:1px solid var(--line-soft);padding:.18rem .38rem;border-radius:5px}
+
+  .repro{margin-top:.9rem}
+  .repro pre{margin:.55rem 0 0;border-color:rgba(251,113,133,.25);background:#0b070d}
+  .repro .tiny{margin-top:.55rem}
+
+  .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius-sm);background:rgba(8,16,29,.55)}
+  table{width:100%;border-collapse:collapse;font-size:.79rem}
+  th,td{padding:.75rem .8rem;text-align:left;vertical-align:top;border-bottom:1px solid var(--line-soft)}
+  th{position:sticky;top:0;background:#0c1729;color:var(--faint);font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;z-index:2;white-space:nowrap}
+  td{color:var(--muted)}
+  td b{color:var(--text)}
+  tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:rgba(103,232,249,.025)}
+  .matrix td:nth-child(1){font-family:var(--mono);color:var(--faint);white-space:nowrap}
+  .matrix td:nth-child(2){min-width:220px;color:#dbe7f4}
+  .matrix td:nth-child(3){min-width:300px}
+  .matrix td:nth-child(4){white-space:nowrap}
+  .matrix tr[data-sev="p0"] td:nth-child(1){color:var(--red)}
+  .matrix tr[data-sev="p1"] td:nth-child(1){color:var(--amber)}
+  .matrix tr.is-hidden{display:none}
+
+  .tree{
+    margin:1rem 0 0;padding:1.15rem 1.2rem;
+    border:1px solid var(--line);border-radius:var(--radius);
+    background:
+      linear-gradient(90deg,rgba(103,232,249,.035),transparent 40%),
+      #060d17;
+    overflow:auto;
+  }
+  .tree pre{margin:0;padding:0;border:0;background:transparent;font-size:.8rem;line-height:1.62;box-shadow:none}
+  .tree .human{color:#a7f3d0}
+  .tree .machine{color:#93c5fd}
+  .tree .dup{color:#fda4af}
+  .tree .comment{color:#5f7188}
+  .tree .root{color:#fde68a}
+
+  .path-compare{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:1rem}
+  .path-card{padding:.9rem 1rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:rgba(255,255,255,.018)}
+  .path-card.bad{border-color:rgba(251,113,133,.25);background:rgba(251,113,133,.035)}
+  .path-card .path-label{font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:.4rem}
+  .path-card code{white-space:normal;font-size:.78rem}
+  .path-card p{font-size:.75rem;color:var(--muted);margin:.55rem 0 0}
+
+  .hidden-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}
+  .hidden-card{padding:1rem 1.05rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:linear-gradient(180deg,rgba(15,27,47,.8),rgba(9,18,33,.8))}
+  .hidden-card h4{font-size:.88rem;display:flex;align-items:center;gap:.45rem}
+  .hidden-card h4 .num{font-family:var(--mono);font-size:.62rem;color:var(--faint);border:1px solid var(--line);padding:.1rem .3rem;border-radius:4px}
+  .hidden-card p{font-size:.78rem;color:var(--muted);margin:.35rem 0}
+  .hidden-card .evidence{font-family:var(--mono);font-size:.65rem;color:var(--faint);line-height:1.55;margin-top:.6rem;padding-top:.55rem;border-top:1px solid var(--line-soft)}
+
+  .review-banner{
+    display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1.2rem;align-items:center;
+    padding:1.2rem 1.35rem;border-radius:var(--radius);
+    border:1px solid rgba(246,196,83,.3);
+    background:linear-gradient(120deg,rgba(246,196,83,.08),rgba(251,113,133,.045) 65%,rgba(15,27,47,.7));
+    margin:1rem 0 1.1rem;
+  }
+  .review-banner h3{margin:0 0 .35rem;font-size:1.22rem}
+  .review-banner p{margin:0;color:#e6d6b3;font-size:.84rem;max-width:760px}
+  .review-score{text-align:right;font-family:var(--mono)}
+  .review-score .big{font-size:2.1rem;line-height:1;color:var(--amber);letter-spacing:-.05em}
+  .review-score .small{color:var(--faint);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase}
+
+  .review-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:1rem;align-items:start}
+  .review-list{display:grid;gap:.6rem}
+  .review-item{padding:.75rem .85rem;border:1px solid var(--line-soft);border-radius:10px;background:rgba(255,255,255,.018);font-size:.8rem;color:var(--muted)}
+  .review-item b{display:block;color:var(--text);font-size:.83rem;margin-bottom:.22rem}
+  .review-item .tag{margin-bottom:.25rem}
+  .review-item p{margin:0}
+  .review-item.ok{border-left:2px solid rgba(52,211,153,.5)}
+  .review-item.bad{border-left:2px solid rgba(251,113,133,.55)}
+  .review-item.warn{border-left:2px solid rgba(246,196,83,.55)}
+
+  .checklist{list-style:none;padding:0;margin:1rem 0 0;display:grid;gap:.55rem}
+  .checklist li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:.55rem;font-size:.82rem;color:var(--muted);align-items:start}
+  .checklist li::before{content:"";width:14px;height:14px;border:1px solid var(--line);border-radius:4px;margin-top:.2rem;background:rgba(255,255,255,.02)}
+  .checklist li b{color:var(--text)}
+
+  .evidence-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+  details.evidence{
+    border:1px solid var(--line);border-radius:var(--radius-sm);
+    background:rgba(10,20,36,.58);overflow:hidden;
+  }
+  details.evidence summary{
+    cursor:pointer;padding:.8rem .9rem;font-size:.82rem;font-weight:600;color:var(--text);
+    list-style:none;display:flex;align-items:center;justify-content:space-between;gap:.7rem;
+  }
+  details.evidence summary::-webkit-details-marker{display:none}
+  details.evidence summary::after{content:"+";font-family:var(--mono);color:var(--faint);font-size:1rem;line-height:1}
+  details.evidence[open] summary::after{content:"−"}
+  details.evidence .body{padding:0 .9rem .9rem;border-top:1px solid var(--line-soft)}
+  details.evidence .body p{font-size:.77rem;color:var(--muted)}
+  details.evidence .body .file{font-family:var(--mono);font-size:.68rem;color:var(--cyan);word-break:break-word}
+  .source-list{display:grid;gap:.55rem;margin:.7rem 0 0}
+  .source-item{padding:.6rem .7rem;border:1px solid var(--line-soft);border-radius:8px;background:rgba(0,0,0,.12);font-size:.75rem;color:var(--muted)}
+  .source-item .file{color:var(--cyan);font-family:var(--mono);font-size:.67rem}
+  .source-item b{color:var(--text)}
+
+  .footer{margin-top:4.5rem;padding-top:1.4rem;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:1.2rem;align-items:end}
+  .footer p{margin:.2rem 0;color:var(--faint);font-size:.76rem}
+  .footer .mark{font-family:var(--mono);font-size:.68rem;color:var(--faint);text-align:right;line-height:1.6}
+
+  .js .reveal{opacity:0;transform:translateY(12px);transition:opacity .55s ease,transform .55s ease}
+  .js .reveal.is-visible{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .js .reveal{opacity:1;transform:none;transition:none}
+    .filter-btn,.path-card{transition:none}
+  }
+  @media print{
+    .site-header,.reading-progress{display:none}
+    .js .reveal{opacity:1;transform:none}
+  }
+
+  @media (max-width:1000px){
+    .header-note{display:none}
+    .top-nav{flex-wrap:wrap;overflow:visible}
+    .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .section-head{grid-template-columns:1fr}
+    .section-head p{max-width:700px}
+    .review-grid{grid-template-columns:1fr}
+    .flow-lanes{grid-template-columns:1fr}
+    .hidden-grid{grid-template-columns:1fr}
+    .quote-grid{grid-template-columns:1fr}
+    .review-banner{grid-template-columns:1fr}
+    .review-score{text-align:left}
+  }
+  @media (max-width:760px){
+    .site-header{position:relative}
+    .header-inner{flex-wrap:wrap;gap:.55rem}
+    .top-nav{order:3;width:100%;margin-left:0;padding-bottom:.15rem;flex-wrap:wrap;overflow:visible}
+    .top-nav a{font-size:.72rem}
+    main{padding-inline:1rem}
+    .hero{padding-top:3rem}
+    h1{font-size:clamp(2.2rem,11vw,3.7rem)}
+    .hero-stats{grid-template-columns:1fr 1fr}
+    .grid-2,.grid-3,.grid-4,.verdict-grid,.path-compare,.evidence-grid{grid-template-columns:1fr}
+    .split{grid-template-columns:1fr}
+    .naming-map{grid-template-columns:1fr}
+    .naming-map .key{border-right:0;border-bottom:1px solid var(--line-soft);padding-bottom:.25rem}
+    .naming-map .val{padding-top:.3rem}
+    .footer{grid-template-columns:1fr}
+    .footer .mark{text-align:left}
+    .quote-foot{flex-direction:column;align-items:flex-start}
+  }
+  @media (max-width:860px){
+    .table-stack thead{display:none}
+    .table-stack,.table-stack tbody,.table-stack tr,.table-stack td{display:block;width:100%}
+    .table-stack tr{padding:.95rem 1rem;border-bottom:1px solid var(--line-soft)}
+    .table-stack tr:last-child{border-bottom:0}
+    .table-stack td{border:0;padding:0;margin:0;min-width:0;white-space:normal}
+    .table-stack td::before{content:attr(data-label);display:block;font-family:var(--mono);font-size:.58rem;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin:.55rem 0 .18rem}
+    .table-stack td:first-child::before{display:none}
+    .table-stack td:first-child{font-size:.86rem;line-height:1.5;color:var(--text);margin-bottom:.35rem}
+    .table-stack td:nth-child(n+4){display:inline-block;width:auto;margin-top:.7rem;margin-right:.45rem}
+    .table-stack td:nth-child(n+4)::before{display:inline;margin:0 .32rem 0 0}
+    .matrix td:first-child{font-size:.64rem;letter-spacing:.09em;margin-bottom:.3rem}
+    .matrix td:nth-child(2){font-size:.9rem;line-height:1.55;color:var(--text);margin-bottom:.15rem}
+    .matrix td:nth-child(3){font-size:.8rem;line-height:1.6;color:var(--muted)}
+  }
+  @media (max-width:460px){
+    .hero-stats{grid-template-columns:1fr}
+    .stat .num{font-size:1.45rem}
+    .panel{padding:1rem}
+    .quote-card{padding:1rem}
+    .blockquote{font-size:.9rem}
+    .blockquote.long{font-size:.84rem}
+  }
+</style>
+</head>
+<body>
+<div class="reading-progress" id="reading-progress" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="#top" aria-label="Back to top">
+      <span class="brand-mark">tc</span>
+      <span>TextCourses<small>runtime evidence dossier</small></span>
+    </a>
+    <nav class="top-nav" aria-label="Section navigation">
+      <a href="#verdict">Verdict</a>
+      <a href="#method">Method</a>
+      <a href="#vision">Vision</a>
+      <a href="#runtime">Runtime</a>
+      <a href="#layout">Layout</a>
+      <a href="#matrix">Gaps</a>
+      <a href="#hidden">Hidden</a>
+      <a href="#review">Review</a>
+      <a href="#evidence">Evidence</a>
+    </nav>
+    <div class="header-note">BASE <b>632e84d</b> · 05 NOV 2026</div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="eyebrow"><span class="dot"></span>What the code does, not what the badges say</div>
+    <h1 id="hero-title">The 12-point vision is <span class="strike">fully aligned</span><br><span class="soft">with the runtime.</span></h1>
+    <p class="lede">
+      <strong>It is not.</strong> This document traces the actual TextCourses flow through the dispatcher, workspace bootstrapper,
+      research scout, course compiler, checkpoint gates, notes compiler, and teaching engine. The individual engines are real.
+      The end-to-end experience described in <code>flow.html</code> is not the experience the code runs today.
+    </p>
+    <div class="hero-meta" aria-label="Scope and provenance">
+      <span class="chip"><b>branch</b> main</span>
+      <span class="chip"><b>base</b> 632e84d + local edits</span>
+      <span class="chip"><b>suite</b> 326 passed</span>
+      <span class="chip red"><b>12 / 12</b> badges claim aligned</span>
+      <span class="chip amber"><b>0</b> runtime changes in this review</span>
+    </div>
+
+    <div class="hero-stats" aria-label="Headline numbers">
+      <div class="stat">
+        <div class="num red">0 / 12</div>
+        <div class="label">points meet the complete behavior under the evidence standard used here.</div>
+        <div class="sub">6 partial · 4 absent · 1 violated · 1 unenforced</div>
+      </div>
+      <div class="stat">
+        <div class="num amber">2</div>
+        <div class="label">interactive gates implemented: material acquisition and curriculum approval.</div>
+        <div class="sub">no section-close gate exists</div>
+      </div>
+      <div class="stat">
+        <div class="num red">0</div>
+        <div class="label">auto-mode code paths, dashboard generators, or session-scrub routines.</div>
+        <div class="sub">grep across _tc/scripts, skills, tests</div>
+      </div>
+      <div class="stat">
+        <div class="num cyan">326</div>
+        <div class="label">tests pass, but none exercise auto mode, a dashboard, session deletion, or the notes path used by the real course layout.</div>
+        <div class="sub">green ≠ vision-complete</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="verdict">
+    <div class="section-head">
+      <div>
+        <div class="kicker">01 · Bottom line</div>
+        <h2>The orchestration is where the vision breaks.</h2>
+      </div>
+      <p>
+        The codebase contains solid local pieces: atomic writes, a real dispatcher, usable extraction, course scaffolding,
+        and a thoughtful gate vocabulary. The problems are at the seams between them.
+      </p>
+    </div>
+
+    <div class="split">
+      <div class="panel">
+        <p class="lead" style="margin-top:0">
+          The shortest accurate summary is this: <strong>TextCourses currently has two front doors and several disconnected
+          state machines.</strong> The public skill documentation does not call the new conversational dispatcher. The dispatcher
+          can discover a topic and open Gate 1, but the topic-only path does not create a course after the gate is answered.
+          The course that does get created stores its human notes under the machine substrate, because the notes compiler
+          derives the course root from the location of <code>course.toml</code>.
+        </p>
+        <p>
+          None of those are cosmetic issues. They change what a learner can reach, what a learner can see, and what a “completed”
+          section means.
+        </p>
+        <div class="callout danger">
+          <span class="label">The practical result</span>
+          A learner who types a topic and follows the on-screen gate can end up with <strong>research files, a cleared
+          checkpoint, and no course</strong>. A learner who drops in a PDF can get a course, but the compiled chapter notes land
+          inside <code>.tc/notes/</code>, while the visible <code>notes/chapter-01.md</code> remains a scaffold.
+        </div>
+      </div>
+
+      <div class="verdict-grid">
+        <div class="verdict-card">
+          <h4>The front door is split</h4>
+          <p><code>skills/tc/SKILL.md</code> tells the agent to call checkpoint, extractor, and teaching commands directly. It never calls <code>tc.py dispatch</code>, the state machine that is supposed to be the single door.</p>
+          <span class="mini">→ points 1, 3, 4</span>
+        </div>
+        <div class="verdict-card amber">
+          <h4>Topic-only creation dead-ends</h4>
+          <p>Gate 1’s “proceed” response returns <code>state: creating_course</code>, but no course builder runs. The next input starts a new research gate for the slug <code>1</code>.</p>
+          <span class="mini">→ points 4, 5, 8</span>
+        </div>
+        <div class="verdict-card cyan">
+          <h4>The clean canvas is not clean</h4>
+          <p>Research is written to <code>research/</code>, <code>.tc/research/</code>, and sometimes <code>_tc/research/</code>. Course notes are written to <code>.tc/notes/</code>. Human notes are not updated.</p>
+          <span class="mini">→ point 2</span>
+        </div>
+        <div class="verdict-card violet">
+          <h4>Completion is asserted, not enforced</h4>
+          <p>The last concept tick auto-compiles notes and marks the section <code>review</code>. There is no learner sign-off, no history scrub, no auto mode, and no status board.</p>
+          <span class="mini">→ points 10, 11, 12</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout neutral" style="margin-top:1rem">
+      <span class="label">What this document is for</span>
+      This is an input to course correction, not a competing roadmap. It preserves the learner’s twelve requirements verbatim
+      (section 03), states the observed behavior with file-level evidence (sections 04–07), and reviews the existing
+      change proposal against that evidence (section 08).
+    </div>
+  </section>
+  <section class="section" id="method">
+    <div class="section-head">
+      <div>
+        <div class="kicker">02 · Method &amp; naming</div>
+        <h2>What counted as “implemented”</h2>
+      </div>
+      <p>
+        A feature is not implemented because a markdown file says it is, a badge calls it aligned, or a test asserts a
+        related helper. It is implemented when a learner can reach it, it persists the promised artifact, and the state
+        transition is covered by a test.
+      </p>
+    </div>
+
+    <div class="grid grid-3">
+      <div class="panel flat">
+        <h4>Evidence standard</h4>
+        <p class="small" style="margin-top:.4rem">All four conditions had to hold:</p>
+        <ol class="small" style="margin-bottom:0">
+          <li>A reachable code path from the public entrypoint.</li>
+          <li>The promised file or state change on disk.</li>
+          <li>The behavior a learner would actually experience.</li>
+          <li>A test that exercises that path, not a legacy mock layout.</li>
+        </ol>
+      </div>
+      <div class="panel flat">
+        <h4>What was inspected</h4>
+        <p class="small" style="margin:.4rem 0 0">
+          The public skills, the dispatcher, bootstrapper, checkpoint manager, scout, paper/book fetchers, extractor,
+          course builder, source mapper, coverage auditor, teaching engine, notes compiler, indexer, practical evaluator,
+          diagnostic tester, docs, tests, and the <code>flow.html</code> specification.
+        </p>
+      </div>
+      <div class="panel flat">
+        <h4>What was executed</h4>
+        <p class="small" style="margin:.4rem 0 0">
+          The full test suite (<code>python -m pytest -q</code>, 326 passed) and two disposable workspace simulations
+          through <code>tc.py dispatch</code>: a topic-only run and a drop-in PDF run. No repository runtime files were
+          modified for this review.
+        </p>
+      </div>
+    </div>
+
+    <h3>Read the folder names carefully</h3>
+    <p class="lead">
+      The vision says <code>_tc</code>. The runtime uses <code>_tc/</code>, <code>.tc/</code>, and <code>research/</code>
+      for different things. Confusing them makes every later design decision ambiguous.
+    </p>
+    <div class="naming-map" aria-label="Directory name disambiguation">
+      <div class="key">_tc/</div>
+      <div class="val"><b>Engine scripts and legacy research.</b> Contains <code>scripts/</code>, <code>cache/</code>, and <code>research/</code>. This is the folder the learner’s vision literally names.</div>
+      <div class="key">.tc/</div>
+      <div class="val"><b>Hidden machine state.</b> Contains workspace <code>checkpoint.json</code>, and per-course <code>course.toml</code>, <code>memlog.md</code>, <code>source-map.toml</code>, <code>coverage-ledger.md</code>, <code>session.jsonl</code>, plans, and RAG databases.</div>
+      <div class="key">research/</div>
+      <div class="val"><b>Visible research dossier.</b> The scout writes <code>dossier.md</code>, <code>sources.json</code>, <code>sources.toml</code>, gold standards, and critiques here. It is then mirrored into <code>.tc/research/</code>.</div>
+      <div class="key">.tc/research/</div>
+      <div class="val"><b>Second copy of the same research.</b> The scout writes identical dossier artifacts here and also writes the same critique under three names.</div>
+      <div class="key">courses/&lt;slug&gt;/notes/</div>
+      <div class="val"><b>The intended human canvas.</b> Course scaffolding creates the chapter files here. The notes compiler does not update them when the course uses the real <code>.tc/course.toml</code> layout.</div>
+      <div class="key">courses/&lt;slug&gt;/.tc/notes/</div>
+      <div class="val"><b>Where compiled chapter notes actually go.</b> This is the path bug: the compiler sets <code>course_dir = manifest_file.parent</code>, which is <code>.tc/</code>, not the course root.</div>
+    </div>
+
+    <div class="callout warn" style="margin-top:1rem">
+      <span class="label">Ambiguity that must be settled before code changes</span>
+      The proposal’s “canonical” layout places raw research at <code>research/&lt;slug&gt;/sources/</code> outside
+      <code>.tc/</code>. The learner’s point 2 says all study material, research, and docs stay in <code>_tc</code>, with
+      only notes outside. Those are not the same contract. The proposal must choose and defend one, not silently redefine
+      “clean canvas.”
+    </div>
+
+    <div class="callout neutral" style="margin-top:.8rem">
+      <span class="label">Status vocabulary used in this document</span>
+      <span class="status present">Present</span> reachable and verified ·
+      <span class="status partial">Partial</span> real pieces, incomplete behavior ·
+      <span class="status missing">Absent</span> no reachable path ·
+      <span class="status violated">Violated</span> code contradicts the point ·
+      <span class="status not-enforced">Not enforced</span> policy exists only in documentation.
+    </div>
+  </section>
+
+  <section class="section" id="vision">
+    <div class="section-head">
+      <div>
+        <div class="kicker">03 · The learner’s words</div>
+        <h2>Twelve requirements, preserved verbatim</h2>
+      </div>
+      <p>
+        These quotes are copied exactly from <code>flow.html</code>, including spelling and punctuation. Nothing here is
+        paraphrased. The status line after each quote describes what the runtime currently does — not what the badge claims.
+      </p>
+    </div>
+
+    <div class="filter-row" aria-label="Filter vision points by observed status">
+      <span class="filter-label">Filter</span>
+      <button class="filter-btn active" type="button" data-vision-filter="all">All 12</button>
+      <button class="filter-btn" type="button" data-vision-filter="partial">Partial</button>
+      <button class="filter-btn" type="button" data-vision-filter="missing">Absent</button>
+      <button class="filter-btn" type="button" data-vision-filter="violated">Violated</button>
+      <button class="filter-btn" type="button" data-vision-filter="not-enforced">Not enforced</button>
+    </div>
+
+    <div class="quote-grid" id="vision-grid">
+      <article class="quote-card reveal" data-status="not-enforced" data-point="1">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 01</span><span class="quote-title">Single public entrypoint</span></div>
+          <span class="status not-enforced">Not enforced</span>
+        </div>
+        <blockquote class="blockquote">"1. only tc skill should be exported out. no other skill should be accessible. All are internal and only tc can call those."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> 12 <code>tc-*</code> skill folders exist; only <code>tc-roadmap</code> and <code>tc-verify-course</code> are labelled <code>[INTERNAL ENGINE]</code>. Ten others are presented as usable commands, and the public <code>tc</code> workflow bypasses <code>tc.py dispatch</code>.</span>
+          <span class="tiny">flow.html:878</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="violated" data-point="2">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 02</span><span class="quote-title">Clean canvas &amp; granular memory</span></div>
+          <span class="status violated">Violated</span>
+        </div>
+        <blockquote class="blockquote long">"2. all study material and research and docs stay in _tc folder. just notes stays outside. Each and every decision and each and every change that i ask or how im learning and everything should be stored in memlog of that specific folder or section or chapter based on what im doing."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> the bootstrapper creates <code>_tc</code>, <code>.tc</code>, <code>research</code>, <code>sources</code>, <code>plan/sources</code>, <code>profile</code>, <code>roadmap</code>, and <code>portfolio</code>. The scout writes research twice. Memlogs are course-level and global; there is no section or chapter memlog.</span>
+          <span class="tiny">flow.html:913</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="missing" data-point="3">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 03</span><span class="quote-title">Intake &amp; execution mode</span></div>
+          <span class="status missing">Absent</span>
+        </div>
+        <blockquote class="blockquote long">"3. first tc asks me what i wnt to learn. then it asks some preference questions. We should also give onemore option that should we go straight to teaching without involving user at all. or we can ask each decision interactive way to create a course andd include user in every stage."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> the dispatcher’s intake asks goal/topic, experience, and practicals. It does not ask for an execution mode, and no <code>--mode interactive|auto</code> parser exists. A <code>--mode</code> field exists only as memlog metadata.</span>
+          <span class="tiny">flow.html:949</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="partial" data-point="4">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 04</span><span class="quote-title">Interactive research &amp; source approval</span></div>
+          <span class="status partial">Partial</span>
+        </div>
+        <blockquote class="blockquote long">"4. After asking all preferences.. if user chooses interactive, research agent will do all analysis and ask user these are the materials we need and these are the best material out there. this research agent should suggest from github, research papers, books, official docs etc etc. it should look at all the places on internet like reddit and quora and general articles to find the best courses or best books or best any form of material. then take approval from user that if the sources mentioned are ok or not. Then based on user input, do more research or stop research and go to next step."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> Gate 1 exists and lists recommended books plus discovered specs. There is no general web search, Reddit/Quora discovery, “do more research” loop, or source-list approval/iteration. Custom gate input is recorded but does not launch more research.</span>
+          <span class="tiny">flow.html:989</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="missing" data-point="5">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 05</span><span class="quote-title">Unattended auto mode</span></div>
+          <span class="status missing">Absent</span>
+        </div>
+        <blockquote class="blockquote">"5. But if user selects no interactive mode in previous question, just go ahead with all steps and dont ask for approval thats it. but still all steps should run and agent will take decisions automatically."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> every acquisition and approval gate always pauses. There is no headless branch, no auto-approval, and no command-line mode switch. The proposal describes auto mode as future work; the code does not contain it.</span>
+          <span class="tiny">flow.html:1025</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="partial" data-point="6">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 06</span><span class="quote-title">Fetch resources &amp; missing-material fallback</span></div>
+          <span class="status partial">Partial / fragmented</span>
+        </div>
+        <blockquote class="blockquote long">"6. Then after research step is done, research agent should fetch all docs and resources from internet and place it in research folder based on course.if agent is not able to find any material, let user decide its ok or user will get the material himself and place it in researhc folder."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> curated RFCs and arXiv papers are downloaded, and books are discovered. Drop-in extraction goes to workspace <code>sources/extracted/</code>, not the course research folder. The “no material” decision is reduced to Gate 1’s proceed/wait choice; there is no focused per-course fallback.</span>
+          <span class="tiny">flow.html:1062</span>
+        </div>
+      </article>
+      <article class="quote-card reveal" data-status="partial" data-point="7">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 07</span><span class="quote-title">Verbatim markdown, coverage, 4-hat debate</span></div>
+          <span class="status partial">Partial / unverified</span>
+        </div>
+        <blockquote class="blockquote long">"7. after all this.. agent shoudl create material into md file. resource can be of any type, it should convert that all to md without any text removed. use code or use any library and decide based on type of material.. agent should also verify if all material is covered or not. that should also be a very good research. I think research agents debate internally and think with 4 hats. but that is not working as exptected i think. they should all debate each and every decision and it should be a intense ddiscussion to do research. each point will be critically analyzed."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> extraction covers PDF, EPUB, Markdown, and text. There is no zero-loss verification. The “hats” are a templated critique over a hat registry, not an iterative debate; <code>scout.py</code> writes the same critique as <code>five-hats-critique.md</code>, <code>multi-hats-critique.md</code>, and <code>critique.md</code>. Coverage can pass with zero sources.</span>
+          <span class="tiny">flow.html:1098</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="partial" data-point="8">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 08</span><span class="quote-title">Course, roadmap, indexing</span></div>
+          <span class="status partial">Partial</span>
+        </div>
+        <blockquote class="blockquote long">"8. after all this research and material collection. create course will do its thing. create roadmap and create indexxing and all complexx things and create a course out of material collected. it will skim through each topic and do a very thorough well thought course/roadmap/courses. it will also make it easy for teach agent to read the material easily."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> <code>course_builder.py</code> scaffolds four chapters with two sections each, plus generic plans. <code>toc_aligner.py</code> is not called by course creation. <code>source_mapper.py</code> only scans a <code>sources/raw/</code> directory, which the normal harvest does not populate. The indexer is a separate manual command.</span>
+          <span class="tiny">flow.html:1133</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="partial" data-point="9">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 09</span><span class="quote-title">Roadmap approval &amp; section plans</span></div>
+          <span class="status partial">Partial</span>
+        </div>
+        <blockquote class="blockquote long">"9. If user selects interactive, explain all roadmap and course structure to user and ask for review of artifact thats in _tc folder somewhere. And then at the final approval. start creating sections etc etc and how to teach that what to cover and how to verify user knowledge etc etc will all be in section plan."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> the approval gate exists, but it is created after the course has already been scaffolded. Section plans are generic <code>.tc/plans/.../lesson-plan.md</code> files with two fixed Socratic prompts; they contain no Bloom taxonomy, source line spans, or section-specific verification design.</span>
+          <span class="tiny">flow.html:1172</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="partial" data-point="10">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 10</span><span class="quote-title">Teach, log, compile notes, delete history</span></div>
+          <span class="status partial">Partial / broken path</span>
+        </div>
+        <blockquote class="blockquote long">"10. then tc should directly teach and store all conversation in _tc folder somewhere and when that section is completed, it writes notes and deletes conversation history from _tc."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> turn events are appended to <code>.tc/session.jsonl</code>. The final concept tick automatically calls <code>compile_notes</code>. The flat chapter file is written to <code>.tc/notes/chapter-XX.md</code>, not the human <code>notes/</code> folder. Nothing deletes or truncates <code>session.jsonl</code>.</span>
+          <span class="tiny">flow.html:1211</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="missing" data-point="11">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 11</span><span class="quote-title">Continuous memory &amp; section sign-off</span></div>
+          <span class="status missing">Absent</span>
+        </div>
+        <blockquote class="blockquote long">"11. everything should be tracked and every context and decision taken in this journey should be considered for future conversation or learn or anything. at the end it should also ask for approval to closee the section whether they chose interactive or not. teach wont cchange based on interactive or not. course creatiion and all do."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> there is no section-close gate. The last concept tick marks the section <code>review</code> and writes notes immediately. Memory is course-level and global; the teaching flow has no interactive/auto distinction because no mode exists. A practical PASS can mark the entire course completed.</span>
+          <span class="tiny">flow.html:1248</span>
+        </div>
+      </article>
+
+      <article class="quote-card reveal" data-status="missing" data-point="12">
+        <div class="quote-head">
+          <div><span class="quote-point">Point 12</span><span class="quote-title">Interactive status dashboard</span></div>
+          <span class="status missing">Absent</span>
+        </div>
+        <blockquote class="blockquote long">"12. There should also be a dashboard created. a html file that should be coming when a skill is initiated first and when folder structure is formed. it shoudl have a interactive way of seeing where we are. the status will all be in this files maybe toml, json i dont know. but this html file or a folder all together called status board should read all files from _tc and show it in beautiful way."</blockquote>
+        <div class="quote-foot">
+          <span class="runtime"><b>Observed:</b> no dashboard generator exists. <code>flow.html</code> is a static specification page with a preview section; it does not read <code>.tc/</code> state, refresh, or get generated during bootstrap. There is no <code>status.html</code> or <code>status-board/</code>.</span>
+          <span class="tiny">flow.html:1281</span>
+        </div>
+      </article>
+    </div>
+
+    <div class="callout neutral" style="margin-top:1rem">
+      <span class="label">Why all twelve say “Fully Aligned” in flow.html</span>
+      The badge is part of the static page’s markup, not a computed value. There is no test, generator, or runtime query behind it.
+      This review treats those badges as claims to verify, not as evidence.
+    </div>
+  </section>
+  <section class="section" id="runtime">
+    <div class="section-head">
+      <div>
+        <div class="kicker">04 · Observed runtime</div>
+        <h2>Two front doors, one dead end</h2>
+      </div>
+      <p>
+        The public skill and the Python dispatcher are not the same workflow. The dispatcher is closer to the intended
+        state machine, but it is not what <code>/tc</code> tells the agent to run. This single split explains a large part
+        of the vision gap.
+      </p>
+    </div>
+
+    <div class="flow-lanes">
+      <div class="lane lane-a">
+        <div class="lane-head">
+          <span class="lane-title">Lane A — the skill the learner invokes</span>
+          <span class="lane-kind">/tc · public</span>
+        </div>
+        <div class="lane-nodes">
+          <div class="lane-node"><span class="n">A1</span><span><b>Read <code>skills/tc/SKILL.md</code>.</b> The footer says <code>tc</code> is the single front door.</span></div>
+          <div class="lane-node"><span class="n">A2</span><span><b>Check a pending gate</b> via <code>checkpoint_manager.py status</code>.</span></div>
+          <div class="lane-node"><span class="n">A3</span><span><b>Respond</b> via <code>checkpoint_manager.py respond</code> when a gate exists.</span></div>
+          <div class="lane-node"><span class="n">A4</span><span><b>Auto-ingest dropped books</b> via <code>extractor.py auto-ingest</code>.</span></div>
+          <div class="lane-node"><span class="n">A5</span><span><b>Teach an active course</b> via <code>teach_engine.py session</code>.</span></div>
+          <div class="lane-node"><span class="n">A6</span><span><b>End with the 4-option fork.</b> No course-creation call appears in the documented workflow.</span></div>
+        </div>
+        <p class="lane-note">
+          There is no <code>tc.py dispatch</code> call, no <code>course_builder.py create</code> call, and no dashboard step.
+          The lane can teach a course that already exists. It does not document how a new course is created.
+        </p>
+      </div>
+
+      <div class="lane lane-b">
+        <div class="lane-head">
+          <span class="lane-title">Lane B — the dispatcher that models the flow</span>
+          <span class="lane-kind">tc.py dispatch · parallel</span>
+        </div>
+        <div class="lane-nodes">
+          <div class="lane-node"><span class="n">B1</span><span><b>Intake</b> if <code>profile/preferences.md</code> or <code>plan/preferences.md</code> is missing.</span></div>
+          <div class="lane-node"><span class="n">B2</span><span><b>Discover a topic</b>, slugify it, and look for dropped documents.</span></div>
+          <div class="lane-node"><span class="n">B3</span><span><b>Scout</b> when no documents were found: curated sources, dossier, duplicate writes.</span></div>
+          <div class="lane-node"><span class="n">B4</span><span><b>Open Gate 1</b> (material acquisition) and wait for input.</span></div>
+          <div class="lane-node"><span class="n">B5</span><span><b>Answer “1”</b> → returns <code>creating_course</code> and exits. No builder is invoked.</span></div>
+          <div class="lane-node"><span class="n">B6</span><span><b>Drop a PDF instead</b> → auto-ingest → <code>create_course</code> → Gate 2 → teaching. This branch works.</span></div>
+        </div>
+        <p class="lane-note">
+          The working creation path is the drop-in branch. The topic-only branch is the one a learner naturally takes,
+          and it is the one that does not continue to a course.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout danger">
+      <span class="label">Split-brain consequence</span>
+      A code path can be “implemented” in the dispatcher and still be unreachable from the public experience. The
+      <code>flow.html</code> page describes the dispatcher’s intended state machine; the skill the learner actually invokes
+      does not use it.
+    </div>
+
+    <h3>Creation path: what happens when the learner types a topic</h3>
+    <div class="timeline">
+      <div class="t-item">
+        <div class="t-kicker">Step 01 · workspace</div>
+        <h4><code>bootstrapper.py</code> creates the canvas</h4>
+        <p>
+          It creates the engine folder, the hidden state folder, a visible research folder, a root <code>sources/</code>
+          folder, <code>plan/sources/</code>, <code>profile/</code>, <code>roadmap/</code>, <code>courses/</code>, and
+          <code>portfolio/</code>. There is no status-board step and no single research root.
+        </p>
+        <span class="t-code">bootstrapper.py → dirs_to_create</span>
+      </div>
+
+      <div class="t-item">
+        <div class="t-kicker">Step 02 · intake</div>
+        <h4>The only prompt is a three-question onboarding prompt</h4>
+        <p>
+          It asks for a goal/topic, experience level, and whether the learner wants practicals. It does not ask for
+          interactive vs auto, and it does not offer a straight-to-teaching mode. Once preferences exist, the prompt is
+          skipped on future runs.
+        </p>
+        <span class="t-code">tc.py → intake_needed</span>
+      </div>
+
+      <div class="t-item">
+        <div class="t-kicker">Step 03 · topic</div>
+        <h4>The input becomes a slug and a research run</h4>
+        <p>
+          If no course exists, a multi-word input is treated as a topic. The dispatcher slugifies it, looks for dropped
+          documents, and runs the scout if none are found. The scout invokes curated paper/RFC harvesting and book
+          discovery, then writes dossier artifacts.
+        </p>
+        <span class="t-code">tc.py → run_scout(slug, topic)</span>
+      </div>
+
+      <div class="t-item warn">
+        <div class="t-kicker">Step 04 · gate 1</div>
+        <h4>Research ends at the acquisition gate</h4>
+        <p>
+          The learner sees recommended books, downloaded specs, a drop-in instruction, and two choices: proceed with open
+          docs or wait for a file. There is no “these are the best sources, approve them” list and no loop to request more
+          research.
+        </p>
+        <span class="t-code">checkpoint_manager.py → acquisition_gate</span>
+      </div>
+
+      <div class="t-item fail">
+        <div class="t-kicker">Step 05 · dead end</div>
+        <h4>“Proceed with open docs” does not create the course</h4>
+        <p>
+          The gate clears and the dispatcher returns <code>state: "creating_course"</code> with the message
+          “Synthesizing curriculum…”. The function then exits. There is no call to <code>create_course</code>, no approval
+          gate, and no course directory.
+        </p>
+        <span class="t-code">tc.py → state: creating_course (no builder)</span>
+      </div>
+
+      <div class="t-item fail">
+        <div class="t-kicker">Step 06 · loop</div>
+        <h4>The next input starts a new research gate</h4>
+        <p>
+          Because no course now exists, the next input is interpreted as a new topic. Typing <code>1</code> produces a
+          course slug literally named <code>1</code>, a fresh scout run under <code>research/1/</code>, and another
+          acquisition gate. The loop can repeat.
+        </p>
+        <span class="t-code">tc.py → new slug “1” → acquisition_gate</span>
+      </div>
+
+      <div class="t-item">
+        <div class="t-kicker">Step 07 · alternate branch</div>
+        <h4>A dropped document changes the outcome</h4>
+        <p>
+          If a PDF or EPUB is discovered, the dispatcher auto-ingests it, calls <code>create_course</code>, and opens the
+          curriculum approval gate. This is the branch that reaches teaching. It is not the branch the visible topic-first
+          invitation leads to.
+        </p>
+        <span class="t-code">discovered_docs → create_course → approval_gate</span>
+      </div>
+    </div>
+
+    <div class="repro panel">
+      <h4>Reproduction: topic-only dispatch</h4>
+      <p class="small" style="margin-top:.25rem">
+        Run in a disposable workspace. The commands are the same shape used by the UI; the output is summarized from the
+        returned JSON.
+      </p>
+      <pre><code>tc.py dispatch --input "Distributed Storage" --workspace &lt;tmp&gt; --json
+# → state: acquisition_gate
+#   slug: distributed-storage
+
+tc.py dispatch --input "1" --workspace &lt;tmp&gt; --json
+# → state: creating_course
+#   action: proceed_open
+#   courses/ is still empty
+
+tc.py dispatch --input "1" --workspace &lt;tmp&gt; --json
+# → state: acquisition_gate
+#   slug: "1"
+#   research/1/ was created</code></pre>
+      <p class="tiny">Observed in a disposable workspace; no course directory was created by the first gate response.</p>
+    </div>
+    <h3>Teaching path: what happens after a course exists</h3>
+    <div class="timeline">
+      <div class="t-item">
+        <div class="t-kicker">Gate 2 · approval</div>
+        <h4>The course has already been scaffolded before the learner reviews it</h4>
+        <p>
+          <code>create_course</code> writes <code>.tc/course.toml</code>, the overview, notes scaffolds, memlog, generic
+          section plans, and a source map. Only then does <code>create_approval_gate</code> render the chapter outline and
+          wait for “start lesson 1” or “adjust roadmap.”
+        </p>
+        <span class="t-code">create_course → create_approval_gate</span>
+      </div>
+
+      <div class="t-item">
+        <div class="t-kicker">Session · context</div>
+        <h4>The engine returns context, not the lesson itself</h4>
+        <p>
+          <code>get_teaching_session</code> resolves the active section and concept, reads preferences, checks practical
+          status, and returns a fork and source excerpts. The agent is responsible for the actual explanation. This is a
+          reasonable division of labor; the gap is what happens next.
+        </p>
+        <span class="t-code">get_teaching_session → context + fork_text</span>
+      </div>
+
+      <div class="t-item">
+        <div class="t-kicker">Turn · advance</div>
+        <h4>“Next” ticks the concept, logs the turn, and may compile notes</h4>
+        <p>
+          <code>advance_lesson_concept</code> ticks the current item, appends a concept event to
+          <code>.tc/session.jsonl</code>, and appends a token-minimal entry to the course memlog. When the final concept is
+          ticked, it automatically calls <code>compile_notes</code> and marks the section <code>review</code>.
+        </p>
+        <span class="t-code">tick_concept → append_session_event → compile_notes</span>
+      </div>
+
+      <div class="t-item warn">
+        <div class="t-kicker">Notes · path bug</div>
+        <h4>The human chapter notes are not the file that gets updated</h4>
+        <p>
+          <code>compile_notes</code> finds <code>.tc/course.toml</code>, then sets <code>course_dir = manifest_file.parent</code>.
+          That parent is <code>courses/&lt;slug&gt;/.tc/</code>, so the “flat chapter” is written to
+          <code>.tc/notes/chapter-XX.md</code>. The scaffold at <code>notes/chapter-XX.md</code> stays untouched.
+        </p>
+        <span class="t-code">notes_compiler.py → manifest_file.parent / "notes"</span>
+      </div>
+
+      <div class="t-item fail">
+        <div class="t-kicker">Close · no gate</div>
+        <h4>Completion is a state flip, not a conversation</h4>
+        <p>
+          There is no section-close prompt. The learner is not asked to review the compiled notes and approve closure.
+          <code>session.jsonl</code> is not cleared. The next section can be resolved by the normal “first not-started”
+          rule immediately.
+        </p>
+        <span class="t-code">no close gate · no unlink/truncate of session.jsonl</span>
+      </div>
+
+      <div class="t-item fail">
+        <div class="t-kicker">Assessment · loose semantics</div>
+        <h4>A practical review can complete the whole course</h4>
+        <p>
+          <code>practical_evaluator.py review --verdict PASS</code> is a caller-supplied verdict. On PASS it sets the
+          course and <strong>all chapters and all sections</strong> to <code>completed</code>. The lesson-level
+          <code>evaluate-lesson</code> path is a keyword score with a 70-point threshold, not an AI code review.
+        </p>
+        <span class="t-code">verdict == PASS → course.status = completed</span>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="label">The teaching invariant is not enforced</span>
+      The proposal correctly says teaching must always require learner verification and sign-off. The current runtime has
+      no such gate. A learner can reach the next section through the ordinary “next” flow; a diagnostic PASS or practical
+      PASS can mark completion without a close conversation.
+    </div>
+
+    <h3>Component-level reality check</h3>
+    <div class="table-wrap">
+      <table class="table-stack">
+        <thead>
+          <tr><th>Component</th><th data-short="What it does">What it actually does</th><th data-short="What it does not do">What it does not do</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Public skill</b><br><span class="tiny">skills/tc/SKILL.md</span></td>
+            <td>Orchestrates gate status, gate response, auto-ingest, and teaching session calls.</td>
+            <td>Does not call <code>tc.py dispatch</code>; does not document course creation; does not generate a dashboard.</td>
+          </tr>
+          <tr>
+            <td><b>Dispatcher</b><br><span class="tiny">tc.py</span></td>
+            <td>Implements intake, scout, Gate 1, drop-in creation, Gate 2, and teaching turns.</td>
+            <td>Topic-only “proceed” does not call <code>create_course</code>; no auto mode; no per-section sign-off.</td>
+          </tr>
+          <tr>
+            <td><b>Research scout</b><br><span class="tiny">scout.py</span></td>
+            <td>Builds a dossier, harvests curated sources, writes source metadata, and emits a templated multi-hat critique.</td>
+            <td>Does not search Reddit/Quora/general web by default; does not debate; writes the same critique under three names.</td>
+          </tr>
+          <tr>
+            <td><b>Course builder</b><br><span class="tiny">course_builder.py</span></td>
+            <td>Runs a triad-shaped consensus trace and scaffolds a four-chapter, two-section course with generic plans.</td>
+            <td>Does not invoke <code>toc_aligner</code>; its “100% coverage” summary is not wired to <code>audit_coverage</code>.</td>
+          </tr>
+          <tr>
+            <td><b>Source map</b><br><span class="tiny">source_mapper.py</span></td>
+            <td>Builds line-span pointers for concepts when it can find raw markdown sources.</td>
+            <td>Only scans <code>sources/raw/</code>; normal harvest writes to <code>rfcs/</code>, <code>papers/</code>, <code>docs/</code>, and <code>sources/extracted/</code>. If nothing matches, it writes a fake pointer to lines 1–50 of the first source.</td>
+          </tr>
+          <tr>
+            <td><b>Coverage auditor</b><br><span class="tiny">auditor.py</span></td>
+            <td>Produces a ledger from source-map sources and raw directories.</td>
+            <td>With zero sources, <code>coverage_ratio</code> is 100.0 and status is PASSED (0 / 0).</td>
+          </tr>
+          <tr>
+            <td><b>Notes compiler</b><br><span class="tiny">notes_compiler.py</span></td>
+            <td>Writes section <code>notes.md</code>, updates section status, and writes a flat chapter file.</td>
+            <td>Uses <code>.tc/</code> as the course root and misses the human <code>notes/</code> folder in the real layout.</td>
+          </tr>
+          <tr>
+            <td><b>Indexer</b><br><span class="tiny">indexer.py</span></td>
+            <td>Builds a local SQLite FTS5 index and copies database/catalog files into course <code>.tc/rag-db/</code>.</td>
+            <td>Is not invoked automatically by the dispatcher or course builder; its default target is <code>courses/&lt;slug&gt;/rag-db</code>, outside <code>.tc/</code>.</td>
+          </tr>
+          <tr>
+            <td><b>Diagnostic tester</b><br><span class="tiny">diagnostic_tester.py</span></td>
+            <td>Supports manual test preparation and recording, with a cumulative boundary rule.</td>
+            <td>Writes its memlog to <code>courses/&lt;slug&gt;/memlog.md</code>, not <code>.tc/memlog.md</code>; contains an <code>all_completed</code> path that can be unbound.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="section" id="layout">
+    <div class="section-head">
+      <div>
+        <div class="kicker">05 · The canvas on disk</div>
+        <h2>A clean two-tier promise, spread across four roots</h2>
+      </div>
+      <p>
+        The course scaffold tries to put machine state under <code>.tc/</code> and leave <code>overview.md</code> plus
+        <code>notes/</code> visible. Research, preferences, configs, and diagnostics break that contract. The notes path
+        bug then hides the most important human artifact.
+      </p>
+    </div>
+
+    <div class="tree" aria-label="Observed workspace layout">
+<pre><span class="root">workspace/</span>
+├─ <span class="human">profile/</span>                         <span class="comment">human-ish config, outside _tc</span>
+│  ├─ preferences.md
+│  └─ memlog.md                    <span class="comment">global memory</span>
+├─ <span class="dup">plan/</span>                            <span class="comment">legacy duplicate</span>
+│  ├─ preferences.md               <span class="comment">same preferences, second copy</span>
+│  └─ sources/
+├─ <span class="dup">research/&lt;slug&gt;/</span>                <span class="comment">visible dossier — duplicate #1</span>
+│  ├─ dossier.md
+│  ├─ sources.json / sources.toml
+│  ├─ gold-standards.md
+│  ├─ five-hats-critique.md
+│  ├─ multi-hats-critique.md       <span class="comment">same text</span>
+│  ├─ critique.md                  <span class="comment">same text again</span>
+│  └─ sources/
+│     ├─ rfcs/  papers/  docs/
+│     └─ user-provided/
+├─ <span class="machine">_tc/</span>                          <span class="comment">engine substrate named in the vision</span>
+│  ├─ scripts/                     <span class="comment">copied runtime</span>
+│  ├─ cache/
+│  └─ research/&lt;slug&gt;/             <span class="comment">created; legacy lookup path</span>
+├─ <span class="machine">.tc/</span>                           <span class="comment">hidden workspace state</span>
+│  ├─ checkpoint.json              <span class="comment">active Gate 1 / Gate 2</span>
+│  └─ research/&lt;slug&gt;/             <span class="comment">duplicate #2</span>
+├─ <span class="dup">sources/</span>                       <span class="comment">legacy root — contradicts point 2</span>
+│  ├─ raw/                         <span class="comment">what source_mapper/auditor scan; often empty</span>
+│  └─ extracted/                   <span class="comment">drop-in PDF/EPUB output</span>
+├─ <span class="human">courses/&lt;slug&gt;/</span>
+│  ├─ overview.md                  <span class="comment">human syllabus</span>
+│  ├─ notes/chapter-01.md          <span class="comment">scaffold — not updated by compiler</span>
+│  ├─ memlog.md                    <span class="comment">diagnostic_tester writes here (wrong root)</span>
+│  └─ <span class="machine">.tc/</span>
+│     ├─ course.toml               <span class="comment">actual manifest</span>
+│     ├─ memlog.md                 <span class="comment">course memory</span>
+│     ├─ source-map.toml
+│     ├─ coverage-ledger.md
+│     ├─ session.jsonl             <span class="comment">grows; never scrubbed</span>
+│     ├─ plans/chapter-*/section-*/lesson-plan.md
+│     ├─ notes/chapter-01.md       <span class="comment">actual compiled notes (path bug)</span>
+│     └─ rag-db/                   <span class="comment">created by scaffold; indexer copies here</span>
+├─ <span class="dup">roadmap/</span>                       <span class="comment">outside _tc</span>
+└─ <span class="dup">portfolio/</span>                    <span class="comment">outside _tc</span>
+</pre>
+    </div>
+    <p class="tiny" style="margin-top:.55rem">
+      Colour: <span style="color:#a7f3d0">human-facing</span> ·
+      <span style="color:#93c5fd">machine state</span> ·
+      <span style="color:#fda4af">duplicate / contradictory root</span>.
+      The tree is a composite of bootstrapper, scout, extractor, course scaffold, indexer, source mapper, and diagnostics.
+    </p>
+
+    <div class="path-compare">
+      <div class="path-card">
+        <div class="path-label">Human canvas — promised</div>
+        <code>courses/&lt;slug&gt;/notes/chapter-01.md</code>
+        <p>Created by <code>scaffold_course_files</code>. This is the file a learner opens to study. It keeps the scaffold text.</p>
+      </div>
+      <div class="path-card bad">
+        <div class="path-label">Compiled notes — actual</div>
+        <code>courses/&lt;slug&gt;/.tc/notes/chapter-01.md</code>
+        <p>Written by <code>compile_notes</code> because <code>manifest_file.parent</code> is the <code>.tc/</code> directory, not the course directory.</p>
+      </div>
+    </div>
+
+    <div class="callout danger" style="margin-top:1rem">
+      <span class="label">The note the learner is supposed to keep is the one that is not updated</span>
+      The compiler’s section-level <code>notes.md</code> does land under
+      <code>.tc/plans/.../section-.../notes.md</code>, and the flat chapter copy lands under <code>.tc/notes/</code>.
+      Both are hidden machine files. The visible <code>notes/chapter-XX.md</code> is a placeholder. This is a direct
+      contradiction of “writes notes” in point 10 and “only notes outside” in point 2.
+    </div>
+
+    <h3>Duplicate writes and split readers</h3>
+    <div class="table-wrap">
+      <table class="table-stack">
+        <thead>
+          <tr><th>Producer</th><th>Writes</th><th data-short="Reader / consequence">Reader / consequence</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>bootstrapper</b><br><span class="tiny">bootstrapper.py</span></td>
+            <td><code>_tc/</code>, <code>.tc/</code>, <code>_tc/research/</code>, <code>.tc/research/</code>, <code>research/</code>, <code>sources/</code>, <code>plan/sources/</code>, <code>profile/</code>, <code>roadmap/</code>, <code>portfolio/</code>.</td>
+            <td>Creates the clean-canvas violation before any learning begins.</td>
+          </tr>
+          <tr>
+            <td><b>scout</b><br><span class="tiny">scout.py</span></td>
+            <td>Full dossier and sources to <code>research/&lt;slug&gt;/</code> and <code>.tc/research/&lt;slug&gt;/</code>; the same critique under three filenames.</td>
+            <td>Doubles research storage and multiplies the apparent number of review artifacts.</td>
+          </tr>
+          <tr>
+            <td><b>extractor</b><br><span class="tiny">extractor.py</span></td>
+            <td>Dropped PDFs/EPUBs to <code>sources/extracted/</code>; explicit extraction can target elsewhere.</td>
+            <td><code>source_mapper.py</code> and <code>auditor.py</code> look in <code>sources/raw/</code>, not <code>sources/extracted/</code>.</td>
+          </tr>
+          <tr>
+            <td><b>paper fetcher</b><br><span class="tiny">paper_fetcher.py</span></td>
+            <td><code>research/&lt;slug&gt;/sources/rfcs/</code>, <code>papers/</code>, <code>docs/</code>.</td>
+            <td>Source map and coverage do not scan these folders, so downloaded evidence is invisible to the compiler.</td>
+          </tr>
+          <tr>
+            <td><b>course builder</b><br><span class="tiny">course_builder.py</span></td>
+            <td><code>.tc/course.toml</code>, <code>overview.md</code>, <code>notes/</code> scaffolds, <code>.tc/plans/</code>, <code>.tc/source-map.toml</code>, <code>.tc/rag-db/</code>.</td>
+            <td>Scaffold and compiler disagree about the course root.</td>
+          </tr>
+          <tr>
+            <td><b>indexer</b><br><span class="tiny">indexer.py</span></td>
+            <td>Default <code>courses/&lt;slug&gt;/rag-db/</code>, then mirrors into <code>research/&lt;slug&gt;/rag-db</code> and <code>sources/</code>.</td>
+            <td>Not called by <code>tc.py</code> or <code>course_builder</code>; manual command only.</td>
+          </tr>
+          <tr>
+            <td><b>redirector</b><br><span class="tiny">redirector.py</span></td>
+            <td>Resolves sources from <code>course_dir/sources</code> or <code>plan/sources</code>.</td>
+            <td>Does not resolve the canonical <code>research/&lt;slug&gt;/sources</code> location.</td>
+          </tr>
+          <tr>
+            <td><b>diagnostic tester</b><br><span class="tiny">diagnostic_tester.py</span></td>
+            <td><code>courses/&lt;slug&gt;/memlog.md</code> for outcomes.</td>
+            <td>Creates a second course memlog outside <code>.tc/</code>, which the other engines do not read.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn" style="margin-top:1rem">
+      <span class="label">Layout is not a cosmetic concern</span>
+      The mapping between “where evidence is downloaded” and “where the source map looks” is broken. The course can
+      therefore be assembled from a research dossier while its <code>source-map.toml</code> contains no real sources and
+      its coverage ledger says PASSED. That is the difference between a clean canvas and a canvas with hidden holes.
+    </div>
+  </section>
+  <section class="section" id="matrix">
+    <div class="section-head">
+      <div>
+        <div class="kicker">06 · Vision vs. runtime</div>
+        <h2>The twelve-point gap matrix</h2>
+      </div>
+      <p>
+        P0 means the flow stops, the wrong artifact is produced, or a core learning guarantee is absent. P1 means a major
+        promise is missing or partial. The matrix is deliberately conservative: a real helper counts for something, but not
+        for the whole requirement.
+      </p>
+    </div>
+
+    <div class="filter-row" aria-label="Filter gap matrix by severity">
+      <span class="filter-label">Severity</span>
+      <button class="filter-btn active" type="button" data-matrix-filter="all">All 12</button>
+      <button class="filter-btn" type="button" data-matrix-filter="p0">P0 · 5</button>
+      <button class="filter-btn" type="button" data-matrix-filter="p1">P1 · 7</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="matrix table-stack" id="gap-matrix">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th data-short="Learner asked for">What the learner asked for</th>
+            <th data-short="Runtime actually does">What the runtime actually does</th>
+            <th>Status</th>
+            <th>Severity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-sev="p1">
+            <td>01</td>
+            <td><b>Only <code>tc</code> is public.</b> All other skills are internal and callable only by <code>tc</code>.</td>
+            <td>Twelve <code>tc-*</code> folders are present. Only two carry an internal-engine label. The public skill’s own workflow calls checkpoint, extractor, and teach scripts directly instead of routing through the dispatcher.</td>
+            <td><span class="status not-enforced">Not enforced</span></td>
+            <td><span class="tag p1">P1</span></td>
+          </tr>
+          <tr data-sev="p0">
+            <td>02</td>
+            <td><b>Study material, research, docs in <code>_tc</code>; only notes outside.</b> Every decision and change logged at the right granularity.</td>
+            <td>Research is written to <code>research/</code> and <code>.tc/research/</code>; <code>_tc/research/</code> is also created. Root <code>sources/</code>, <code>plan/sources/</code>, <code>profile/</code>, <code>roadmap/</code>, and <code>portfolio/</code> exist. Memlog is course-level and global, not section/chapter-level.</td>
+            <td><span class="status violated">Violated</span></td>
+            <td><span class="tag p0">P0</span></td>
+          </tr>
+          <tr data-sev="p1">
+            <td>03</td>
+            <td><b>Ask topic, preferences, then offer interactive vs straight-to-teaching.</b></td>
+            <td>Intake asks goal, experience, and practicals. There is no mode question. No <code>--mode interactive|auto</code> parser exists; <code>--mode</code> is only memlog metadata.</td>
+            <td><span class="status missing">Absent</span></td>
+            <td><span class="tag p1">P1</span></td>
+          </tr>
+          <tr data-sev="p0">
+            <td>04</td>
+            <td><b>Research deeply, present best sources, get approval, iterate or proceed.</b></td>
+            <td>Gate 1 exists, but the topic-only path dead-ends after “proceed.” There is no general web/Reddit/Quora search, no source-list approval loop, and custom input does not trigger more research.</td>
+            <td><span class="status partial">Partial → dead end</span></td>
+            <td><span class="tag p0">P0</span></td>
+          </tr>
+          <tr data-sev="p0">
+            <td>05</td>
+            <td><b>Unattended mode runs every step and makes decisions automatically.</b></td>
+            <td>No auto branch exists. Gates always pause. There is no auto-approval, no headless pipeline, and no path that lands directly in Chapter 1 teaching.</td>
+            <td><span class="status missing">Absent</span></td>
+            <td><span class="tag p0">P0</span></td>
+          </tr>
+          <tr data-sev="p1">
+            <td>06</td>
+            <td><b>Fetch all resources into the course research folder; if missing, let the learner decide.</b></td>
+            <td>Curated RFCs/papers are downloaded; books are discovered. Drop-in extraction goes to <code>sources/extracted/</code>, not the course research folder. The “no material” decision is only the Gate 1 proceed/wait choice.</td>
+            <td><span class="status partial">Partial / fragmented</span></td>
+            <td><span class="tag p1">P1</span></td>
+          </tr>
+          <tr data-sev="p1">
+            <td>07</td>
+            <td><b>Convert any material to markdown with zero loss; verify coverage; 4 hats debate every point.</b></td>
+            <td>Extraction is PDF/EPUB/MD/TXT and has no loss verification. The “hats” are a templated critique, not an iterative debate. The same critique is written three times. Coverage can pass with zero sources.</td>
+            <td><span class="status partial">Partial / unverified</span></td>
+            <td><span class="tag p1">P1</span></td>
+          </tr>
+          <tr data-sev="p1">
+            <td>08</td>
+            <td><b>Create roadmap, indexing, and a thorough course from the collected material.</b></td>
+            <td>Course builder scaffolds four chapters × two sections and generic plans. <code>toc_aligner</code> is unused. Source map scans a raw folder the harvest does not populate. Indexing is manual.</td>
+            <td><span class="status partial">Partial</span></td>
+            <td><span class="tag p1">P1</span></td>
+          </tr>
+          <tr data-sev="p1">
+            <td>09</td>
+            <td><b>Interactive review of the roadmap artifact, then section plans for teaching and verification.</b></td>
+            <td>Gate 2 exists, but the course is already scaffolded. Section plans are generic lesson checklists with two fixed prompts; no Bloom targets, source spans, or section-specific verification design.</td>
+            <td><span class="status partial">Partial</span></td>
+            <td><span class="tag p1">P1</span></td>
+          </tr>
+          <tr data-sev="p0">
+            <td>10</td>
+            <td><b>Teach directly, store the conversation, write notes on completion, delete conversation history.</b></td>
+            <td>Session events are logged. Final concept auto-compiles notes. Compiled chapter notes go to <code>.tc/notes/</code>, while visible <code>notes/</code> stays a scaffold. Session history is never scrubbed.</td>
+            <td><span class="status partial">Partial / broken path</span></td>
+            <td><span class="tag p0">P0</span></td>
+          </tr>
+          <tr data-sev="p0">
+            <td>11</td>
+            <td><b>Track everything; always ask approval to close a section, regardless of mode.</b></td>
+            <td>No section-close gate exists. Memory is course-level and global. Teaching has no mode distinction because no mode exists. A practical PASS or diagnostic PASS can complete without a close conversation.</td>
+            <td><span class="status missing">Absent</span></td>
+            <td><span class="tag p0">P0</span></td>
+          </tr>
+          <tr data-sev="p1">
+            <td>12</td>
+            <td><b>Generate a beautiful, interactive HTML dashboard on initiation that reads <code>_tc</code> state.</b></td>
+            <td>No dashboard generator exists. <code>flow.html</code> is a static specification page; it does not read state, refresh, or get created by bootstrap. No <code>status.html</code> or <code>status-board/</code> exists.</td>
+            <td><span class="status missing">Absent</span></td>
+            <td><span class="tag p1">P1</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid grid-3" style="margin-top:1rem">
+      <div class="panel flat">
+        <h4>What is genuinely present</h4>
+        <p class="small" style="margin:.35rem 0 0">
+          A real dispatcher, two gate types, atomic writes in several modules, extraction for common document formats,
+          course scaffolding, session logging, memlog primitives, and a broad test suite. These are useful foundations.
+        </p>
+      </div>
+      <div class="panel flat">
+        <h4>What is missing at the seams</h4>
+        <p class="small" style="margin:.35rem 0 0">
+          Reachability, canonical paths, state-transition completion, automatic invocation, mode handling, section closure,
+          scrub, dashboard generation, and honest success metrics.
+        </p>
+      </div>
+      <div class="panel flat">
+        <h4>What the badges hide</h4>
+        <p class="small" style="margin:.35rem 0 0">
+          All twelve cards in <code>flow.html</code> carry a static “Fully Aligned” badge. There is no runtime query, test,
+          or generator behind that label. It is a design assertion, not an observed result.
+        </p>
+      </div>
+    </div>
+  </section>
+  <section class="section" id="hidden">
+    <div class="section-head">
+      <div>
+        <div class="kicker">07 · Hidden orchestration</div>
+        <h2>Twelve details the flow page does not show</h2>
+      </div>
+      <p>
+        These are the seams where a polished demo can look coherent while the actual state machine diverges. Each item is
+        grounded in a code path or a disposable run.
+      </p>
+    </div>
+
+    <div class="hidden-grid">
+      <article class="hidden-card reveal">
+        <h4><span class="num">01</span>The public skill never calls the dispatcher</h4>
+        <p>The workflow in <code>skills/tc/SKILL.md</code> jumps from gate status to gate response to auto-ingest to teaching. It does not call <code>tc.py dispatch</code>, and it does not document a course-creation call.</p>
+        <div class="evidence">skills/tc/SKILL.md → Workflow<br>tc.py → dispatch_conversational_turn</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">02</span>Gate 1 “proceed” is a return statement, not a transition</h4>
+        <p>The dispatcher recognizes <code>proceed_open</code> and returns a message saying it is synthesizing the curriculum. No function creates the curriculum. The checkpoint is already cleared, so the next input is a new topic.</p>
+        <div class="evidence">tc.py → action in {"proceed_open", "files_detected"}<br>→ state: creating_course (no create_course)</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">03</span>A second course cannot be started through dispatch</h4>
+        <p>If any course directory exists, <code>target_course</code> becomes the first existing course. A new multi-word topic is then treated as a custom teaching turn rather than a new course request. The dispatcher has no explicit “new course” intent.</p>
+        <div class="evidence">existing_courses[0] → target_course<br>multi-word input + existing course → custom_turn</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">04</span>Research is written twice, and the critique three times</h4>
+        <p>The scout writes the dossier to <code>research/&lt;slug&gt;/</code> and <code>.tc/research/&lt;slug&gt;/</code>. It writes the same critique content to <code>five-hats-critique.md</code>, <code>multi-hats-critique.md</code>, and <code>critique.md</code>. The file count looks richer than the analysis.</p>
+        <div class="evidence">scout.py → for rdir in [research/&lt;slug&gt;, .tc/research/&lt;slug&gt;]<br>three atomic_write_text calls with critique_md</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">05</span>The source map cannot see the material the harvester fetched</h4>
+        <p><code>source_mapper.py</code> looks in <code>research/&lt;slug&gt;/sources/raw/</code> or <code>sources/raw/</code>. The harvester writes to <code>rfcs/</code>, <code>papers/</code>, and <code>docs/</code>; drop-ins go to <code>sources/extracted/</code>. If no pointers match, it invents a pointer to lines 1–50 of the first source.</p>
+        <div class="evidence">source_mapper.py:204–207, 283–291<br>extractor.py → sources/extracted<br>paper_fetcher.py → research/&lt;slug&gt;/sources/rfcs</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">06</span>A zero-source audit reports 100% PASSED</h4>
+        <p>When <code>total_sections</code> is zero, <code>coverage_ratio</code> is set to 100.0 and <code>is_passed</code> is true because <code>dropped_count == 0</code>. The same module also fails to find the normal harvest folders, so zero sources is a likely state.</p>
+        <div class="evidence">auditor.py:495–500<br>coverage_ratio = ... else 100.0<br>is_passed = (dropped_count == 0)</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">07</span>“100% textbook coverage” is a default, not a measurement</h4>
+        <p>Course creation passes no <code>coverage_pct</code> to the bounded deliberation summary. The summary function defaults it to <code>100.0</code>. Course creation does not call <code>audit_coverage</code>; it calls the structural curriculum audit instead.</p>
+        <div class="evidence">course_builder.py → generate_bounded_deliberation_summary(...)<br>default coverage_pct: 100.0</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">08</span>The green test suite tests a layout the real course does not use</h4>
+        <p>The notes tests scaffold <code>course.toml</code> at the course root and then assert <code>notes/chapter-01.md</code>. The real scaffold writes <code>.tc/course.toml</code>. That is why the suite passes while the actual compiler writes to <code>.tc/notes/</code>.</p>
+        <div class="evidence">tests/test_streamline_layout.py:97–141<br>tests/test_dual_register_knowledge.py:36–97<br>course_builder.py → .tc/course.toml</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">09</span>No tests exist for the three most visible missing promises</h4>
+        <p>A search across <code>tests/</code> for auto mode, dashboard/status board, session scrub, and session deletion returns no matches. The 326 green tests are real, but they do not cover those promises.</p>
+        <div class="evidence">grep tests/ → no mode-auto / dashboard / scrub / delete-session matches<br>326 passed in 122.02s</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">10</span>Completion can be produced by the caller’s verdict</h4>
+        <p><code>practical_evaluator.py review</code> takes <code>--verdict PASS</code> from the caller and sets the course, every chapter, and every section to <code>completed</code>. The lesson evaluator is a keyword score, not a code-execution review. A diagnostic pass can also move status without a close conversation.</p>
+        <div class="evidence">practical_evaluator.py → if verdict == "PASS"<br>for ch / for sec → status = "completed"</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">11</span>The indexing and redirect systems point at different roots</h4>
+        <p>The indexer defaults to <code>courses/&lt;slug&gt;/rag-db</code> and mirrors into research and sources. The redirector resolves sources from <code>course_dir/sources</code> or <code>plan/sources</code>, not <code>research/&lt;slug&gt;/sources</code>. The components do not share one path contract.</p>
+        <div class="evidence">indexer.py:39–61<br>redirector.py → course/sources or plan/sources</div>
+      </article>
+
+      <article class="hidden-card reveal">
+        <h4><span class="num">12</span>The TOC aligner is a standalone tool, not a compiler stage</h4>
+        <p><code>toc_aligner.py</code> exists and has its own CLI, but <code>tc.py create</code> and <code>course_builder.create_course</code> do not invoke it. The “multi-source TOC alignment” described in the flow page is not part of ordinary course creation.</p>
+        <div class="evidence">tc.py → create → course_builder.main<br>course_builder.py → no toc_aligner import/call</div>
+      </article>
+    </div>
+
+    <div class="callout neutral" style="margin-top:1rem">
+      <span class="label">Why the green suite is still useful</span>
+      The suite protects many individual contracts: gate prompts, extraction, scaffolding, memlog formatting, dispatcher parsing,
+      and file writes. The problem is not that the tests are fake. The problem is that they test the old, simpler layout and
+      mostly isolate components. There is no end-to-end test that starts with a topic and ends with a closed section.
+    </div>
+  </section>
+  <section class="section" id="review">
+    <div class="section-head">
+      <div>
+        <div class="kicker">08 · Course-correct review</div>
+        <h2>The proposal diagnoses real problems. Its completion claim is not supported.</h2>
+      </div>
+      <p>
+        Reviewed: <code>_bmad-output/initiative-textcourses/change-reconcile-flow-and-unattended-compiler/change-reconcile-flow-and-unattended-compiler.md</code>.
+        The direction is right; the scope, success criteria, and layout contract need revision before execution.
+      </p>
+    </div>
+
+    <div class="review-banner">
+      <div>
+        <h3>Verdict: revise before approving</h3>
+        <p>
+          Accept the problem statement. Reject the “all core runtime scripts are already implemented” premise and the
+          checked success criteria. The proposal is currently a specification wish-list with a documentation-sync label,
+          while the missing behavior requires code, tests, and a canonical storage decision.
+        </p>
+      </div>
+      <div class="review-score">
+        <div class="big">REVISE</div>
+        <div class="small">not ready to execute</div>
+      </div>
+    </div>
+
+    <div class="review-grid">
+      <div>
+        <div class="panel flat">
+          <h4>What the proposal gets right</h4>
+          <ul class="small" style="margin:.55rem 0 0">
+            <li>It names the directory sprawl and duplicate research roots.</li>
+            <li>It names the missing interactive/auto choice.</li>
+            <li>It names session-history growth and the absence of a dashboard.</li>
+            <li>It preserves the teaching invariant: completion still needs learner sign-off.</li>
+            <li>It correctly separates human notes from machine substrate in the intended layout.</li>
+            <li>It proposes a reasonable vocabulary for the missing requirements (<code>FR-46</code>–<code>FR-50</code>, <code>CAP-7</code>/<code>CAP-8</code>).</li>
+          </ul>
+        </div>
+
+        <div class="callout neutral" style="margin-top:.9rem">
+          <span class="label">The proposal’s strongest sentence</span>
+          “While course creation can be automated via <code>--mode auto</code>, teaching is NEVER unattended.”
+          That is the right invariant. It is also not implemented.
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h4>Claim-by-claim check</h4>
+          <div class="table-wrap" style="margin-top:.65rem">
+            <table class="table-stack">
+              <thead><tr><th>Proposal claim</th><th>Evidence</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>“All core runtime scripts are already implemented and tested.”</td>
+                  <td><span class="status missing">No</span> No auto mode, no dashboard, no section-close gate, no session scrub.</td>
+                </tr>
+                <tr>
+                  <td>“Zero directory duplication.”</td>
+                  <td><span class="status violated">No</span> Bootstrapper still creates <code>research</code>, <code>_tc/research</code>, <code>.tc/research</code>, <code>sources</code>, and <code>plan/sources</code>; scout still writes twice.</td>
+                </tr>
+                <tr>
+                  <td>“All 12 points are formally codified across PRD, Architecture, and UX specs.”</td>
+                  <td><span class="status missing">No</span> The PRD has no <code>FR-46</code>–<code>FR-50</code>; the UX spec has no <code>CAP-7</code>/<code>CAP-8</code>. Point 1 (skill exposure) is not addressed anywhere in the proposal.</td>
+                </tr>
+                <tr>
+                  <td>“326 tests remain 100% green.”</td>
+                  <td><span class="status present">True</span> 326 passed. But there are no tests for auto, dashboard, scrub, or the real <code>.tc/course.toml</code> notes path.</td>
+                </tr>
+                <tr>
+                  <td>“Low-to-medium effort; changes primarily formalize specifications.”</td>
+                  <td><span class="status violated">No</span> The proposal asks for new state-machine branches, a new mode, a new dashboard, a new closure gate, and new packaging rules. That is implementation, not documentation synchronization.</td>
+                </tr>
+                <tr>
+                  <td>“The runtime already reflects the desired compiler and harvesting architecture.”</td>
+                  <td><span class="status partial">Partly</span> The pieces exist, but the source map cannot see the harvested folders, and coverage can pass with zero sources. Architecture is not the same as working integration.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <h3>Blocking issues in the proposal</h3>
+    <div class="review-list">
+      <div class="review-item bad">
+        <span class="tag p0">P0</span>
+        <b>Success criteria are checked before the work exists</b>
+        <p>
+          The proposal marks all four criteria <code>[x]</code>. The PRD, Architecture, and UX artifacts do not contain the
+          promised additions; the runtime still has no auto mode, dashboard, or session scrub; duplicate directories still
+          exist. A checked box that no artifact supports is worse than an open one: it tells the next agent the work is done.
+        </p>
+      </div>
+
+      <div class="review-item bad">
+        <span class="tag p0">P0</span>
+        <b>It is classified as documentation synchronization, but it requires implementation</b>
+        <p>
+          The handoff says “direct synchronization of markdown specs and ticket status.” The proposal’s own requirements add
+          a new execution mode, a new closure gate, a dashboard generator, and a new session lifecycle. Those are code and
+          test work. The estimate (“low-to-medium,” “zero breaking API changes”) is not credible for that surface.
+        </p>
+      </div>
+
+      <div class="review-item bad">
+        <span class="tag p0">P0</span>
+        <b>It misses the two defects that block the current flow</b>
+        <p>
+          The proposal does not name Gate 1’s missing transition or the notes compiler’s <code>.tc/notes/</code> path bug.
+          Adding FRs around a broken transition will not make the transition work. The fix plan must start with these two
+          line-level defects.
+        </p>
+      </div>
+
+      <div class="review-item bad">
+        <span class="tag p0">P0</span>
+        <b>The proposed layout still contradicts point 2</b>
+        <p>
+          The new architecture places raw downloads at <code>research/&lt;slug&gt;/sources/</code>, outside <code>.tc/</code>.
+          The learner said study material, research, and docs stay in <code>_tc</code>; only notes are outside. The proposal
+          also standardizes <code>.tc/</code> without resolving that the learner named <code>_tc</code>. It needs one explicit
+          contract and a migration story, not a diagram that quietly changes the requirement.
+        </p>
+      </div>
+
+      <div class="review-item bad">
+        <span class="tag p0">P0</span>
+        <b>“100% mathematical coverage” is still not measurable in the proposed architecture</b>
+        <p>
+          The proposal treats the coverage ledger as a non-negotiable invariant. The current auditor passes with zero sources
+          (0 / 0 = 100%), and the source mapper does not scan <code>rfcs/</code>, <code>papers/</code>, <code>docs/</code>, or
+          <code>sources/extracted/</code>. If those readers are not fixed, a new layout will only move the blind spot.
+        </p>
+      </div>
+
+      <div class="review-item warn">
+        <span class="tag p1">P1</span>
+        <b>Section sign-off is downgraded to chapter sign-off in the auto-mode wording</b>
+        <p>
+          The learner asks for approval to close <em>the section</em>, in every mode. The proposal’s FR-49 and story update
+          say “advancement to subsequent chapters.” Auto mode also promises “zero intermediate user prompts” without
+          spelling out that the section-close gate still pauses. The boundary must be explicit: unattended creation is allowed;
+          section closure is not.
+        </p>
+      </div>
+
+      <div class="review-item warn">
+        <span class="tag p1">P1</span>
+        <b>The missing-material rule has no auto-mode policy</b>
+        <p>
+          Point 6 says the learner decides when no material is found. Point 5 says auto mode should not stop for approval.
+          Those requirements collide. The proposal needs a deterministic policy: substitute open sources and record the
+          substitution, pause for a user-supplied file, or fail the run with a clear report. “Agent decides” is not enough
+          when the missing item may be the only canonical text.
+        </p>
+      </div>
+
+      <div class="review-item warn">
+        <span class="tag p1">P1</span>
+        <b>The dashboard is not technically defined</b>
+        <p>
+          A standalone HTML file cannot simply <code>fetch()</code> local <code>.tc/*.toml</code> when opened via
+          <code>file://</code>; browsers block it. The implementation must either embed a generated state snapshot in the
+          HTML, use a local server, or use the File System Access API. The proposal also does not say when the dashboard is
+          refreshed after a gate or lesson turn.
+        </p>
+      </div>
+
+      <div class="review-item warn">
+        <span class="tag p1">P1</span>
+        <b>Point 1 (single exported skill) is missing from the entire proposal</b>
+        <p>
+          The proposal claims all twelve points are codified, but it never addresses the public/internal skill boundary. Ten
+          <code>tc-*</code> skills remain exposed, and the public skill still points at scripts directly. This is a packaging
+          and access-control requirement, not a documentation flourish.
+        </p>
+      </div>
+
+      <div class="review-item warn">
+        <span class="tag p1">P1</span>
+        <b>No end-to-end acceptance tests or migration plan</b>
+        <p>
+          The only verification is “326 tests remain green.” There is no proposed test that starts from a topic, passes Gate
+          1, gets a course and Gate 2, completes a section, sees notes outside <code>.tc/</code>, and observes the session
+          scrub. There is also no migration for existing workspaces that already have duplicated roots and hidden notes.
+        </p>
+      </div>
+    </div>
+
+    <h3>What the proposal should add before it is approved</h3>
+    <div class="grid grid-2">
+      <div class="panel flat">
+        <h4>Contract and state-machine changes</h4>
+        <ul class="checklist">
+          <li><b>Reclassify the effort</b> as implementation + specification, with explicit code tickets and test tickets.</li>
+          <li><b>Choose one canonical storage contract.</b> Resolve <code>_tc</code> vs <code>.tc</code>, decide whether research lives inside it, and define the visible-only surface.</li>
+          <li><b>Fix Gate 1 → course creation.</b> The proceed action must invoke <code>create_course</code> and then Gate 2, or return a state that actually does so.</li>
+          <li><b>Fix the notes target.</b> Derive the course root from the manifest <em>path</em>, not its parent, and prove the visible <code>notes/chapter-XX.md</code> changes.</li>
+          <li><b>Define the section-close gate.</b> It must run in both modes, show compiled notes, require approval, then scrub only the approved session.</li>
+          <li><b>Define auto mode precisely.</b> Skip creation gates; preserve section closure; define missing-material and research-failure behavior.</li>
+          <li><b>Define the dashboard contract.</b> State source, snapshot vs live, refresh trigger, offline behavior, and the generated file location.</li>
+          <li><b>Enforce the skill boundary.</b> Only <code>tc</code> is exposed; all others are runtime-internal or documented as non-invocable.</li>
+        </ul>
+      </div>
+
+      <div class="panel flat">
+        <h4>Evidence and quality changes</h4>
+        <ul class="checklist">
+          <li><b>Make source mapping real.</b> Scan <code>rfcs/</code>, <code>papers/</code>, <code>docs/</code>, <code>sources/extracted/</code>, and user-provided material; remove arbitrary 1–50 fallback pointers.</li>
+          <li><b>Make coverage fail closed.</b> Zero sources must fail or be explicitly “not auditable,” never 100% PASSED.</li>
+          <li><b>Replace the templated critique.</b> Either run a real multi-perspective deliberation loop or label the output honestly as a fixed critique.</li>
+          <li><b>Remove hardcoded 100% coverage.</b> The summary must report the audit result it actually has.</li>
+          <li><b>Add end-to-end tests</b> for topic-only creation, drop-in creation, auto mode, section closure, scrub, dashboard generation, and skill exposure.</li>
+          <li><b>Replace static badges</b> in <code>flow.html</code> with measured status, or remove the badges until they are computed.</li>
+          <li><b>Version a migration.</b> Existing courses with <code>.tc/notes/</code> and duplicated research need a safe path to the chosen contract.</li>
+          <li><b>Remove all pre-checked success boxes</b> and replace them with observable acceptance criteria.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>A safer sequence</h3>
+    <ol class="small" style="max-width:900px">
+      <li><b>Decide the storage contract.</b> One machine root, one notes root, one research root, one migration path. Do not touch feature code before this is settled.</li>
+      <li><b>Repair the creation state machine.</b> Gate 1 proceed must create the course. Add a test that starts from a topic and ends at Gate 2.</li>
+      <li><b>Repair the human output path.</b> Notes must land in the visible course <code>notes/</code> folder. Add a test using the real <code>.tc/course.toml</code> layout.</li>
+      <li><b>Add section closure.</b> Review compiled notes, require approval, then scrub the session. Keep this invariant independent of creation mode.</li>
+      <li><b>Add auto mode.</b> Implement the mode switch and headless creation, with explicit section-close pauses and a missing-material policy.</li>
+      <li><b>Repair evidence plumbing.</b> Align source mapper, auditor, extractor, indexer, and redirector on the same roots; fail closed on zero coverage.</li>
+      <li><b>Generate the dashboard</b> from the same state model, using an offline-safe snapshot or a documented local server.</li>
+      <li><b>Enforce packaging and replace claims.</b> Expose only <code>tc</code>; remove static “Fully Aligned” badges; run the new end-to-end suite.</li>
+    </ol>
+
+    <h3>Acceptance tests the proposal should name</h3>
+    <pre><code>test_topic_only_dispatch_creates_course_and_reaches_gate_2
+test_drop_in_pdf_creates_course_and_reaches_gate_2
+test_auto_mode_skips_creation_gates
+test_auto_mode_still_pauses_for_section_close
+test_section_close_shows_notes_and_requires_approval
+test_approved_section_scrubs_session_jsonl
+test_compile_notes_updates_visible_notes_chapter_xx
+test_status_board_is_generated_by_bootstrap_and_renders_offline
+test_only_tc_skill_is_publicly_exposed
+test_source_map_uses_harvested_and_extracted_material
+test_zero_source_coverage_is_not_reported_as_passed
+test_second_course_can_be_created_after_first_course_exists</code></pre>
+    <p class="tiny">
+      Names are illustrative; the point is that each one must exercise the end-to-end state transition, not a helper in isolation.
+    </p>
+  </section>
+  <section class="section" id="evidence">
+    <div class="section-head">
+      <div>
+        <div class="kicker">09 · Evidence &amp; handoff</div>
+        <h2>What was checked, and what to preserve</h2>
+      </div>
+      <p>
+        This is a static review document. It does not read live state. Every observation below can be re-checked against the
+        listed files or reproduced in a disposable workspace.
+      </p>
+    </div>
+
+    <div class="evidence-grid">
+      <details class="evidence" open>
+        <summary>Creation, gates, and the dead end</summary>
+        <div class="body">
+          <p>
+            <code>tc.py</code> implements <code>dispatch_conversational_turn</code>, but <code>skills/tc/SKILL.md</code>
+            never calls it. The dispatcher’s topic-only branch runs the scout, opens the acquisition gate, and returns
+            without a course. The <code>proceed_open</code> response only reports “creating_course.”
+          </p>
+          <div class="source-list">
+            <div class="source-item"><span class="file">_tc/scripts/tc.py</span><br>Dispatch CLI; intake; scout; Gate 1; Gate 2; teaching turns.</div>
+            <div class="source-item"><span class="file">_tc/scripts/checkpoint_manager.py</span><br>Acquisition and approval gates; no section-close gate; no auto bypass.</div>
+            <div class="source-item"><span class="file">skills/tc/SKILL.md</span><br>Workflow calls <code>checkpoint_manager</code>, <code>extractor</code>, and <code>teach_engine</code> directly; no dispatcher, no builder.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="evidence" open>
+        <summary>Workspace layout and duplicate research</summary>
+        <div class="body">
+          <p>
+            <code>bootstrapper.py</code> creates the overlapping roots. <code>scout.py</code> writes the dossier and sources
+            to both the visible research folder and the hidden .tc research folder, and writes the same critique three times.
+          </p>
+          <div class="source-list">
+            <div class="source-item"><span class="file">_tc/scripts/bootstrapper.py</span><br><code>dirs_to_create</code> includes <code>_tc</code>, <code>.tc</code>, <code>_tc/research</code>, <code>.tc/research</code>, <code>research</code>, <code>sources</code>, <code>plan/sources</code>.</div>
+            <div class="source-item"><span class="file">_tc/scripts/scout.py</span><br>Writes to <code>research/&lt;slug&gt;</code> and <code>.tc/research/&lt;slug&gt;</code>; three critique writes.</div>
+            <div class="source-item"><span class="file">_tc/scripts/extractor.py</span><br>Drop-in output defaults to <code>sources/extracted/</code>; the mapper reads <code>sources/raw/</code>.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="evidence">
+        <summary>Notes path, session lifecycle, and completion</summary>
+        <div class="body">
+          <p>
+            The notes compiler derives <code>course_dir</code> from <code>manifest_file.parent</code>, so the real
+            <code>.tc/course.toml</code> layout sends chapter notes to <code>.tc/notes/</code>. The teaching engine
+            auto-compiles on the last concept and never deletes the session. The practical evaluator trusts a caller-supplied
+            PASS and completes the entire course.
+          </p>
+          <div class="source-list">
+            <div class="source-item"><span class="file">_tc/scripts/notes_compiler.py</span><br><code>compile_notes</code>, <code>course_dir = manifest_file.parent</code>, <code>notes_dir = course_dir / "notes"</code>.</div>
+            <div class="source-item"><span class="file">_tc/scripts/teach_engine.py</span><br><code>advance_lesson_concept</code>; auto compile; <code>session.jsonl</code> append only; no unlink/truncate.</div>
+            <div class="source-item"><span class="file">_tc/scripts/practical_evaluator.py</span><br><code>--verdict PASS</code> sets course, chapters, and sections to <code>completed</code>.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="evidence">
+        <summary>Source map and coverage audit</summary>
+        <div class="body">
+          <p>
+            The mapper only scans a raw folder that the normal harvest does not fill. When it finds no match, it writes an
+            arbitrary first-50-lines pointer. The coverage auditor looks in the same raw locations and reports 100% PASSED
+            for zero sources. The course builder’s coverage summary defaults to 100% rather than calling the audit.
+          </p>
+          <div class="source-list">
+            <div class="source-item"><span class="file">_tc/scripts/source_mapper.py</span><br><code>raw_sources_dir = research/&lt;slug&gt;/sources/raw</code>; fallback pointer to <code>[1, min(50, total_lines)]</code>.</div>
+            <div class="source-item"><span class="file">_tc/scripts/auditor.py</span><br><code>coverage_ratio</code> defaults to 100.0 when <code>total_sections == 0</code>; <code>is_passed = dropped_count == 0</code>.</div>
+            <div class="source-item"><span class="file">_tc/scripts/course_builder.py</span><br><code>generate_bounded_deliberation_summary</code> defaults <code>coverage_pct=100.0</code>; no <code>audit_coverage</code> call.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="evidence">
+        <summary>Tests, docs, and the static badges</summary>
+        <div class="body">
+          <p>
+            The suite is green, but the important notes tests use a legacy root <code>course.toml</code>. Searches for auto
+            mode, dashboard, session scrub, or session deletion across <code>tests/</code> return no matches. The
+            <code>flow.html</code> page is static; all twelve “Fully Aligned” badges are markup.
+          </p>
+          <div class="source-list">
+            <div class="source-item"><span class="file">tests/</span><br>326 passed in 122.02s. No auto/dashboard/scrub/delete tests.</div>
+            <div class="source-item"><span class="file">tests/test_streamline_layout.py</span><br>Uses root <code>course.toml</code>; asserts root <code>notes/chapter-01.md</code>.</div>
+            <div class="source-item"><span class="file">flow.html</span><br>Twelve cards, all with static <code>Fully Aligned</code> badges; no live state.</div>
+            <div class="source-item"><span class="file">docs/</span><br>Several documents still describe root course files, ten skills, or capabilities not present in the runtime.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="evidence">
+        <summary>The course-correct proposal</summary>
+        <div class="body">
+          <p>
+            The proposal identifies five real problems and proposes sensible requirements, but it labels the work as
+            documentation synchronization and marks all success criteria complete. The FR/CAP identifiers it claims to add are
+            not in the referenced artifacts, and the proposed layout places research outside the folder the learner named.
+          </p>
+          <div class="source-list">
+            <div class="source-item"><span class="file">change-reconcile-flow-and-unattended-compiler.md</span><br>Problem statement, FR-46–FR-50, CAP-7/CAP-8, checked success criteria.</div>
+            <div class="source-item"><span class="file">prd-textcourses.md</span><br>No <code>FR-46</code>–<code>FR-50</code> found.</div>
+            <div class="source-item"><span class="file">spec-consumer-ux-and-unified-tc.md</span><br>No <code>CAP-7</code>/<code>CAP-8</code> found.</div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <h3>Commands and observations</h3>
+    <pre><code>python -m pytest -q
+# 326 passed in 122.02s
+
+tc.py dispatch --input "Distributed Storage" --workspace &lt;tmp&gt; --json
+# state: acquisition_gate
+
+tc.py dispatch --input "1" --workspace &lt;tmp&gt; --json
+# state: creating_course; courses/ == []
+
+tc.py dispatch --input "1" --workspace &lt;tmp&gt; --json
+# state: acquisition_gate; slug == "1"; research/1/ created
+
+tc.py dispatch --input "1" --workspace &lt;tmp-with-pdf&gt; --json
+# drop-in branch: auto-ingest -> create_course -> approval_gate</code></pre>
+
+    <div class="grid grid-2" style="margin-top:1rem">
+      <div class="callout warn">
+        <span class="label">Scope caveat</span>
+        The working tree contains local edits on top of commit <code>632e84d</code>. This review describes the files as they
+        exist in that working tree on 5 November 2026. It does not claim the base commit has identical behavior, and it does
+        not modify runtime files or tests.
+      </div>
+      <div class="callout neutral">
+        <span class="label">Use this document correctly</span>
+        Treat it as a review input for course correction, not as a new implementation plan. The required next move is to
+        revise the proposal around one storage contract, fix the P0 transitions, and add end-to-end tests before marking any
+        requirement complete.
+      </div>
+    </div>
+
+    <h3>What course correction should preserve</h3>
+    <div class="grid grid-3">
+      <div class="panel flat">
+        <h4>One front door</h4>
+        <p class="small" style="margin:.35rem 0 0">A learner should not need to know whether the correct path is the skill, the dispatcher, a gate command, or a teacher command.</p>
+      </div>
+      <div class="panel flat">
+        <h4>Consent where it matters</h4>
+        <p class="small" style="margin:.35rem 0 0">Source selection, roadmap approval, and section closure are the learner’s decisions. Unattended creation is a convenience, not a license to skip closure.</p>
+      </div>
+      <div class="panel flat">
+        <h4>Notes as the human artifact</h4>
+        <p class="small" style="margin:.35rem 0 0">The learner should see the compiled chapter notes at the root of the course. Everything else can be machine substrate, provided it is in the right place.</p>
+      </div>
+      <div class="panel flat">
+        <h4>Evidence over labels</h4>
+        <p class="small" style="margin:.35rem 0 0">A “100% coverage” line is only useful if it is computed from the sources the course actually used. A badge is not evidence.</p>
+      </div>
+      <div class="panel flat">
+        <h4>Memory with granularity</h4>
+        <p class="small" style="margin:.35rem 0 0">Course-level memory is not enough when the learner asked for the decision history of a specific section or chapter.</p>
+      </div>
+      <div class="panel flat">
+        <h4>A dashboard that is actually alive</h4>
+        <p class="small" style="margin:.35rem 0 0">It should be generated from the same state the engines write, and it should still work when opened offline.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div>
+      <p><strong>TextCourses — Actual Runtime Flow</strong></p>
+      <p>Evidence review prepared for course correction · 5 November 2026 · base commit 632e84d + local edits.</p>
+      <p>No runtime files were modified. This page is self-contained and does not read live workspace state.</p>
+    </div>
+    <div class="mark">
+      <div>12 learner points</div>
+      <div>5 P0 · 7 P1</div>
+      <div>0 / 12 fully evidenced</div>
+    </div>
+  </footer>
+</main>
+
+<script>
+  (() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const progress = document.getElementById("reading-progress");
+    const updateProgress = () => {
+      if (!progress) return;
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? Math.min(100, Math.max(0, (window.scrollY / max) * 100)) : 0;
+      progress.style.width = pct + "%";
+    };
+    let ticking = false;
+    window.addEventListener("scroll", () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        updateProgress();
+        ticking = false;
+      });
+    }, { passive: true });
+    updateProgress();
+
+    const navLinks = Array.from(document.querySelectorAll(".top-nav a"));
+    const sections = navLinks
+      .map(a => document.querySelector(a.getAttribute("href")))
+      .filter(Boolean);
+
+    if ("IntersectionObserver" in window && sections.length) {
+      const navObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const id = "#" + entry.target.id;
+          navLinks.forEach(a => a.classList.toggle("active", a.getAttribute("href") === id));
+        });
+      }, { rootMargin: "-25% 0px -62% 0px", threshold: 0 });
+      sections.forEach(s => navObserver.observe(s));
+    }
+
+    const revealItems = document.querySelectorAll(".reveal");
+    if (reduceMotion || !("IntersectionObserver" in window)) {
+      revealItems.forEach(el => el.classList.add("is-visible"));
+    } else {
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
+      revealItems.forEach(el => revealObserver.observe(el));
+    }
+
+    const visionButtons = document.querySelectorAll("[data-vision-filter]");
+    const visionCards = Array.from(document.querySelectorAll("#vision-grid .quote-card"));
+    visionButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const filter = btn.getAttribute("data-vision-filter");
+        visionButtons.forEach(b => {
+          const active = b === btn;
+          b.classList.toggle("active", active);
+          b.setAttribute("aria-pressed", String(active));
+        });
+        visionCards.forEach(card => {
+          const show = filter === "all" || card.getAttribute("data-status") === filter;
+          card.style.display = show ? "" : "none";
+        });
+      });
+    });
+
+    const matrixButtons = document.querySelectorAll("[data-matrix-filter]");
+    const matrixRows = Array.from(document.querySelectorAll("#gap-matrix tbody tr"));
+    matrixButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const filter = btn.getAttribute("data-matrix-filter");
+        matrixButtons.forEach(b => {
+          const active = b === btn;
+          b.classList.toggle("active", active);
+          b.setAttribute("aria-pressed", String(active));
+        });
+        matrixRows.forEach(row => {
+          const show = filter === "all" || row.getAttribute("data-sev") === filter;
+          row.classList.toggle("is-hidden", !show);
+        });
+      });
+    });
+
+    document.querySelectorAll(".table-stack").forEach(table => {
+      const headers = Array.from(table.querySelectorAll("thead th"), th =>
+        (th.getAttribute("data-short") || th.textContent || "").trim()
+      );
+      table.querySelectorAll("tbody tr").forEach(row => {
+        Array.from(row.children).forEach((cell, index) => {
+          if (headers[index]) cell.setAttribute("data-label", headers[index]);
+        });
+      });
+    });
+  })();
+</script>
+</body>
+</html>

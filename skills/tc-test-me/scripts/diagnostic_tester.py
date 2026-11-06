@@ -100,13 +100,13 @@ def resolve_course_dir(course_arg: str | None) -> Path:
     """Resolve course directory from slug, path, or current directory."""
     if course_arg:
         p = Path(course_arg)
-        if (p / "course.toml").is_file():
+        if (p / ".tc" / "course.toml").is_file() or (p / "course.toml").is_file():
             return p.resolve()
         candidate = Path("courses") / course_arg
-        if (candidate / "course.toml").is_file():
+        if (candidate / ".tc" / "course.toml").is_file() or (candidate / "course.toml").is_file():
             return candidate.resolve()
         candidate_abs = _PROJECT_ROOT / "courses" / course_arg
-        if (candidate_abs / "course.toml").is_file():
+        if (candidate_abs / ".tc" / "course.toml").is_file() or (candidate_abs / "course.toml").is_file():
             return candidate_abs.resolve()
         raise FileNotFoundError(f"Course directory not found for '{course_arg}'")
 
@@ -118,7 +118,7 @@ def resolve_course_dir(course_arg: str | None) -> Path:
         courses_dir = _PROJECT_ROOT / "courses"
 
     if courses_dir.is_dir():
-        subdirs = [d for d in courses_dir.iterdir() if d.is_dir() and (d / "course.toml").is_file()]
+        subdirs = [d for d in courses_dir.iterdir() if d.is_dir() and ((d / ".tc" / "course.toml").is_file() or (d / "course.toml").is_file())]
         if len(subdirs) == 1:
             return subdirs[0].resolve()
         elif len(subdirs) > 1:
@@ -129,7 +129,7 @@ def resolve_course_dir(course_arg: str | None) -> Path:
 
 def load_course_toml(course_dir: Path) -> dict[str, Any]:
     """Load and parse course.toml."""
-    course_toml_path = course_dir / "course.toml"
+    course_toml_path = course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else course_dir / "course.toml"
     if not course_toml_path.is_file():
         raise FileNotFoundError(f"course.toml not found at {course_toml_path}")
     with open(course_toml_path, "rb") as f:
@@ -417,7 +417,7 @@ def cmd_record(args: argparse.Namespace) -> None:
             manifest.get("course", {})["status"] = "completed"
 
         try:
-            atomic_write_toml(course_dir / "course.toml", manifest)
+            atomic_write_toml(course_dir / ".tc" / "course.toml" if (course_dir / ".tc" / "course.toml").is_file() else (course_dir / "course.toml"), manifest)
         except Exception as e:
             output_json({
                 "ok": False,

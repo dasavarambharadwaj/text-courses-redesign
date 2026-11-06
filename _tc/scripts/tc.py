@@ -76,6 +76,10 @@ SUBCOMMAND_MODULES = {
     "tracker": "lesson_tracker",
     "checkpoint": "checkpoint_manager",
     "gate": "checkpoint_manager",
+    "papers": "paper_fetcher",
+    "paper-fetcher": "paper_fetcher",
+    "books": "book_scout",
+    "book-scout": "book_scout",
 }
 
 COMMAND_DESCRIPTIONS = {
@@ -83,6 +87,8 @@ COMMAND_DESCRIPTIONS = {
     "research": "Autonomous 5-hat deep research and dossier generation",
     "scout": "Universal multi-hat research engine and dossier compiler",
     "harvest": "Autonomous multi-source deep harvester for repos, transcripts, and gold standards",
+    "papers": "Autonomous academic paper, IETF RFC, and systems documentation fetcher",
+    "books": "Canonical landmark textbook discovery and open repository search",
     "extractor": "Pure-Python verbatim document extraction and pre-flight probe",
     "extract": "Pure-Python verbatim document extraction and drop-in auto-ingestion",
     "toc": "Table of Contents alignment, semantic clustering, and deduplication",
@@ -206,8 +212,45 @@ def dispatch_conversational_turn(
             auto_ingest_workspace(ws)
 
         if not discovered_docs:
-            rec_books = [f"Canonical reference for {topic_title}"]
-            gate = create_acquisition_gate(ws, slug=slug, recommended_books=rec_books, found_sources=[])
+            # 1. Execute autonomous research & discovery (find books, download RFCs/papers)
+            try:
+                from scout import run_scout
+            except ImportError:
+                from _tc.scripts.scout import run_scout
+
+            try:
+                run_scout(slug=slug, topic=topic_title, workspace=ws)
+            except Exception:
+                pass
+
+            # 2. Extract discovered canonical books and auto-harvested sources
+            rec_books = []
+            gs_file = ws / "research" / slug / "gold-standards.md"
+            if gs_file.is_file():
+                for line in gs_file.read_text(encoding="utf-8").splitlines():
+                    if "ACQUISITION NEEDED" in line:
+                        m = re.search(r"\*\*(.*?)\*\*", line)
+                        if m:
+                            rec_books.append(m.group(1))
+
+            if not rec_books:
+                rec_books = [f"Canonical reference for {topic_title}"]
+
+            found_specs = []
+            rfcs_dir = ws / "research" / slug / "sources" / "rfcs"
+            if rfcs_dir.is_dir():
+                for rf in sorted(rfcs_dir.glob("*.txt")):
+                    found_specs.append(f"IETF RFC: {rf.stem.replace('_', ' ').upper()}")
+            docs_dir = ws / "research" / slug / "sources" / "docs"
+            if docs_dir.is_dir():
+                for df in sorted(docs_dir.glob("*.md")):
+                    found_specs.append(f"Official Spec: {df.stem.replace('_', ' ').title()}")
+            papers_dir = ws / "research" / slug / "sources" / "papers"
+            if papers_dir.is_dir():
+                for pf in sorted(papers_dir.glob("*.md")):
+                    found_specs.append(f"Academic Paper: {pf.stem.replace('_', ' ')}")
+
+            gate = create_acquisition_gate(ws, slug=slug, recommended_books=rec_books, found_sources=found_specs)
             return {
                 "ok": True,
                 "state": "acquisition_gate",

@@ -177,13 +177,13 @@ def deprecate_notes_file(
 
 def find_course_manifest(course_dir: Path) -> Path | None:
     """Locate course.toml within given course directory."""
-    manifest = course_dir / "course.toml"
+    manifest = (course_dir / ".tc" / "course.toml") if (course_dir / ".tc" / "course.toml").is_file() else (course_dir / "course.toml")
     if manifest.is_file():
         return manifest
     # Search one level deep if given courses/ folder
     for child in course_dir.iterdir():
-        if child.is_dir() and (child / "course.toml").is_file():
-            return child / "course.toml"
+        if child.is_dir() and ((child / ".tc" / "course.toml").is_file() or (child / "course.toml").is_file()):
+            return (child / ".tc" / "course.toml") if (child / ".tc" / "course.toml").is_file() else (child / "course.toml")
     return None
 
 

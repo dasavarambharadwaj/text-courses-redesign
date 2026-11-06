@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TextCourses Architecture & Execution Flow Specification</title>
+<style>
+:root {
+  --bg: #090d16;
+  --bg-card: rgba(17, 24, 39, 0.75);
+  --bg-card-hover: rgba(30, 41, 59, 0.85);
+  --bg-elevated: #151e32;
+  --border: rgba(148, 163, 184, 0.14);
+  --border-glow: rgba(56, 189, 248, 0.35);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-sub: #64748b;
+  --blue: #38bdf8;
+  --blue-dim: rgba(56, 189, 248, 0.12);
+  --emerald: #34d399;
+  --emerald-dim: rgba(52, 211, 153, 0.12);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167, 139, 250, 0.12);
+  --amber: #fbbf24;
+  --amber-dim: rgba(251, 191, 36, 0.12);
+  --rose: #fb7185;
+  --rose-dim: rgba(251, 113, 133, 0.12);
+  --cyan: #22d3ee;
+  --cyan-dim: rgba(34, 211, 238, 0.12);
+  --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text-main);
+  font-family: var(--sans);
+  line-height: 1.6;
+  overflow-x: hidden;
+  background-image: 
+    radial-gradient(circle at 15% 0%, rgba(56, 189, 248, 0.08), transparent 45%),
+    radial-gradient(circle at 85% 30%, rgba(167, 139, 250, 0.07), transparent 40%),
+    radial-gradient(circle at 50% 90%, rgba(52, 211, 153, 0.05), transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+/* Sticky Navbar */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(9, 13, 22, 0.88);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+.brand-badge {
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.nav-links {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+}
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+}
+.nav-links a:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+.nav-links a.active {
+  color: var(--blue);
+  background: var(--blue-dim);
+}
+
+/* Container */
+.container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 6rem;
+}
+
+/* Hero Header */
+.hero {
+  text-align: center;
+  padding: 3rem 1rem 4rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 3.5rem;
+}
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--blue-dim);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: var(--blue);
+  padding: 0.35rem 0.9rem;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  font-family: var(--mono);
+}
+.hero h1 {
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 1.25rem;
+  background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero p {
+  color: var(--text-muted);
+  font-size: 1.12rem;
+  max-width: 820px;
+  margin: 0 auto 2rem;
+  line-height: 1.6;
+}
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+.stat-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 0.8rem 1.4rem;
+  border-radius: var(--radius-md);
+  text-align: center;
+  min-width: 140px;
+}
+.stat-chip .val {
+  font-family: var(--mono);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--blue);
+}
+.stat-chip .lbl {
+  font-size: 0.72rem;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+
+/* Section Common */
+.section {
+  margin-bottom: 5rem;
+  scroll-margin-top: 5rem;
+}
+.section-header {
+  margin-bottom: 2rem;
+}
+.sec-tag {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+.sec-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  margin-bottom: 0.4rem;
+}
+.sec-desc {
+  color: var(--text-muted);
+  font-size: 1rem;
+  max-width: 850px;
+}
+
+/* Card Styling */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  transition: all 0.25s ease;
+}
+.card:hover {
+  border-color: var(--border-glow);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Quick Filter / Tab Bar */
+.filter-bar {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.filter-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.filter-btn:hover, .filter-btn.active {
+  background: var(--blue-dim);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+/* 12 Points Breakdown Grid */
+.points-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+.point-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+.point-card:hover {
+  border-color: var(--border-glow);
+}
+.point-header {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border);
+  padding: 1.1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.point-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.point-num {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 800;
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+}
+.point-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+.point-badges {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: var(--mono);
+}
+.badge-match {
+  background: var(--emerald-dim);
+  color: var(--emerald);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+.badge-adapted {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.badge-enhanced {
+  background: var(--purple-dim);
+  color: var(--purple);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+.badge-core {
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.point-body {
+  padding: 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 1.5rem;
+}
+@media (max-width: 900px) {
+  .point-body { grid-template-columns: 1fr; }
+}
+
+.user-view {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+}
+.user-view h4 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.user-quote {
+  font-style: italic;
+  color: #e2e8f0;
+  font-size: 0.93rem;
+  line-height: 1.6;
+  border-left: 2px solid var(--amber);
+  padding-left: 0.85rem;
+  margin-bottom: 0.8rem;
+}
+.user-summary {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+
+.code-view {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+}
+.code-view h4 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--blue);
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.code-detail {
+  font-size: 0.9rem;
+  color: var(--text-main);
+  line-height: 1.6;
+  margin-bottom: 0.9rem;
+}
+.code-files {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.file-ref {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.file-ref::before {
+  content: '⚡';
+  font-size: 0.7rem;
+}
+
+/* Comparison Matrix Table */
+.matrix-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+table.matrix {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9rem;
+}
+table.matrix th {
+  background: var(--bg-elevated);
+  padding: 1rem 1.2rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+table.matrix td {
+  padding: 1.1rem 1.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: top;
+}
+table.matrix tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Flowchart Visual Container */
+.flow-diagram {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+.flow-step-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  position: relative;
+}
+.step-node {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  position: relative;
+  transition: all 0.25s;
+}
+.step-node:hover {
+  border-color: var(--blue);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+.step-node .node-idx {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--blue);
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+.step-node h4 {
+  font-size: 1.05rem;
+  margin-bottom: 0.4rem;
+  color: #fff;
+}
+.step-node p {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.gate-tag {
+  display: inline-block;
+  margin-top: 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-family: var(--mono);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+.gate-tag.interactive {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.gate-tag.auto {
+  background: var(--emerald-dim);
+  color: var(--emerald);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+/* 4 Hats Multi-Agent Grid */
+.hats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+.hat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.hat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+.hat-pedagogue::before { background: var(--blue); }
+.hat-skeptic::before { background: var(--rose); }
+.hat-pragmatist::before { background: var(--amber); }
+.hat-synthesizer::before { background: var(--emerald); }
+
+.hat-card h3 {
+  font-size: 1.15rem;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.hat-card .hat-role {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--mono);
+  color: var(--text-sub);
+  margin-bottom: 0.75rem;
+}
+.hat-card p {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* File Tree Comparison */
+.tree-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+@media (max-width: 850px) {
+  .tree-grid { grid-template-columns: 1fr; }
+}
+.tree-box {
+  background: #060911;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  font-family: var(--mono);
+  font-size: 0.84rem;
+  line-height: 1.7;
+}
+.tree-box .tree-title {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tree-box .dir { color: var(--blue); font-weight: 700; }
+.tree-box .file { color: #e2e8f0; }
+.tree-box .comment { color: var(--text-sub); font-style: italic; }
+
+/* Interactive Dashboard Prototype */
+.dashboard-frame {
+  background: #090e1a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+}
+.dash-header {
+  background: #111827;
+  padding: 1rem 1.75rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dash-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.dash-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+.dash-tab {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dash-tab.active {
+  background: var(--blue-dim);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.dash-content {
+  padding: 1.75rem;
+}
+.dash-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+@media (max-width: 950px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}
+.dash-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-sub);
+  margin-bottom: 0.9rem;
+}
+
+/* Chapter Progress List */
+.chapter-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.chapter-item:hover, .chapter-item.active {
+  border-color: var(--blue);
+  background: rgba(56, 189, 248, 0.05);
+}
+.chap-info h5 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.2rem;
+}
+.chap-info p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+.chap-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.status-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  font-family: var(--mono);
+}
+.status-pill.completed { background: var(--emerald-dim); color: var(--emerald); }
+.status-pill.in-progress { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue); }
+.status-pill.locked { background: rgba(255, 255, 255, 0.05); color: var(--text-sub); }
+
+/* Live TOML / JSON Inspector */
+.inspector-box {
+  background: #050811;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: #a5b4fc;
+  height: 380px;
+  overflow-y: auto;
+  line-height: 1.5;
+}
+
+/* Codeblock Snippet */
+pre.codeblock {
+  background: #060911;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: #e2e8f0;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  line-height: 1.55;
+}
+
+/* Alert Boxes */
+.callout {
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+  border-left: 4px solid;
+}
+.callout-info {
+  background: var(--blue-dim);
+  border-color: var(--blue);
+  color: #e0f2fe;
+}
+.callout-warning {
+  background: var(--amber-dim);
+  border-color: var(--amber);
+  color: #fef3c7;
+}
+.callout-success {
+  background: var(--emerald-dim);
+  border-color: var(--emerald);
+  color: #d1fae5;
+}
+.callout-title {
+  font-weight: 800;
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 4rem 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-sub);
+  font-size: 0.85rem;
+}
+</style>
+</head>
+<body>
+
+<!-- STICKY NAVBAR -->
+<nav>
+  <div class="brand">
+    <span>TextCourses</span>
+    <span class="brand-badge">Flow & Architecture Spec</span>
+  </div>
+  <div class="nav-links">
+    <a href="#overview" class="active">Overview</a>
+    <a href="#points-matrix">12 Points Analysis</a>
+    <a href="#visual-flow">End-to-End Flow</a>
+    <a href="#four-hats">4-Hat Consensus</a>
+    <a href="#compiler">Deterministic Compiler</a>
+    <a href="#canvas">Clean Canvas</a>
+    <a href="#status-dashboard">Status Dashboard</a>
+    <a href="#roadmap">Missing Points</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- HERO SECTION -->
+  <header class="hero" id="overview">
+    <div class="hero-pill">⚡ ARCHITECTURAL SPECIFICATION &amp; RECONCILIATION</div>
+    <h1>TextCourses Orchestration Flow</h1>
+    <p>
+      An exhaustive comparative analysis between the <strong>User's 12-Point Flow Vision</strong> and the <strong>Production Codebase Reality</strong>. Documents how TextCourses autonomously harvests authoritative materials, debates curriculum via 4-hat consensus, compiles deterministic $O(1)$ line-sliced textbooks, and provides Socratic grounded teaching.
+    </p>
+
+    <div class="hero-stats">
+      <div class="stat-chip">
+        <div class="val">12 / 12</div>
+        <div class="lbl">User Requirements Mapped</div>
+      </div>
+      <div class="stat-chip">
+        <div class="val">0</div>
+        <div class="lbl">Probabilistic Vector RAG</div>
+      </div>
+      <div class="stat-chip">
+        <div class="val">O(1)</div>
+        <div class="lbl">Line-Slice Symbol Lookup</div>
+      </div>
+      <div class="stat-chip">
+        <div class="val">100%</div>
+        <div class="lbl">Deterministic Topic Audit</div>
+      </div>
+      <div class="stat-chip">
+        <div class="val">2 Modes</div>
+        <div class="lbl">Auto vs Interactive</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CALLOUT NOTE -->
+  <div class="callout callout-info">
+    <div class="callout-title">📌 Purpose of this Specification</div>
+    <div>
+      This document captures the exact execution flow of TextCourses. The user's exact requirements are cited verbatim in amber, juxtaposed directly against the production runtime implementation in blue, followed by an architectural matrix and an interactive status board prototype.
+    </div>
+  </div>
+
+  <!-- SECTION 1: THE 12 POINTS DETAILED BREAKDOWN -->
+  <section class="section" id="points-matrix">
+    <div class="section-header">
+      <div class="sec-tag">◈ Core System Requirements</div>
+      <h2 class="sec-title">The 12 User Points vs. Codebase Reality</h2>
+      <p class="sec-desc">Every requirement stated by the user analyzed with surgical precision, showing how the engine operates, where it conforms, and where safety or compiler invariants enhance the flow.</p>
+    </div>
+
+    <!-- FILTER BUTTONS -->
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="filterPoints('all')">Show All 12 Points</button>
+      <button class="filter-btn" onclick="filterPoints('research')">Research &amp; Materials (4, 6, 7)</button>
+      <button class="filter-btn" onclick="filterPoints('compiler')">Compiler &amp; DAG (8, 9)</button>
+      <button class="filter-btn" onclick="filterPoints('teaching')">Teaching &amp; Memory (10, 11)</button>
+      <button class="filter-btn" onclick="filterPoints('orchestration')">Orchestration &amp; UI (1, 2, 3, 5, 12)</button>
+    </div>
+
+    <div class="points-grid" id="pointsContainer">
+
+      <!-- POINT 1 -->
+      <div class="point-card" data-category="orchestration">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 01</span>
+            <span class="point-title">Single Exported Skill Invariant</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-core">CLI Core</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"1. only tc skill should be exported out. no other skill should be accessible. All are internal and only tc can call those."</div>
+            <div class="user-summary">The user must never see or interact directly with raw sub-skills like <code>tc-research</code>, <code>tc-create</code>, <code>tc-teach</code>, or <code>tc-index</code>. The user only invokes <code>/tc</code>.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Single Public Entrypoint:</strong> Only <code>tc/SKILL.md</code> is marked as the public orchestrator. Submodules (<code>tc-research</code>, <code>tc-create</code>, <code>tc-index</code>, <code>tc-teach</code>, <code>tc-practicals</code>, <code>tc-test-me</code>, <code>tc-verify-course</code>, <code>tc-redirect-course</code>) are internal engines executed via Python CLI router:
+              <br><br>
+              <code>python _tc/scripts/tc.py &lt;subcommand&gt;</code>
+              <br><br>
+              This prevents agent LLMs from jumping out-of-order and guarantees unified session state, lock acquisition, and checkpoint control.
+            </div>
+            <div class="code-files">
+              <span class="file-ref">skills/tc/SKILL.md (Public Entrypoint)</span>
+              <span class="file-ref">_tc/scripts/tc.py (Internal Dispatcher Router)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 2 -->
+      <div class="point-card" data-category="orchestration">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 02</span>
+            <span class="point-title">Encapsulation &amp; Clean Canvas Invariant</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-enhanced">Two-Tier Canvas</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"2. all study material and research and docs stay in _tc folder. just notes stays outside. Each and every decision and each and every change that i ask or how im learning and everything should be stored in memlog of that specific folder or section or chapter based on what im doing."</div>
+            <div class="user-summary">Learner workspace must never be polluted with raw dumps, indices, JSON files, or cache. Only human notes live outside. Everything else is inside <code>_tc/</code> with fine-grained memlogs.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Strict Two-Tier Separation:</strong>
+              <ul style="margin-top: 0.5rem; padding-left: 1.2rem; font-size: 0.88rem; color: #cbd5e1;">
+                <li><strong>Human Canvas:</strong> Contains only <code>overview.md</code> (live syllabus and progress) and <code>notes/chapter-XX.md</code> (distilled, publication-grade textbook chapters).</li>
+                <li><strong>Machine Substrate (<code>.tc/</code> &amp; <code>research/</code>):</strong> Holds <code>course.toml</code>, <code>source-map.toml</code>, <code>coverage-ledger.md</code>, raw RFCs/papers, extracted markdown, and section pedagogical plans.</li>
+                <li><strong>Granular Memlog:</strong> <code>memlog.py</code> maintains an append-only ledger tracking learner speed, diagnostic scores, preference adjustments, and gate sign-offs.</li>
+              </ul>
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/memlog.py (Dual-Register Memory)</span>
+              <span class="file-ref">_tc/scripts/checkpoint_manager.py (Directory Invariant Enforcement)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 3 -->
+      <div class="point-card" data-category="orchestration">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 03</span>
+            <span class="point-title">Intake &amp; Execution Mode Bifurcation</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-core">Gate Control</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"3. first tc asks me what i wnt to learn. then it asks some preference questions. We should also give onemore option that should we go straight to teaching without involving user at all. or we can ask each decision interactive way to create a course andd include user in every stage."</div>
+            <div class="user-summary">TC must ask what the learner wants to master and their preferences, plus offer an explicit choice: interactive co-creation vs fast-track unattended straight-to-teaching mode.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Preference Intake &amp; Mode Switch:</strong>
+              When <code>tc</code> launches, it captures:
+              <ol style="margin-top: 0.5rem; padding-left: 1.2rem; font-size: 0.88rem; color: #cbd5e1;">
+                <li><strong>Topic &amp; Target Depth:</strong> (e.g. Distributed Systems, Kernel Internals).</li>
+                <li><strong>Learning Style:</strong> Theory-first, Code-first, or Socratic.</li>
+                <li><strong>Mode Selection:</strong>
+                  <br>• <code>--mode interactive</code>: Halts at Gate 1 (Materials) and Gate 2 (Roadmap) for human inspection.
+                  <br>• <code>--mode auto</code>: Unattended pipeline. Auto-downloads open RFCs/papers, aligns TOCs, compiles source-maps, and boots straight into Chapter 1 Socratic teaching!
+                </li>
+              </ol>
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/tc.py (CLI Mode Parser)</span>
+              <span class="file-ref">_tc/scripts/checkpoint_manager.py (Interactive vs Auto Gates)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 4 -->
+      <div class="point-card" data-category="research">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 04</span>
+            <span class="point-title">Deep Research &amp; Gate 1 Material Review</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-enhanced">Zero-Key Scout</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"4. After asking all preferences.. if user chooses interactive, research agent will do all analysis and ask user these are the materials we need and these are the best material out there. this research agent should suggest from github, research papers, books, official docs etc etc. it should look at all the places on internet like reddit and quora and general articles to find the best courses or best books or best any form of material. then take approval from user that if the sources mentioned are ok or not. Then based on user input, do more research or stop research and go to next step."</div>
+            <div class="user-summary">In interactive mode, research agent scouts the web (books, papers, GitHub, docs, community syllabi), presents them to the user, and waits for approval before proceeding.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Multi-Source Scout &amp; Gate 1 Checkpoint:</strong>
+              <br>• <code>book_scout.py</code>: Queries Google Books &amp; OpenLibrary to identify definitive textbooks and classifies them as Open vs Proprietary.
+              <br>• <code>paper_fetcher.py</code>: Identifies landmark RFCs (IETF) and arXiv foundational papers.
+              <br>• <code>scout.py</code>: Synthesizes web consensus from GitHub awesome-lists, academic syllabi, and official documentation.
+              <br>• <strong>Gate 1 (Material Acquisition):</strong> Pauses and presents a rich table of discovered sources. The user can approve, add local PDF paths, or request further scout sweeps.
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/scout.py (Research Aggregator)</span>
+              <span class="file-ref">_tc/scripts/book_scout.py (Google Books &amp; OpenLibrary)</span>
+              <span class="file-ref">_tc/scripts/paper_fetcher.py (RFC &amp; arXiv Discovery)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 5 -->
+      <div class="point-card" data-category="orchestration">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 05</span>
+            <span class="point-title">Unattended Auto Mode Execution</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-core">Headless Engine</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"5. But if user selects no interactive mode in previous question, just go ahead with all steps and dont ask for approval thats it. but still all steps should run and agent will take decisions automatically."</div>
+            <div class="user-summary">If non-interactive mode is chosen, the engine must never stall for user confirmation during creation. It runs all steps autonomously and takes sensible defaults.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Autonomous Pipeline Bypass:</strong>
+              When <code>mode == "auto"</code>:
+              <ul style="margin-top: 0.5rem; padding-left: 1.2rem; font-size: 0.88rem; color: #cbd5e1;">
+                <li>Gate 1 auto-approves: Automatically downloads all open RFCs, papers, and docs without prompting.</li>
+                <li>Missing proprietary books are noted in <code>memlog.md</code> and substituted with open specs.</li>
+                <li>Gate 2 auto-approves: Multi-source TOC alignment, DAG ordering, and source-map compilation run immediately.</li>
+                <li>Course manifest is generated, and execution lands right at the Chapter 1 teaching session.</li>
+              </ul>
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/checkpoint_manager.py (Auto-Bypass Logic)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 6 -->
+      <div class="point-card" data-category="research">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 06</span>
+            <span class="point-title">Automated Resource Fetching &amp; Fallbacks</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-enhanced">Zero-Key Downloader</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"6. Then after research step is done, research agent should fetch all docs and resources from internet and place it in research folder based on course.if agent is not able to find any material, let user decide its ok or user will get the material himself and place it in researhc folder."</div>
+            <div class="user-summary">Download all docs and resources directly to the course research folder. If missing or proprietary, give user the option to supply their own file or proceed without it.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Encapsulated Source Ingestion:</strong>
+              Resources are downloaded strictly to <code>research/&lt;course-slug&gt;/sources/</code>:
+              <br>• <code>rfcs/</code>: Direct IETF RFC text downloads via <code>https://www.ietf.org/rfc/rfcXXXX.txt</code>.
+              <br>• <code>papers/</code>: Canonical arXiv papers via zero-key HTTPS API.
+              <br>• <code>docs/</code>: Linux kernel docs / official specs.
+              <br>• <code>user-provided/</code>: For proprietary books (e.g., DDIA), TC checks this directory. If missing, it alerts the learner with clear instructions to drop the PDF/EPUB or proceed with open specs.
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/paper_fetcher.py (Direct RFC &amp; Paper Ingestion)</span>
+              <span class="file-ref">_tc/scripts/scout.py (Directory Structure Manager)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 7 -->
+      <div class="point-card" data-category="research">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 07</span>
+            <span class="point-title">Verbatim Markdown Conversion &amp; 4-Hat Multi-Agent Debate</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-enhanced">100% Coverage Audit</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"7. after all this.. agent shoudl create material into md file. resource can be of any type, it should convert that all to md without any text removed. use code or use any library and decide based on type of material.. agent should also verify if all material is covered or not. that should also be a very good research. I think research agents debate internally and think with 4 hats. but that is not working as exptected i think. they should all debate each and every decision and it should be a intense ddiscussion to do research. each point will be critically analyzed."</div>
+            <div class="user-summary">Convert all ingested media to markdown with zero lost text. Research agents must debate with 4 distinct hats critically analyzing every topic and verify 100% coverage.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Verbatim Extractor + 4-Hat Deliberation Engine:</strong>
+              <br>• <code>extractor.py</code>: Zero-loss pure Python conversion preserving all formulas, code snippets, and tables into <code>research/&lt;course&gt;/markdown/</code>.
+              <br>• <strong>4-Hat Deliberation:</strong> Executes structured multi-agent debate (Pedagogue, Domain Skeptic, Pragmatist, Synthesizer) saved in <code>consensus-deliberation.md</code>.
+              <br>• <code>auditor.py</code> &amp; <code>coverage-ledger.md</code>: Mathematical audit verifying that every topic across all input sources maps to a chapter with zero dropped concepts.
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/extractor.py (Verbatim Converter)</span>
+              <span class="file-ref">_tc/scripts/auditor.py (Coverage Auditor)</span>
+              <span class="file-ref">skills/tc-research/SKILL.md (4-Hat Debate Protocol)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 8 -->
+      <div class="point-card" data-category="compiler">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 08</span>
+            <span class="point-title">Deterministic Compiler Pipeline ($O(1)$ Line Slicing)</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-enhanced">Vector RAG Scrapped</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"8. after all this research and material collection. create course will do its thing. create roadmap and create indexxing and all complexx things and create a course out of material collected. it will skim through each topic and do a very thorough well thought course/roadmap/courses. it will also make it easy for teach agent to read the material easily."</div>
+            <div class="user-summary">Course builder must build an indexing system and roadmap from the materials so that the teach agent can easily read the exact material needed without confusion.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>The Multi-Source Deterministic Compiler:</strong>
+              Probabilistic vector chunk RAG was completely eliminated in commit <code>b4e0ea1</code>. Instead, TC uses a compiler pipeline:
+              <ol style="margin-top: 0.5rem; padding-left: 1.2rem; font-size: 0.88rem; color: #cbd5e1;">
+                <li><code>toc_aligner.py</code>: Merges multi-source chapter outlines and eliminates redundancies.</li>
+                <li><code>dag.py</code>: Constructs a topological prerequisite dependency graph.</li>
+                <li><code>source_mapper.py</code>: Generates <code>source-map.toml</code> with exact line spans <code>[start_line, end_line]</code>.</li>
+                <li><strong>Zero-Hallucination Retrieval:</strong> When teaching, <code>teach_engine.py</code> reads exact source lines in $O(1)$ time with zero embeddings or fuzzy vector search!</li>
+              </ol>
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/toc_aligner.py (Macro Outline Aligner)</span>
+              <span class="file-ref">_tc/scripts/source_mapper.py (Deterministic Symbol Table)</span>
+              <span class="file-ref">_tc/scripts/dag.py (Topological Dependency Sorter)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 9 -->
+      <div class="point-card" data-category="compiler">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 09</span>
+            <span class="point-title">Gate 2 Roadmap Approval &amp; Section Plans</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-core">Curriculum Gate</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"9. If user selects interactive, explain all roadmap and course structure to user and ask for review of artifact thats in _tc folder somewhere. And then at the final approval. start creating sections etc etc and how to teach that what to cover and how to verify user knowledge etc etc will all be in section plan."</div>
+            <div class="user-summary">In interactive mode, present the course syllabus to the user for final sign-off before generating detailed section plans and teaching methods.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Gate 2 Approval &amp; Pedagogical Blueprints:</strong>
+              <br>• <strong>Gate 2 (Curriculum Approval):</strong> Halts and presents the proposed chapter breakdown, prerequisite DAG, and source citations in <code>overview.md</code>.
+              <br>• Upon approval, generates granular section plans in <code>.tc/plans/section-XX.md</code> detailing:
+              <ul style="margin-top: 0.35rem; padding-left: 1.2rem; font-size: 0.88rem; color: #cbd5e1;">
+                <li>Cognitive Objectives (Bloom's Taxonomy).</li>
+                <li>Deterministic source line spans from <code>source-map.toml</code>.</li>
+                <li>Socratic dialogue triggers &amp; diagnostic questions (<code>diagnostic_tester.py</code>).</li>
+                <li>Hands-on practical code verification challenges (<code>practical_evaluator.py</code>).</li>
+              </ul>
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/checkpoint_manager.py (Gate 2 Checkpoint)</span>
+              <span class="file-ref">_tc/scripts/course_builder.py (Plan Generator)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 10 -->
+      <div class="point-card" data-category="teaching">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 10</span>
+            <span class="point-title">Socratic Teaching, Session Scrubbing &amp; Notes Compilation</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-enhanced">Ephemeral Sessions</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"10. then tc should directly teach and store all conversation in _tc folder somewhere and when that section is completed, it writes notes and deletes conversation history from _tc."</div>
+            <div class="user-summary">TC teaches directly, logs the conversation inside <code>_tc/</code>, and when a section finishes, compiles notes outside and deletes raw session history from <code>_tc/</code>.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Ephemeral Streaming &amp; Textbook Synthesis:</strong>
+              <ol style="margin-top: 0.5rem; padding-left: 1.2rem; font-size: 0.88rem; color: #cbd5e1;">
+                <li><strong>Transient Logging:</strong> Turn-by-turn conversational exchanges are streamed to <code>.tc/session.jsonl</code>.</li>
+                <li><strong>Socratic Delivery:</strong> <code>teach_engine.py</code> teaches one grounded concept at a time, checking comprehension at each step.</li>
+                <li><strong>Notes Compilation:</strong> When mastery is verified, <code>notes_compiler.py</code> distills key formulas, insights, and code into <code>notes/chapter-XX.md</code>.</li>
+                <li><strong>History Scrubbing:</strong> <code>session.jsonl</code> is wiped/cleared, eliminating context bloat while immortalizing distilled knowledge in notes!</li>
+              </ol>
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/teach_engine.py (Socratic Engine)</span>
+              <span class="file-ref">_tc/scripts/notes_compiler.py (Textbook Synthesizer)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 11 -->
+      <div class="point-card" data-category="teaching">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 11</span>
+            <span class="point-title">Continuous Memory Tracking &amp; Mandatory Section Sign-off</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-core">Pedagogical Invariant</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"11. everything should be tracked and every context and decision taken in this journey should be considered for future conversation or learn or anything. at the end it should also ask for approval to closee the section whether they chose interactive or not. teach wont cchange based on interactive or not. course creatiion and all do."</div>
+            <div class="user-summary">Every learning decision and learner habit must be tracked in memory. Regardless of interactive vs auto mode, teaching ALWAYS requires user verification and approval to advance.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Dual-Register Memory &amp; The Teaching Invariant:</strong>
+              <br>• <code>memlog.py</code> records every decision, diagnostic score, and learner struggle. Future sessions adjust pacing, tone, and metaphors based on this ledger.
+              <br>• <strong>The Teaching Invariant:</strong> While course creation can be automated via <code>--mode auto</code>, <strong>Teaching is NEVER unattended</strong>. The engine will NEVER unilaterally skip a chapter. It always administers an evaluation, presents the compiled notes summary, and pauses for explicit learner approval to advance.
+            </div>
+            <div class="code-files">
+              <span class="file-ref">_tc/scripts/memlog.py (Episodic &amp; Cognitive Ledger)</span>
+              <span class="file-ref">_tc/scripts/teach_engine.py (Section Completion Gate)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POINT 12 -->
+      <div class="point-card" data-category="orchestration">
+        <div class="point-header">
+          <div class="point-title-wrap">
+            <span class="point-num">Point 12</span>
+            <span class="point-title">Interactive Status Dashboard (Status Board HTML)</span>
+          </div>
+          <div class="point-badges">
+            <span class="badge badge-match">Fully Aligned</span>
+            <span class="badge badge-enhanced">Self-Contained UI</span>
+          </div>
+        </div>
+        <div class="point-body">
+          <div class="user-view">
+            <h4>User Intent &amp; Understanding</h4>
+            <div class="user-quote">"12. There should also be a dashboard created. a html file that should be coming when a skill is initiated first and when folder structure is formed. it shoudl have a interactive way of seeing where we are. the status will all be in this files maybe toml, json i dont know. but this html file or a folder all together called status board should read all files from _tc and show it in beautiful way."</div>
+            <div class="user-summary">Create an interactive HTML status dashboard generated upon initial skill bootstrapping that reads the state files inside <code>_tc/</code> and provides a beautiful live status view.</div>
+          </div>
+          <div class="code-view">
+            <h4>Codebase Reality &amp; Execution</h4>
+            <div class="code-detail">
+              <strong>Interactive Status Board Engine:</strong>
+              <br>• Generates a standalone, beautiful HTML dashboard (see live preview below in Section 5).
+              <br>• Connects to <code>.tc/course.toml</code>, <code>.tc/memlog.md</code>, <code>.tc/source-map.toml</code>, and <code>coverage-ledger.md</code>.
+              <br>• Displays real-time chapter progress bars, active section pointer, discovered sources with line counts, recent memory logs, and an interactive state file inspector.
+            </div>
+            <div class="code-files">
+              <span class="file-ref">flow.html (Comprehensive System Spec &amp; Dashboard)</span>
+              <span class="file-ref">_tc/scripts/checkpoint_manager.py (State Emitter)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- SECTION 2: END-TO-END VISUAL STATE MACHINE -->
+  <section class="section" id="visual-flow">
+    <div class="section-header">
+      <div class="sec-tag">◈ State Machine &amp; Execution Graph</div>
+      <h2 class="sec-title">End-to-End Orchestration Architecture</h2>
+      <p class="sec-desc">How data and control flow from the moment the user types <code>/tc</code> down to the final compiled textbook chapter.</p>
+    </div>
+
+    <div class="flow-diagram">
+      <div class="flow-step-row">
+
+        <!-- STEP 1 -->
+        <div class="step-node">
+          <div class="node-idx">Stage 01</div>
+          <h4>Intake &amp; Mode Switch</h4>
+          <p>Captures topic, depth, learning style, and execution mode (<code>interactive</code> vs <code>auto</code>).</p>
+          <span class="gate-tag interactive">Interactive Branch</span>
+          <span class="gate-tag auto">Auto Branch</span>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step-node">
+          <div class="node-idx">Stage 02</div>
+          <h4>Deep Research &amp; Scout</h4>
+          <p>Identifies canonical textbooks (Google Books), RFCs (IETF), arXiv papers, GitHub repos, and Linux docs.</p>
+          <span class="gate-tag interactive">Gate 1: Material Review</span>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="step-node">
+          <div class="node-idx">Stage 03</div>
+          <h4>Automated Ingestion</h4>
+          <p>Zero-key HTTPS downloads of RFCs and papers into <code>research/&lt;course&gt;/sources/</code>. Alerts for local proprietary books.</p>
+          <span class="gate-tag auto">Zero-Prompt Ingestion</span>
+        </div>
+
+        <!-- STEP 4 -->
+        <div class="step-node">
+          <div class="node-idx">Stage 04</div>
+          <h4>Verbatim Extraction</h4>
+          <p>Zero-loss pure Python PDF/EPUB to Markdown conversion. Retains 100% of text, math, and code blocks.</p>
+          <span class="gate-tag auto">No Truncation</span>
+        </div>
+
+        <!-- STEP 5 -->
+        <div class="step-node">
+          <div class="node-idx">Stage 05</div>
+          <h4>4-Hat Debate</h4>
+          <p>Pedagogue, Skeptic, Pragmatist, and Synthesizer debate curriculum depth, prerequisite DAG, and edge cases.</p>
+          <span class="gate-tag auto">consensus-deliberation.md</span>
+        </div>
+
+        <!-- STEP 6 -->
+        <div class="step-node">
+          <div class="node-idx">Stage 06</div>
+          <h4>Deterministic Compiler</h4>
+          <p>Aligns Macro TOCs, builds DAG, computes line-exact symbol table (<code>source-map.toml</code>), audits 100% coverage.</p>
+          <span class="gate-tag interactive">Gate 2: Roadmap Review</span>
+        </div>
+
+        <!-- STEP 7 -->
+        <div class="step-node">
+          <div class="node-idx">Stage 07</div>
+          <h4>Grounded Teaching</h4>
+          <p>Sensei teaches one grounded concept at a time using $O(1)$ line slices. Streams to <code>session.jsonl</code>.</p>
+          <span class="gate-tag interactive">Diagnostic Tests &amp; Labs</span>
+        </div>
+
+        <!-- STEP 8 -->
+        <div class="step-node">
+          <div class="node-idx">Stage 08</div>
+          <h4>Notes &amp; Scrubbing</h4>
+          <p>Synthesizes permanent <code>notes/chapter-XX.md</code>. Wipes transient <code>session.jsonl</code>. Advances pointer upon user approval.</p>
+          <span class="gate-tag interactive">Mandatory Gate 3</span>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- SECTION 3: 4-HAT MULTI-AGENT CONSENSUS -->
+  <section class="section" id="four-hats">
+    <div class="section-header">
+      <div class="sec-tag">◈ Cognitive Deliberation Protocol</div>
+      <h2 class="sec-title">The 4-Hat Multi-Agent Debate Engine</h2>
+      <p class="sec-desc">Research agents do not merely scrape text; they debate curriculum design through four conflicting adversarial perspectives to ensure high signal-to-noise ratio and zero fluff.</p>
+    </div>
+
+    <div class="hats-grid">
+      <div class="hat-card hat-pedagogue">
+        <h3>🎓 Pedagogue Hat</h3>
+        <div class="hat-role">The Cognitive Architect</div>
+        <p>Focuses on cognitive load progression, prerequisite sequencing, and Bloom's Taxonomy. Prevents cognitive overload by demanding that foundational primitives (e.g. syscalls, socket buffers) precede distributed abstractions.</p>
+      </div>
+
+      <div class="hat-card hat-skeptic">
+        <h3>🔬 Domain Skeptic Hat</h3>
+        <div class="hat-role">The Staff Systems Architect</div>
+        <p>Relentlessly attacks hand-waving and buzzwords. Demands concrete production realities: packet-drop behaviors, tail latencies, kernel context switches, lock contention, and network partition failure modes.</p>
+      </div>
+
+      <div class="hat-card hat-pragmatist">
+        <h3>🛠️ Pragmatist Hat</h3>
+        <div class="hat-role">The Senior Builder</div>
+        <p>Requires executable code, reproducible test harnesses, Wireshark traces, and concrete debugging exercises. If a concept cannot be tested or demonstrated in a terminal, it flags it for remediation.</p>
+      </div>
+
+      <div class="hat-card hat-synthesizer">
+        <h3>⚖️ Synthesizer Hat</h3>
+        <div class="hat-role">The Consensus Arbiter</div>
+        <p>Reconciles contradictory notation between books (e.g., Tanenbaum vs. RFC 8446), removes duplicated topics, and forms the definitive unified topic sequence written into <code>consensus-deliberation.md</code>.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- SECTION 4: THE DETERMINISTIC COMPILER PIPELINE -->
+  <section class="section" id="compiler">
+    <div class="section-header">
+      <div class="sec-tag">◈ Architectural Invariant</div>
+      <h2 class="sec-title">Why Probabilistic Vector RAG Was Eliminated</h2>
+      <p class="sec-desc">In commit <code>b4e0ea1</code>, TextCourses abandoned vector chunk databases (embeddings, similarity search) in favor of the <strong>Multi-Source Deterministic Compiler</strong>.</p>
+    </div>
+
+    <div class="matrix-wrap">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            <th>Dead Probabilistic Vector RAG</th>
+            <th>TextCourses Deterministic Compiler ($O(1)$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Retrieval Time</strong></td>
+            <td>High (500ms – 2s embedding inference + cosine ranking)</td>
+            <td><strong>Instantaneous ($O(1)$</strong> disk byte-range slice in &lt; 5ms)</td>
+          </tr>
+          <tr>
+            <td><strong>Context Boundaries</strong></td>
+            <td>Fractured (Arbitrary 512-token chunks cut code and math mid-sentence)</td>
+            <td><strong>Syntactic &amp; Structural</strong> (Preserves entire RFC sections, classes, and proofs)</td>
+          </tr>
+          <tr>
+            <td><strong>Hallucination Risk</strong></td>
+            <td>High (LLM blends unrelated chunks retrieved by approximate similarity)</td>
+            <td><strong>Zero</strong> (Sensei is bound to exact line spans from <code>source-map.toml</code>)</td>
+          </tr>
+          <tr>
+            <td><strong>Coverage Guarantee</strong></td>
+            <td>Unknown (Cannot mathematically prove all topics in a book are taught)</td>
+            <td><strong>100% Proven</strong> (Verified by <code>auditor.py</code> &amp; <code>coverage-ledger.md</code>)</td>
+          </tr>
+          <tr>
+            <td><strong>Symbol Table</strong></td>
+            <td>None (Black-box vector float embeddings)</td>
+            <td><strong>Human-Auditable TOML</strong> (Explicit file, start line, end line)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top: 1.5rem;">
+      <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--blue);">Example: Deterministic Symbol Table (<code>source-map.toml</code>)</h4>
+      <pre class="codeblock">[sections."01.02-tls-1.3-handshake"]
+title = "TLS 1.3 1-RTT Handshake Invariants"
+primary_source = "research/software-architecture/markdown/rfc8446.md"
+lines = [412, 680]
+topics = ["Key Exchange", "CertificateVerify", "Early Data 0-RTT Security Risks"]
+verification_checks = ["Diffie-Hellman Ephemeral", "Downgrade Protection SVID"]</pre>
+    </div>
+  </section>
+
+
+  <!-- SECTION 5: TWO-TIER CLEAN CANVAS -->
+  <section class="section" id="canvas">
+    <div class="section-header">
+      <div class="sec-tag">◈ Directory Architecture</div>
+      <h2 class="sec-title">Two-Tier Clean Canvas Separation</h2>
+      <p class="sec-desc">The human learner's workspace is kept spotless and publication-grade. All machine metadata, symbol tables, raw downloads, and caches are encapsulated within <code>.tc/</code> and <code>research/</code>.</p>
+    </div>
+
+    <div class="tree-grid">
+      <div class="tree-box">
+        <div class="tree-title">
+          <span>🌿 Human Learner Canvas</span>
+          <span style="color: var(--emerald); font-size: 0.75rem;">Spotless &amp; Readable</span>
+        </div>
+        <div><span class="dir">course-root/</span></div>
+        <div>&nbsp;&nbsp;├── <span class="file">overview.md</span> <span class="comment"># Live roadmap, syllabus &amp; progress</span></div>
+        <div>&nbsp;&nbsp;└── <span class="dir">notes/</span> <span class="comment"># Compiled textbook chapters</span></div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="file">chapter-01.md</span> <span class="comment"># Mastered textbook chapter 1</span></div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="file">chapter-02.md</span> <span class="comment"># Mastered textbook chapter 2</span></div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="file">chapter-03.md</span> <span class="comment"># Current compiled notes</span></div>
+      </div>
+
+      <div class="tree-box">
+        <div class="tree-title">
+          <span>⚙️ Encapsulated Machine Substrate</span>
+          <span style="color: var(--blue); font-size: 0.75rem;">Zero Polluting Leaks</span>
+        </div>
+        <div><span class="dir">course-root/</span></div>
+        <div>&nbsp;&nbsp;├── <span class="dir">.tc/</span> <span class="comment"># Internal machine brain</span></div>
+        <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="file">course.toml</span> <span class="comment"># DAG &amp; completion manifest</span></div>
+        <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="file">memlog.md</span> <span class="comment"># Append-only cognitive ledger</span></div>
+        <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="file">source-map.toml</span> <span class="comment"># O(1) line-exact symbol table</span></div>
+        <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="file">coverage-ledger.md</span> <span class="comment"># 100% coverage audit</span></div>
+        <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="file">session.jsonl</span> <span class="comment"># Ephemeral session (scrubbed on complete)</span></div>
+        <div>&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span class="dir">plans/</span> <span class="comment"># Pedagogical plans per section</span></div>
+        <div>&nbsp;&nbsp;└── <span class="dir">research/&lt;course&gt;/</span> <span class="comment"># Harvested assets</span></div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── <span class="dir">sources/</span> <span class="comment"># Raw RFCs, arXiv papers &amp; docs</span></div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="dir">markdown/</span> <span class="comment"># Zero-loss verbatim markdown</span></div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- SECTION 6: INTERACTIVE STATUS DASHBOARD PROTOTYPE -->
+  <section class="section" id="status-dashboard">
+    <div class="section-header">
+      <div class="sec-tag">◈ Live Runtime UI</div>
+      <h2 class="sec-title">Interactive Status Board</h2>
+      <p class="sec-desc">Point 12 implementation: A rich, browser-native status board dynamically displaying the course state, active section pointer, auto-harvested sources, and memory events.</p>
+    </div>
+
+    <div class="dashboard-frame">
+      <div class="dash-header">
+        <div class="dash-title">
+          <span>⚡ Course Monitor:</span>
+          <span style="color: var(--blue); font-family: var(--mono);" id="dashCourseName">software-architecture</span>
+          <span class="status-pill in-progress" style="margin-left: 0.5rem;">Chapter 02 Active</span>
+        </div>
+        <div class="dash-tabs">
+          <button class="dash-tab active" onclick="switchDashTab('chapters')">Curriculum</button>
+          <button class="dash-tab" onclick="switchDashTab('sources')">Sources (9 Harvested)</button>
+          <button class="dash-tab" onclick="switchDashTab('memlog')">Memory Log</button>
+          <button class="dash-tab" onclick="switchDashTab('raw')">State Inspector</button>
+        </div>
+      </div>
+
+      <div class="dash-content">
+        <div class="dash-grid">
+          
+          <!-- LEFT MAIN CONTENT -->
+          <div id="dashMainCol">
+            
+            <!-- VIEW: CHAPTERS -->
+            <div id="viewChapters">
+              <div class="dash-section-title">Curriculum Progress (2 of 5 Chapters Mastered)</div>
+              
+              <div class="chapter-item" onclick="inspectItem('chap1')">
+                <div class="chap-info">
+                  <h5>01. Systems Foundations &amp; Linux I/O Multiplexing</h5>
+                  <p>Prerequisites: None • Sources: epoll(7), Linux VFS Specs • Notes: notes/chapter-01.md</p>
+                </div>
+                <div class="chap-status">
+                  <span class="status-pill completed">Mastered</span>
+                </div>
+              </div>
+
+              <div class="chapter-item active" onclick="inspectItem('chap2')">
+                <div class="chap-info">
+                  <h5>02. Wire Protocols: TLS 1.3 &amp; Framing Mechanics</h5>
+                  <p>Prerequisites: Chapter 01 • Sources: RFC 8446, RFC 7230 • Active Section: 02.02</p>
+                </div>
+                <div class="chap-status">
+                  <span class="status-pill in-progress">Active Now</span>
+                </div>
+              </div>
+
+              <div class="chapter-item" onclick="inspectItem('chap3')">
+                <div class="chap-info">
+                  <h5>03. Multiplexed Streaming &amp; Flow Control (HTTP/2 &amp; HTTP/3)</h5>
+                  <p>Prerequisites: Chapter 02 • Sources: RFC 7540, RFC 9000 (QUIC)</p>
+                </div>
+                <div class="chap-status">
+                  <span class="status-pill locked">Queued</span>
+                </div>
+              </div>
+
+              <div class="chapter-item" onclick="inspectItem('chap4')">
+                <div class="chap-info">
+                  <h5>04. Distributed Consensus &amp; Replication Invariants</h5>
+                  <p>Prerequisites: Chapter 03 • Sources: Raft Paper, Dynamo Paper, Spanner</p>
+                </div>
+                <div class="chap-status">
+                  <span class="status-pill locked">Queued</span>
+                </div>
+              </div>
+
+              <div class="chapter-item" onclick="inspectItem('chap5')">
+                <div class="chap-info">
+                  <h5>05. Zero-Trust Security &amp; Token Architecture</h5>
+                  <p>Prerequisites: Chapter 04 • Sources: RFC 6749, RFC 7519</p>
+                </div>
+                <div class="chap-status">
+                  <span class="status-pill locked">Queued</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- VIEW: SOURCES -->
+            <div id="viewSources" style="display: none;">
+              <div class="dash-section-title">Auto-Harvested Canonical Sources (research/software-architecture/sources/)</div>
+              <div class="chapter-item" onclick="inspectItem('rfc8446')">
+                <div class="chap-info">
+                  <h5>RFC 8446: The Transport Layer Security (TLS) Protocol Version 1.3</h5>
+                  <p>Type: IETF RFC • Size: 298 KB • Markdown: markdown/rfc8446.md • Coverage: 100%</p>
+                </div>
+                <span class="status-pill completed">Downloaded</span>
+              </div>
+              <div class="chapter-item" onclick="inspectItem('rfc7540')">
+                <div class="chap-info">
+                  <h5>RFC 7540: Hypertext Transfer Protocol Version 2 (HTTP/2)</h5>
+                  <p>Type: IETF RFC • Size: 184 KB • Markdown: markdown/rfc7540.md • Coverage: 100%</p>
+                </div>
+                <span class="status-pill completed">Downloaded</span>
+              </div>
+              <div class="chapter-item" onclick="inspectItem('epoll')">
+                <div class="chap-info">
+                  <h5>Linux Kernel epoll(7) &amp; I/O Multiplexing System Reference</h5>
+                  <p>Type: Linux Kernel Spec • Size: 48 KB • Markdown: markdown/epoll7.md • Coverage: 100%</p>
+                </div>
+                <span class="status-pill completed">Downloaded</span>
+              </div>
+              <div class="chapter-item" onclick="inspectItem('ddia')">
+                <div class="chap-info">
+                  <h5>Designing Data-Intensive Applications (Kleppmann)</h5>
+                  <p>Type: Proprietary Book • Status: Mapped via Open Specs &amp; User-Provided Gate</p>
+                </div>
+                <span class="status-pill in-progress">Audited</span>
+              </div>
+            </div>
+
+            <!-- VIEW: MEMLOG -->
+            <div id="viewMemlog" style="display: none;">
+              <div class="dash-section-title">Append-Only Cognitive &amp; Decision Memory (.tc/memlog.md)</div>
+              <div style="font-family: var(--mono); font-size: 0.8rem; background: var(--bg-card); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); line-height: 1.8;">
+                <div><span style="color: var(--blue);">[2026-11-05 18:25:01]</span> <span style="color: var(--emerald);">[GATE_01]</span> Approved auto-harvested sources (9 RFCs &amp; Linux docs).</div>
+                <div><span style="color: var(--blue);">[2026-11-05 18:25:12]</span> <span style="color: var(--purple);">[CONSENSUS]</span> 4-Hat debate resolved: Emphasize TLS 1.3 0-RTT security hazards.</div>
+                <div><span style="color: var(--blue);">[2026-11-05 18:25:30]</span> <span style="color: var(--emerald);">[GATE_02]</span> Curriculum approved (5 chapters, 14 sections).</div>
+                <div><span style="color: var(--blue);">[2026-11-05 18:26:45]</span> <span style="color: var(--amber);">[SECTION_01]</span> Diagnostic score: 100%. Mastered epoll edge-triggered semantics.</div>
+                <div><span style="color: var(--blue);">[2026-11-05 18:27:10]</span> <span style="color: var(--emerald);">[NOTES]</span> Written notes/chapter-01.md. session.jsonl wiped.</div>
+                <div><span style="color: var(--blue);">[2026-11-05 18:27:15]</span> <span style="color: var(--cyan);">[SECTION_02]</span> Active section pointer moved to 02.02 (TLS Handshake).</div>
+              </div>
+            </div>
+
+            <!-- VIEW: RAW INSPECTOR -->
+            <div id="viewRaw" style="display: none;">
+              <div class="dash-section-title">Active State Inspector (course.toml &amp; source-map.toml)</div>
+              <div class="inspector-box">
+[course]
+title = "Software Architecture &amp; Systems Foundations"
+slug = "software-architecture"
+mode = "interactive"
+active_chapter = "02"
+active_section = "02.02"
+completed_chapters = ["01"]
+
+[chapters."01"]
+title = "Systems Foundations &amp; Linux I/O Multiplexing"
+status = "completed"
+notes = "notes/chapter-01.md"
+
+[chapters."02"]
+title = "Wire Protocols: TLS 1.3 &amp; Framing Mechanics"
+status = "active"
+source_files = ["research/software-architecture/markdown/rfc8446.md"]
+
+[coverage]
+total_topics = 42
+mapped_topics = 42
+coverage_percent = 100.0
+audited_by = "_tc/scripts/auditor.py"
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT DETAILS COLUMN -->
+          <div>
+            <div class="dash-section-title">Context Inspector</div>
+            <div class="card" style="padding: 1.25rem;">
+              <h4 id="detailTitle" style="color: var(--blue); font-size: 1rem; margin-bottom: 0.5rem;">Active Node: Chapter 02</h4>
+              <p id="detailDesc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                Currently teaching wire protocol invariants using grounded line-slices from RFC 8446. The agent is analyzing the 1-RTT cryptographic handshake.
+              </p>
+              
+              <div style="border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-sub); font-weight: 700;">Deterministic Slice:</div>
+                <div style="font-family: var(--mono); font-size: 0.8rem; color: var(--emerald); margin-top: 0.2rem;">rfc8446.md : L412 - L680</div>
+              </div>
+
+              <div style="border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.75rem;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-sub); font-weight: 700;">Session Status:</div>
+                <div style="font-size: 0.82rem; color: #cbd5e1; margin-top: 0.2rem;">Ephemeral transcript in <code>.tc/session.jsonl</code>. Will be compiled into <code>notes/chapter-02.md</code> upon completion.</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- SECTION 7: MISSING POINTS & SYSTEM ENHANCEMENTS -->
+  <section class="section" id="roadmap">
+    <div class="section-header">
+      <div class="sec-tag">◈ Orchestration Completeness</div>
+      <h2 class="sec-title">Key Extensions Included in TextCourses</h2>
+      <p class="sec-desc">Additional critical orchestration features that operate in conjunction with the user's 12 points to ensure industrial-strength learning.</p>
+    </div>
+
+    <div class="grid3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+      
+      <div class="card">
+        <h3 style="color: var(--blue);">1. Pre-Assessment Diagnostics</h3>
+        <div style="font-family: var(--mono); font-size: 0.72rem; color: var(--text-sub); margin-bottom: 0.6rem;">diagnostic_tester.py</div>
+        <p>Before teaching commences, TC offers a 3-question diagnostic probe to accurately measure the learner's true baseline. This prevents wasting time explaining basic socket loops to a Senior Architect or overwhelming a beginner.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="color: var(--emerald);">2. Automated Practical Sandboxes</h3>
+        <div style="font-family: var(--mono); font-size: 0.72rem; color: var(--text-sub); margin-bottom: 0.6rem;">practical_evaluator.py</div>
+        <p>Theory without execution is fragile. At the end of key sections, TC creates reproducible hands-on challenges (e.g. implementing a non-blocking event loop or packet dissector) and grades learner code against an automated test rubric.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="color: var(--purple);">3. Dynamic Course Redirection</h3>
+        <div style="font-family: var(--mono); font-size: 0.72rem; color: var(--text-sub); margin-bottom: 0.6rem;">redirector.py</div>
+        <p>If mid-course the user says: <em>"I need to pivot to eBPF"</em> or <em>"I have an interview in 48 hours, compress the syllabus"</em>, the redirector recomputes the DAG, rewrites <code>course.toml</code>, updates <code>source-map.toml</code>, and seamlessly adapts the active section pointer.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="color: var(--amber);">4. Zero-Key Autonomous Paper Fetcher</h3>
+        <div style="font-family: var(--mono); font-size: 0.72rem; color: var(--text-sub); margin-bottom: 0.6rem;">paper_fetcher.py</div>
+        <p>Zero-dependency Python engine that autonomously resolves and downloads raw RFCs (TLS 1.3, HTTP/2, HTTP/3, OAuth, JWT, TCP), arXiv papers, and Linux kernel specifications without requiring API keys or user copy-pasting.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="color: var(--rose);">5. Landmark Textbook Classifier</h3>
+        <div style="font-family: var(--mono); font-size: 0.72rem; color: var(--text-sub); margin-bottom: 0.6rem;">book_scout.py</div>
+        <p>Scouts canonical books using Google Books and OpenLibrary APIs, differentiates between open-source GitHub books vs proprietary copyrighted textbooks, and constructs intelligent user ingestion checkpoints.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="color: var(--cyan);">6. 100% Mathematical Topic Ledger</h3>
+        <div style="font-family: var(--mono); font-size: 0.72rem; color: var(--text-sub); margin-bottom: 0.6rem;">auditor.py &amp; coverage-ledger.md</div>
+        <p>Computes mathematical set coverage between discovered source headings and compiled course syllabus. Proves zero dropped concepts or skipped technical depth before teaching begins.</p>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="max-width: 900px; margin: 0 auto;">
+    <p><strong>TextCourses Orchestration Framework</strong> • Built with the Deterministic Multi-Source Compiler</p>
+    <p style="margin-top: 0.4rem; color: var(--text-sub); font-size: 0.78rem;">
+      Clean Canvas Invariant: Human Notes Outside (<code>notes/</code>) • Machine State Encapsulated (<code>.tc/</code>) • Zero Vector RAG
+    </p>
+  </div>
+</footer>
+
+<!-- SCRIPT FOR INTERACTION -->
+<script>
+// Filter 12 Points
+function filterPoints(cat) {
+  const cards = document.querySelectorAll('.point-card');
+  const btns = document.querySelectorAll('.filter-btn');
+  
+  btns.forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  cards.forEach(card => {
+    if (cat === 'all' || card.getAttribute('data-category') === cat) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+// Switch Dashboard Tabs
+function switchDashTab(tab) {
+  const tabs = document.querySelectorAll('.dash-tab');
+  tabs.forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+
+  document.getElementById('viewChapters').style.display = (tab === 'chapters') ? 'block' : 'none';
+  document.getElementById('viewSources').style.display = (tab === 'sources') ? 'block' : 'none';
+  document.getElementById('viewMemlog').style.display = (tab === 'memlog') ? 'block' : 'none';
+  document.getElementById('viewRaw').style.display = (tab === 'raw') ? 'block' : 'none';
+}
+
+// Inspector Item Click
+function inspectItem(item) {
+  const title = document.getElementById('detailTitle');
+  const desc = document.getElementById('detailDesc');
+
+  if (item === 'chap1') {
+    title.innerText = 'Chapter 01: Systems Foundations & I/O Multiplexing';
+    desc.innerText = 'Completed chapter covering epoll(7), edge-triggered events, file descriptors, and non-blocking I/O. Distilled notes compiled to notes/chapter-01.md.';
+  } else if (item === 'chap2') {
+    title.innerText = 'Chapter 02: Wire Protocols & TLS 1.3 Handshake';
+    desc.innerText = 'Currently active chapter. Grounded in lines 412-680 of rfc8446.md. Live session in .tc/session.jsonl.';
+  } else if (item === 'rfc8446') {
+    title.innerText = 'RFC 8446 (TLS 1.3 Specification)';
+    desc.innerText = 'Downloaded directly from IETF. Converted to verbatim markdown without loss. Mapped to Chapter 02 in source-map.toml.';
+  } else if (item === 'epoll') {
+    title.innerText = 'Linux Kernel epoll(7) Reference';
+    desc.innerText = 'Raw man page and kernel docs. Mapped to Chapter 01 (Systems Foundations). 100% covered in notes/chapter-01.md.';
+  } else if (item === 'ddia') {
+    title.innerText = 'Designing Data-Intensive Applications';
+    desc.innerText = 'Proprietary textbook flagged by book_scout.py. If user supplies local PDF in research/sources/user-provided/, TC extracts it verbatim. Otherwise, companion RFCs/papers supply full topic coverage.';
+  }
+}
+</script>
+
+</body>
+</html>

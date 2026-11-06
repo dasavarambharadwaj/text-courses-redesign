@@ -45,6 +45,22 @@ except ImportError:
     except ImportError:
         harvester = None
 
+try:
+    import book_scout
+except ImportError:
+    try:
+        from _tc.scripts import book_scout
+    except ImportError:
+        book_scout = None
+
+try:
+    import paper_fetcher
+except ImportError:
+    try:
+        from _tc.scripts import paper_fetcher
+    except ImportError:
+        paper_fetcher = None
+
 DEFAULT_FALLBACK_TIMEOUT_SECONDS = 10
 VALID_CONFIDENCE_LEVELS = {"high", "medium", "low", "unverified"}
 
@@ -660,16 +676,96 @@ def run_scout(
             extracted_content = content
             confidence = "high"
 
-    # 3. Topic fallback
+    # 3. Topic mode with autonomous paper/RFC/book discovery
     elif topic:
         source_uri = f"topic:{topic}"
         source_type = "topic_fallback"
-        extracted_content = (
-            f"# {topic.title()}\n\n"
-            f"Overview and fundamental concepts for {topic}.\n\n"
-            f"## Core Concepts\n- Architecture\n- Primitives\n- Applications\n"
-        )
         confidence = "medium"
+
+        # 1. Discover canonical landmark textbooks
+        discovered_books = []
+        if book_scout and hasattr(book_scout, "discover_canonical_books"):
+            try:
+                b_res = book_scout.discover_canonical_books(topic=topic, slug=slug, workspace=ws)
+                discovered_books = b_res.get("books", [])
+            except Exception as e:
+                notes.append(f"Book scout note: {e}")
+
+        # 2. Harvest official RFCs, academic papers, and systems specs
+        harvested_official = []
+        if paper_fetcher and hasattr(paper_fetcher, "harvest_official_sources"):
+            try:
+                p_res = paper_fetcher.harvest_official_sources(slug=slug, topic=topic, workspace=ws)
+                harvested_official = p_res.get("sources", [])
+            except Exception as e:
+                notes.append(f"Paper fetcher note: {e}")
+
+        # 3. Write research/<slug>/gold-standards.md
+        gs_file = ws / "research" / slug / "gold-standards.md"
+        gs_file.parent.mkdir(parents=True, exist_ok=True)
+        gs_lines = [
+            f"# Gold-Standard Literature & Official Specifications: {topic.title()}",
+            "",
+            "## 1. Landmark Canonical Textbooks",
+            "",
+        ]
+        if discovered_books:
+            for idx, b in enumerate(discovered_books, 1):
+                st_badge = "✅ `[AUTO-HARVESTED - Open Repo]`" if b.get("status") == "auto_harvestable" else "⚠️ `[ACQUISITION NEEDED - Proprietary Book]`"
+                auth = ", ".join(b.get("authors", []))
+                isbn = f" | ISBN: {b.get('isbn')}" if b.get("isbn") else ""
+                gs_lines.append(f"{idx}. **{b['title']}** — {auth} ({b.get('edition', 'Standard Ed')}{isbn})")
+                gs_lines.append(f"   - Status: {st_badge}")
+                gs_lines.append(f"   - *Why Essential*: {b.get('why_essential')}")
+                gs_lines.append("")
+        else:
+            gs_lines.append("- Open technical documentation and official standards.\n")
+
+        gs_lines.extend([
+            "## 2. Auto-Harvested Official Specifications, RFCs & Manual Pages",
+            "",
+        ])
+        if harvested_official:
+            for s in harvested_official:
+                gs_lines.append(f"- **{s['title']}** (`{s['type']}`): `{s['path']}`")
+            gs_lines.append("")
+        else:
+            gs_lines.append("- Standard domain specifications.\n")
+
+        gs_lines.extend([
+            "## 3. Providing Missing Textbooks",
+            "",
+            f"If you own copies of proprietary textbooks listed above, drop them into:",
+            f"`research/{slug}/sources/user-provided/`",
+            "",
+            "Or proceed immediately using the auto-harvested official RFCs, papers, and open specifications above.",
+        ])
+        atomic_write_text(gs_file, "\n".join(gs_lines))
+
+        # 4. Aggregate extracted content from harvested sources
+        content_parts = [f"# {topic.title()}\n\nOfficial technical curriculum substrate for {topic}.\n"]
+        for s in harvested_official:
+            s_file = ws / s["path"]
+            if s_file.is_file():
+                try:
+                    text_snip = s_file.read_text(encoding="utf-8", errors="replace")
+                    # Sample top 250 lines per spec for ToC/API surface discovery
+                    lines_sample = "\n".join(text_snip.splitlines()[:250])
+                    content_parts.append(f"\n## Source: {s['title']}\n{lines_sample}\n")
+                except Exception:
+                    pass
+
+        if len(content_parts) > 1:
+            extracted_content = "\n".join(content_parts)
+            source_type = "multi_source_harvest"
+            confidence = "high"
+        else:
+            extracted_content = (
+                f"# {topic.title()}\n\n"
+                f"Overview and fundamental concepts for {topic}.\n\n"
+                f"## Core Concepts\n- Architecture\n- Primitives\n- Applications\n"
+            )
+            confidence = "medium"
 
     else:
         source_uri = f"topic:{slug}"
@@ -821,11 +917,9 @@ def run_scout(
             "status": s.get("status", "verified"),
         })
 
-    # Write to all target locations: visible research/, visible sources/, _tc/research/, .tc/research/
+    # Write to canonical visible research/ and encapsulated machine cache .tc/research/
     target_dirs = [
         ws / "research" / slug,
-        ws / "sources" / slug,
-        ws / "_tc" / "research" / slug,
         ws / ".tc" / "research" / slug,
     ]
     for rdir in target_dirs:
@@ -836,6 +930,7 @@ def run_scout(
         atomic_write_text(rdir / "dossier.md", dossier_md)
         atomic_write_text(rdir / "five-hats-critique.md", critique_md)
         atomic_write_text(rdir / "multi-hats-critique.md", critique_md)
+        atomic_write_text(rdir / "critique.md", critique_md)
 
     primary_dir = target_dirs[0]
     return {
@@ -852,6 +947,9 @@ def run_scout(
         "harvested_sources_count": len(discovered_harvest_sources),
         "digest": digest,
     }
+
+
+execute_scout = run_scout
 
 
 def get_cached_digest(slug: str, workspace: Path | str = ".") -> dict[str, Any]:
