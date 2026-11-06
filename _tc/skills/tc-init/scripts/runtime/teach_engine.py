@@ -268,6 +268,11 @@ def find_section_directory(course_dir: Path, chapter_id: Any, section_id: Any) -
     tc_plans = course_dir / ".tc" / "plans"
     if tc_plans.is_dir():
         search_roots.append(tc_plans)
+    # Check canonical _tc/courses/<slug>/plans if discoverable
+    if course_dir.name and course_dir.parent:
+        tc_root_plans = course_dir.parent.parent / "_tc" / "courses" / course_dir.name / "plans"
+        if tc_root_plans.is_dir():
+            search_roots.append(tc_root_plans)
     search_roots.append(course_dir)
 
     for root in search_roots:

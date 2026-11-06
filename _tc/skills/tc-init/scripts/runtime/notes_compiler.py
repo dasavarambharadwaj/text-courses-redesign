@@ -79,6 +79,15 @@ def find_enclosing_manifest(start_dir: Path) -> Path | None:
         manifest = (curr / ".tc" / "course.toml") if (curr / ".tc" / "course.toml").is_file() else (curr / "course.toml")
         if manifest.is_file():
             return manifest
+        # Check canonical root _tc storage sibling if under _tc/courses/<slug>/
+        if curr.parent.name == "courses" and curr.parent.parent.name == "_tc":
+            ws = curr.parent.parent.parent
+            legacy_m = ws / "courses" / curr.name / ".tc" / "course.toml"
+            if legacy_m.is_file():
+                return legacy_m
+            legacy_m2 = ws / "courses" / curr.name / "course.toml"
+            if legacy_m2.is_file():
+                return legacy_m2
         if curr.parent == curr:
             break
         curr = curr.parent
@@ -281,6 +290,23 @@ def update_course_manifest_section_status(
         if "course" in data:
             data["course"]["updated_at"] = now_iso
         atomic_write_toml(manifest_path, data)
+        # Mirror update to sibling manifest if available
+        try:
+            m_p = Path(manifest_path).resolve()
+            if m_p.parent.name == ".tc" and m_p.parent.parent.parent.name == "courses":
+                slug = m_p.parent.parent.name
+                ws = m_p.parent.parent.parent.parent
+                sibling_m = ws / "_tc" / "courses" / slug / "course.toml"
+                if sibling_m.parent.is_dir():
+                    atomic_write_toml(sibling_m, data)
+            elif m_p.parent.parent.name == "_tc" and m_p.parent.name != "_tc":
+                slug = m_p.parent.name
+                ws = m_p.parent.parent.parent
+                sibling_m = ws / "courses" / slug / ".tc" / "course.toml"
+                if sibling_m.parent.is_dir():
+                    atomic_write_toml(sibling_m, data)
+        except Exception:
+            pass
         return True, None
 
     return False, f"Could not match section '{section_dir_name}' in {manifest_path}"

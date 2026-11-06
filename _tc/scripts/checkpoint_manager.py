@@ -186,13 +186,22 @@ def create_approval_gate(
     deliberation_summary: str,
 ) -> dict[str, Any]:
     """Create Curriculum Approval Gate checkpoint before beginning lessons."""
+    ws = Path(workspace).resolve()
     chapters = course_data.get("chapters", [])
     total_sections = sum(len(ch.get("sections", [])) for ch in chapters)
+
+    bp_rel = f"_tc/courses/{slug}/blueprint.md"
+    bp_abs = ws / "_tc" / "courses" / slug / "blueprint.md"
+    if not bp_abs.is_file():
+        bp_abs = ws / "courses" / slug / ".tc" / "blueprint.md"
+        bp_rel = f"courses/{slug}/.tc/blueprint.md"
 
     outline_lines = [
         f"🏛️ **Curriculum Roadmap**: {title} ({len(chapters)} Chapters • {total_sections} Sections)",
         "",
         f"> {deliberation_summary}",
+        "",
+        f"📄 **Course Blueprint**: `{bp_rel}`",
         "",
     ]
     for ch_idx, ch in enumerate(chapters, 1):
@@ -213,6 +222,7 @@ def create_approval_gate(
         "gate": GATE_APPROVAL,
         "slug": slug,
         "title": title,
+        "blueprint_path": str(bp_abs),
         "total_chapters": len(chapters),
         "total_sections": total_sections,
         "prompt": prompt_text,

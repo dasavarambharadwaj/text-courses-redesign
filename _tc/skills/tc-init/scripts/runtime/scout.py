@@ -1264,12 +1264,15 @@ def run_scout(
     }
 
     # 4. Check for multi-source harvested assets & gold-standard consensus (FR-43)
-    gold_standards_file = ws / "research" / slug / "gold-standards.md"
-    sources_dir = ws / "research" / slug / "sources"
+    gold_standards_file = ws / "_tc" / "research" / slug / "gold-standards.md"
+    if not gold_standards_file.is_file():
+        gold_standards_file = ws / "research" / slug / "gold-standards.md"
+    sources_dir = ws / "_tc" / "research" / slug / "sources"
+    legacy_sources_dir = ws / "research" / slug / "sources"
     gold_section = ""
     discovered_harvest_sources: list[dict[str, Any]] = []
 
-    if sources_dir.exists():
+    if sources_dir.exists() or legacy_sources_dir.exists():
         try:
             if harvester and hasattr(harvester, "ingest_sources_directory"):
                 ingest_res = harvester.ingest_sources_directory(slug, ws)

@@ -219,6 +219,9 @@ def harvest_github_repo(
     }
     manifest_file = target_dir / "harvest-manifest.json"
     atomic_write_json(manifest_file, manifest_data)
+    if legacy_dir != target_dir:
+        legacy_dir.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(legacy_dir / "harvest-manifest.json", manifest_data)
 
     return {
         "ok": True,
@@ -535,58 +538,67 @@ def ingest_sources_directory(
     ws = Path(workspace).resolve()
     canon_sources = ws / "_tc" / "research" / slug / "sources"
     legacy_sources = ws / "research" / slug / "sources"
-    sources_dir = canon_sources if canon_sources.exists() else legacy_sources
-    if not sources_dir.exists():
-        sources_dir = canon_sources
-        sources_dir.mkdir(parents=True, exist_ok=True)
+    scan_dirs: list[Path] = []
+    if canon_sources.is_dir():
+        scan_dirs.append(canon_sources)
+    if legacy_sources.is_dir() and legacy_sources != canon_sources:
+        scan_dirs.append(legacy_sources)
+    if not scan_dirs:
+        canon_sources.mkdir(parents=True, exist_ok=True)
+        scan_dirs.append(canon_sources)
 
     discovered_sources: list[dict[str, Any]] = []
     combined_headings: list[str] = []
     combined_text_chunks: list[str] = []
+    seen_rel_paths: set[str] = set()
 
-    for f in sorted(sources_dir.rglob("*")):
-        if not f.is_file() or ".git" in f.parts or f.name.startswith("."):
-            continue
-        rel = str(f.relative_to(sources_dir))
-        ext = f.suffix.lower()
+    for sources_dir in scan_dirs:
+        for f in sorted(sources_dir.rglob("*")):
+            if not f.is_file() or ".git" in f.parts or f.name.startswith("."):
+                continue
+            rel = str(f.relative_to(sources_dir))
+            if rel in seen_rel_paths:
+                continue
+            seen_rel_paths.add(rel)
+            ext = f.suffix.lower()
 
-        if ext in {".md", ".markdown", ".txt", ".rst"}:
-            try:
-                text = f.read_text(encoding="utf-8", errors="replace")
-                sha = compute_sha256(text)
-                headings = [line.strip("# ").strip() for line in text.splitlines() if line.startswith("# ")]
-                combined_headings.extend(headings)
-                combined_text_chunks.append(f"# Source: {rel}\n" + text[:2000])
+            if ext in {".md", ".markdown", ".txt", ".rst"}:
+                try:
+                    text = f.read_text(encoding="utf-8", errors="replace")
+                    sha = compute_sha256(text)
+                    headings = [line.strip("# ").strip() for line in text.splitlines() if line.startswith("# ")]
+                    combined_headings.extend(headings)
+                    combined_text_chunks.append(f"# Source: {rel}\n" + text[:2000])
 
-                src_type = "markdown_file"
-                if "transcripts" in f.parts:
-                    src_type = "youtube_transcript"
-                elif "repos" in f.parts:
-                    src_type = "github_repo_content"
+                    src_type = "markdown_file"
+                    if "transcripts" in f.parts:
+                        src_type = "youtube_transcript"
+                    elif "repos" in f.parts:
+                        src_type = "github_repo_content"
 
+                    discovered_sources.append({
+                        "title": f.stem.replace("-", " ").title(),
+                        "relative_path": rel,
+                        "full_path": str(f),
+                        "type": src_type,
+                        "size_bytes": f.stat().st_size,
+                        "sha256": sha,
+                        "status": "verified",
+                    })
+                except Exception:
+                    pass
+
+            elif ext in {".pdf", ".epub"}:
+                sha = compute_sha256(f.read_bytes())
                 discovered_sources.append({
                     "title": f.stem.replace("-", " ").title(),
                     "relative_path": rel,
                     "full_path": str(f),
-                    "type": src_type,
+                    "type": "binary_book",
                     "size_bytes": f.stat().st_size,
                     "sha256": sha,
-                    "status": "verified",
+                    "status": "user_provided_book",
                 })
-            except Exception:
-                pass
-
-        elif ext in {".pdf", ".epub"}:
-            sha = compute_sha256(f.read_bytes())
-            discovered_sources.append({
-                "title": f.stem.replace("-", " ").title(),
-                "relative_path": rel,
-                "full_path": str(f),
-                "type": "binary_book",
-                "size_bytes": f.stat().st_size,
-                "sha256": sha,
-                "status": "user_provided_book",
-            })
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     sources_manifest = {

@@ -1081,7 +1081,11 @@ def scaffold_course_files(
         except Exception:
             pass
 
-    # 1. Write course.toml into .tc/ (Two-Tier encapsulation)
+    # 1. Write course.toml into canonical _tc/courses/<slug>/ and courses/<slug>/.tc/
+    _tc_course_dir = workspace / "_tc" / "courses" / slug
+    _tc_course_dir.mkdir(parents=True, exist_ok=True)
+    atomic_write_toml(_tc_course_dir / "course.toml", course_data)
+
     course_toml_path = tc_dir / "course.toml"
     atomic_write_toml(course_toml_path, course_data)
 
@@ -1161,45 +1165,112 @@ def scaffold_course_files(
             f"---\ncourse: {slug}\nversion: 1.0.0\n---\n\n# Course Pedagogical Memory: {title}\n- (milestone) Course scaffolded with archetype '{archetype_info['title']}'.\n- (milestone) Triad consensus reached: Daedalus, Marie, and Hypatia unanimously approved curriculum.\n",
         )
 
-    # 6. Scaffold chapter and section lesson plans
+    _tc_course_dir = workspace / "_tc" / "courses" / slug
+    _tc_course_dir.mkdir(parents=True, exist_ok=True)
+    _tc_plans_dir = _tc_course_dir / "plans"
+    _tc_plans_dir.mkdir(parents=True, exist_ok=True)
+
+    # 6. Compile deterministic symbol table (source-map.toml)
+    compiled_source_map = None
+    if compile_source_map:
+        try:
+            compiled_source_map = compile_source_map(slug, workspace=workspace, course_data=course_data)
+        except Exception:
+            pass
+
+    sec_pointer_map: dict[str, list[dict[str, Any]]] = {}
+    if compiled_source_map and isinstance(compiled_source_map, dict):
+        for ch_entry in compiled_source_map.get("chapters", []):
+            ch_t = ch_entry.get("title", "").strip().lower()
+            for sec_entry in ch_entry.get("sections", []):
+                sec_t = sec_entry.get("title", "").strip().lower()
+                sec_key = f"{ch_t}::{sec_t}"
+                sec_pointers = []
+                for c_entry in sec_entry.get("concepts", []):
+                    c_title = c_entry.get("title", "Concept")
+                    for p in c_entry.get("pointers", []):
+                        sec_pointers.append({
+                            "concept": c_title,
+                            "source_id": p.get("source_id", "source"),
+                            "heading": p.get("heading", sec_entry.get("title", "")),
+                            "lines": p.get("lines", [1, 50]),
+                            "verbatim_anchor": p.get("verbatim_anchor", ""),
+                        })
+                sec_pointer_map[sec_key] = sec_pointers
+
+    # 7. Scaffold chapter and section lesson plans
     for ch_idx, ch in enumerate(course_data.get("chapters", []), 1):
-        ch_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", ch["title"].lower()).strip("-")
+        ch_slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", ch["title"].lower()).strip("-")
         ch_dir_name = f"chapter-{ch_idx:02d}-{ch_slug}"
         ch_path = plans_dir / ch_dir_name
+        ch_path.mkdir(parents=True, exist_ok=True)
+        _tc_ch_path = _tc_plans_dir / ch_dir_name
+        _tc_ch_path.mkdir(parents=True, exist_ok=True)
 
         for s_idx, sec in enumerate(ch.get("sections", []), 1):
-            sec_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", sec["title"].lower()).strip("-")
+            sec_slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", sec["title"].lower()).strip("-")
             sec_dir_name = f"section-{s_idx:02d}-{sec_slug}"
             sec_path = ch_path / sec_dir_name
             sec_path.mkdir(parents=True, exist_ok=True)
+            _tc_sec_path = _tc_ch_path / sec_dir_name
+            _tc_sec_path.mkdir(parents=True, exist_ok=True)
 
             # lesson-plan.md (Teacher's instructional checklist - AI only)
             vocab_list = sec.get('vocabulary_introduced', [])
             vocab_bullets = "\n".join(f"- [ ] Verify mechanics of {v}." for v in vocab_list) if vocab_list else f"- [ ] Verify understanding of {sec['title']}."
+            prereqs_list = sec.get('vocabulary_prerequisites', []) or sec.get('prerequisites', [])
+            prereqs_str = ", ".join(f"`{p}`" for p in prereqs_list) if prereqs_list else "None (Foundational)"
+
+            sec_key = f"{ch.get('title', '').strip().lower()}::{sec.get('title', '').strip().lower()}"
+            sec_pointers = sec_pointer_map.get(sec_key, [])
+            citation_bullets = []
+            if sec_pointers:
+                for ptr in sec_pointers[:6]:
+                    lines_span = ptr.get("lines", [1, 50])
+                    citation_bullets.append(
+                        f"- **{ptr['concept']}**: `{ptr['source_id']}` (Lines {lines_span[0]}–{lines_span[1]}) — `{ptr['heading']}`\n"
+                        f"  > *Anchor*: \"{ptr['verbatim_anchor']}\""
+                    )
+            else:
+                citation_bullets.append(
+                    f"- **Source Corpus**: Grounded in authoritative research from `_tc/research/{slug}/sources/markdown/`\n"
+                    f"  > *Pointers*: Exact line spans compiled in `_tc/courses/{slug}/source-map.toml`"
+                )
+            citations_text = "\n".join(citation_bullets)
+
             lesson_plan_content = (
                 f"# Lesson Plan: {sec['title']}\n\n"
                 f"> **Internal AI Instructor Checklist** (Never show raw contents to student)\n\n"
-                f"## Objectives\n"
+                f"## Teaching Plan\n"
+                f"### Pedagogical Flow\n"
+                f"1. **Intuitive Metaphor & Core Invariant**: Ground the concept with an accessible mental model before technical syntax. Establish the foundational invariant that must never break.\n"
+                f"2. **Technical Formalism**: Deconstruct exact semantics, system invariants, interfaces, and state transitions.\n"
+                f"3. **Applied Practical Exercise**: Have learner implement, debug, or verify concrete code in a clean terminal/editor context.\n\n"
+                f"### Core Invariants & Mechanics\n"
                 f"- [ ] Master core mechanics and invariants of {sec['title']}.\n"
                 f"{vocab_bullets}\n\n"
-                f"## Prerequisites to Verify\n"
-                f"- {', '.join(sec.get('vocabulary_prerequisites', ['None (Foundational)']))}\n\n"
-                f"## Socratic Diagnostic Prompts\n"
-                f"- What are the core constraints of this mechanism?\n"
-                f"- What invariant fails if this primitive is misused?\n\n"
+                f"### Prerequisites to Verify\n"
+                f"- {prereqs_str}\n\n"
+                f"## Source-Coverage Map\n"
+                f"{citations_text}\n\n"
+                f"## Verification Plan\n"
+                f"### Bloom Diagnostic Probes\n"
+                f"- **Bloom Level 2 (Comprehension)**: Explain the fundamental mechanism of {sec['title']} in your own words without reciting jargon.\n"
+                f"- **Bloom Level 4 (Analysis)**: What invariant fails if this primitive is misused, and how does this approach contrast with alternative trade-offs?\n"
+                f"- **Bloom Level 5 (Evaluation)**: In what production scenario would this design trade-off degrade, and how would you engineer around it?\n\n"
+                f"### Failure Injection Scenario\n"
+                f"- Inject a deliberate fault (e.g., race condition, boundary desync, unhandled error, corrupted invariant) and require learner to diagnose root cause.\n\n"
+                f"### Explicit Mastery Criteria\n"
+                f"- **Concept Articulation**: Learner accurately articulates the core invariant without rote quotation.\n"
+                f"- **Fault Diagnosis**: Learner identifies and explains the failure injection root cause.\n"
+                f"- **Hands-On Verification**: Learner completes hands-on exercise with passing assertions.\n\n"
                 f"## Next Action on Completion\n"
-                f"- Distill distilled textbook notes into notes.md.\n"
-                f"- Log assessment mastery in ledger.py.\n"
+                f"- Distill distilled textbook notes into `notes/chapter-{ch_idx:02d}.md`.\n"
+                f"- Log assessment mastery in `ledger.py`.\n"
+                f"- Trigger mandatory Section-Close Gate.\n"
             )
             atomic_write_text(sec_path / "lesson-plan.md", lesson_plan_content)
-
-
-    # 7. Compile deterministic symbol table (source-map.toml)
-    if compile_source_map:
-        try:
-            compile_source_map(slug, workspace=workspace, course_data=course_data)
-        except Exception:
-            pass
+            atomic_write_text(_tc_sec_path / "lesson-plan.md", lesson_plan_content)
 
     # 8. Scaffold Course Blueprint artifact (blueprint.md)
     blueprint_lines = [
@@ -1208,10 +1279,10 @@ def scaffold_course_files(
         f"- **Slug**: `{slug}`",
         f"- **Archetype**: `{archetype_info['title']}`",
         f"- **Status**: Ready for Approval",
-        f"- **Consensus**: Daedalus, Marie, and Hypatia Triad Consensus",
+        f"- **Consensus**: 4-Hat Adversarial Research Debate & Triad Consensus",
         "",
         "## Deliberation Summary",
-        f"> {deliberation_md or 'Triad verified 100% textbook coverage.'}",
+        f"> {deliberation_md or 'Triad verified 100% textbook coverage and dialectic rigor.'}",
         "",
         "## Curriculum Structure",
         "",
@@ -1219,18 +1290,20 @@ def scaffold_course_files(
     for ch_idx, ch in enumerate(course_data.get("chapters", []), 1):
         blueprint_lines.append(f"### Chapter {ch_idx}: {ch['title']}")
         for sec in ch.get("sections", []):
-            prereqs_str = f" *(Prereq: {', '.join(sec.get('prerequisites', []))})*" if sec.get("prerequisites") else ""
+            prereqs_list = sec.get("prerequisites", []) or sec.get("vocabulary_prerequisites", [])
+            prereqs_str = f" *(Prereq: {', '.join(prereqs_list)})*" if prereqs_list else ""
             blueprint_lines.append(f"- **{sec['title']}**{prereqs_str}")
         blueprint_lines.append("")
 
-    blueprint_lines.append("## Verification Strategy")
-    blueprint_lines.append("- Section-level diagnostic Bloom inquiries")
-    blueprint_lines.append("- Capstone practical evaluation in portfolio/")
-    blueprint_lines.append("")
+    blueprint_lines.extend([
+        "## Verification Strategy",
+        "- **Bloom Diagnostic Probes**: Section-level inquiries across Bloom levels (Comprehension, Analysis, Evaluation).",
+        "- **Failure Injection Protocols**: Verifying deep understanding through deliberate system fault injection.",
+        "- **Capstone Practical Evaluation**: Real-world implementation in portfolio/ verified against mastery criteria.",
+        "",
+    ])
 
     blueprint_content = "\n".join(blueprint_lines)
-    _tc_course_dir = workspace / "_tc" / "courses" / slug
-    _tc_course_dir.mkdir(parents=True, exist_ok=True)
     atomic_write_text(_tc_course_dir / "blueprint.md", blueprint_content)
     atomic_write_text(tc_dir / "blueprint.md", blueprint_content)
 

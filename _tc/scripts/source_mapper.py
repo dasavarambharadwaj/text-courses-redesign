@@ -196,27 +196,42 @@ def compile_source_map(
         else:
             course_data = {}
 
-    # 2. Discover raw sources if not passed
+    # 2. Discover raw and converted markdown sources if not passed
     resolved_sources: list[dict[str, Any]] = []
     if sources:
         resolved_sources = sources
     else:
-        # Check standard raw source directory
-        raw_sources_dir = ws / "research" / course_slug / "sources" / "raw"
-        if not raw_sources_dir.is_dir():
-            raw_sources_dir = ws / "sources" / "raw"
-
-        if raw_sources_dir.is_dir():
-            for p in sorted(raw_sources_dir.glob("*.md")):
-                lines_count = len(p.read_text(encoding="utf-8").splitlines())
-                resolved_sources.append({
-                    "id": p.stem,
-                    "title": p.stem.replace("_", " ").replace("-", " ").title(),
-                    "author": "Author",
-                    "raw_path": str(p.relative_to(ws)).replace("\\", "/"),
-                    "abs_path": p,
-                    "total_lines": lines_count,
-                })
+        # Check standard research source directories (Story 11 zero-loss markdown and raw sources)
+        candidate_dirs = [
+            ws / "_tc" / "research" / course_slug / "sources" / "markdown",
+            ws / "_tc" / "research" / course_slug / "sources" / "raw",
+            ws / "research" / course_slug / "sources" / "markdown",
+            ws / "research" / course_slug / "sources" / "raw",
+            ws / "sources" / "markdown",
+            ws / "sources" / "raw",
+        ]
+        ignored_meta_files = {
+            "conversion-ledger.md",
+            "source-proposal.md",
+            "debate-summary.md",
+            "digest.md",
+        }
+        seen_stems: set[str] = set()
+        for candidate_dir in candidate_dirs:
+            if candidate_dir.is_dir():
+                for p in sorted(candidate_dir.glob("*.md")):
+                    if p.name.lower() in ignored_meta_files or p.stem in seen_stems:
+                        continue
+                    seen_stems.add(p.stem)
+                    lines_count = len(p.read_text(encoding="utf-8").splitlines())
+                    resolved_sources.append({
+                        "id": p.stem,
+                        "title": p.stem.replace("_", " ").replace("-", " ").title(),
+                        "author": "Author",
+                        "raw_path": str(p.relative_to(ws)).replace("\\", "/"),
+                        "abs_path": p,
+                        "total_lines": lines_count,
+                    })
 
     # Read raw content for each source
     source_texts: dict[str, str] = {}
@@ -328,13 +343,18 @@ def compile_source_map(
         "chapters": compiled_chapters,
     }
 
-    # Write source-map.toml (encapsulate into .tc/ if available)
+    # Write source-map.toml (canonical _tc/ storage and .tc/ encapsulation)
+    raw_toml = tomli_w.dumps(source_map)
+    _tc_course_dir = ws / "_tc" / "courses" / course_slug
+    _tc_course_dir.mkdir(parents=True, exist_ok=True)
+    (_tc_course_dir / "source-map.toml").write_text(raw_toml, encoding="utf-8")
+
     tc_dir = course_dir / ".tc"
     if tc_dir.is_dir():
         out_path = tc_dir / "source-map.toml"
     else:
         out_path = course_dir / "source-map.toml"
-    out_path.write_text(tomli_w.dumps(source_map), encoding="utf-8")
+    out_path.write_text(raw_toml, encoding="utf-8")
 
     return source_map
 
@@ -346,7 +366,9 @@ def read_source_pointer(
 ) -> list[dict[str, Any]]:
     """Instant O(1) lookup of exact source lines for a concept from source-map.toml."""
     ws = Path(workspace).resolve()
-    map_file = ws / "courses" / course_slug / ".tc" / "source-map.toml"
+    map_file = ws / "_tc" / "courses" / course_slug / "source-map.toml"
+    if not map_file.is_file():
+        map_file = ws / "courses" / course_slug / ".tc" / "source-map.toml"
     if not map_file.is_file():
         map_file = ws / "courses" / course_slug / "source-map.toml"
     if not map_file.is_file():
@@ -374,6 +396,12 @@ def read_source_pointer(
                         excerpt_text = ""
                         if raw_rel:
                             raw_file = ws / raw_rel
+                            if not raw_file.is_file():
+                                raw_file = ws / "_tc" / raw_rel
+                            if not raw_file.is_file():
+                                raw_file = ws / "_tc" / "research" / course_slug / "sources" / "markdown" / f"{ptr['source_id']}.md"
+                            if not raw_file.is_file():
+                                raw_file = ws / "_tc" / "research" / course_slug / "sources" / "raw" / f"{ptr['source_id']}.md"
                             if raw_file.is_file():
                                 lines = raw_file.read_text(encoding="utf-8").splitlines()
                                 start = max(1, ptr["lines"][0])
