@@ -115,6 +115,22 @@ COMMAND_DESCRIPTIONS = {
 }
 
 
+def _update_dashboard(workspace: Path | str) -> None:
+    """Regenerate _tc/status/state.json and status-board/index.html (CAP-10, FR-50)."""
+    try:
+        from dashboard_generator import write_status_dashboard
+    except ImportError:
+        try:
+            from _tc.scripts.dashboard_generator import write_status_dashboard
+        except ImportError:
+            write_status_dashboard = None
+    if write_status_dashboard:
+        try:
+            write_status_dashboard(workspace)
+        except Exception:
+            pass
+
+
 def dispatch_conversational_turn(
     user_input: str | None = None,
     workspace: Path | str = ".",
@@ -184,6 +200,7 @@ def dispatch_conversational_turn(
     pending_cp = load_checkpoint(ws)
     if pending_cp and inp:
         res = handle_gate_response(inp, workspace=ws)
+        _update_dashboard(ws)
         if not res.get("has_active_gate"):
             action = res.get("action")
             if action == "stop":
@@ -465,6 +482,7 @@ def dispatch_conversational_turn(
             except ImportError:
                 from _tc.scripts.teach_engine import get_teaching_session
             ctx = get_teaching_session(slug, workspace=ws)
+            _update_dashboard(ws)
             return {
                 "ok": True,
                 "state": "teaching",
@@ -552,6 +570,7 @@ def dispatch_conversational_turn(
             blueprint_file = ws / "courses" / slug / ".tc" / "blueprint.md"
         if not blueprint_file.is_file():
             blueprint_file = ws / "courses" / slug / "blueprint.md"
+        _update_dashboard(ws)
         return {
             "ok": True,
             "state": "blueprint",

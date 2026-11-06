@@ -564,6 +564,20 @@ def bootstrap_workspace(
     else:
         preserved_files.append(str(root_readme.relative_to(target_path)))
 
+    try:
+        from dashboard_generator import write_status_dashboard
+    except ImportError:
+        try:
+            from _tc.scripts.dashboard_generator import write_status_dashboard
+        except ImportError:
+            write_status_dashboard = None
+
+    if write_status_dashboard:
+        try:
+            write_status_dashboard(target_path)
+        except Exception:
+            pass
+
     return {
         "ok": True,
         "status": "bootstrapped",

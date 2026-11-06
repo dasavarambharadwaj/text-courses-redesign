@@ -1,0 +1,16 @@
+{
+  "framework": "TextCourses",
+  "version": "0.3.0",
+  "last_updated": "2026-11-06T15:54:23.381904+00:00",
+  "workspace_root": "C:\\Users\\dasav\\Documents\\Code\\text-courses-redesign",
+  "preferences": {},
+  "active_gate": null,
+  "has_active_gate": false,
+  "active_pointer": null,
+  "next_action": "Initialize a course or research domain via `/tc`.",
+  "total_courses": 0,
+  "courses": {},
+  "research": {},
+  "decisions": [],
+  "memlog_timeline": []
+}
