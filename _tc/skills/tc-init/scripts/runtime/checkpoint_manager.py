@@ -30,6 +30,25 @@ GATE_ACQUISITION = "acquisition_gate"
 GATE_SOURCE_PROPOSAL = "source_proposal"
 GATE_APPROVAL = "approval_gate"
 GATE_ACTION_FORK = "action_fork"
+GATE_SECTION_CLOSE = "section_close"
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # type: ignore[no-redef]
+
+try:
+    import tomli_w
+except ImportError:
+    tomli_w = None
+
+try:
+    from memlog import append_entry
+except ImportError:
+    try:
+        from _tc.scripts.memlog import append_entry
+    except ImportError:
+        append_entry = None
 
 
 def output_json(data: dict[str, Any], exit_code: int = 0) -> None:
@@ -236,6 +255,189 @@ def create_approval_gate(
     return gate_data
 
 
+def approve_section_close(
+    workspace: Path | str,
+    slug: str,
+    section_id: str | int,
+    section_title: str | None = None,
+) -> dict[str, Any]:
+    """Approve section close gate: update status to completed, log scoped memlogs, and scrub ephemeral session."""
+    ws = Path(workspace).resolve()
+    sec_id_str = str(section_id)
+    sec_num_m = re.search(r"(\d+)", sec_id_str)
+    sec_num = int(sec_num_m.group(1)) if sec_num_m else None
+
+    # 1. Update course.toml manifests across _tc/ and courses/<slug>/.tc/
+    manifest_candidates = [
+        ws / "_tc" / "courses" / slug / "course.toml",
+        ws / "courses" / slug / ".tc" / "course.toml",
+        ws / "courses" / slug / "course.toml",
+    ]
+    manifest_updated = False
+    resolved_title = section_title or f"Section {sec_id_str}"
+    effective_ch_num = 1
+
+    for m_path in manifest_candidates:
+        if not m_path.is_file():
+            continue
+        try:
+            data = tomllib.loads(m_path.read_text(encoding="utf-8"))
+            for ch_idx, ch in enumerate(data.get("chapters", []), 1):
+                for s_idx, sec in enumerate(ch.get("sections", []), 1):
+                    s_id = str(sec.get("id", ""))
+                    m_s = re.search(r"(\d+)", s_id)
+                    s_num = int(m_s.group(1)) if m_s else None
+                    if s_id == sec_id_str or (sec_num is not None and (s_num == sec_num or s_idx == sec_num)):
+                        sec["status"] = "completed"
+                        sec["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        resolved_title = sec.get("title", resolved_title)
+                        effective_ch_num = ch_idx
+                        manifest_updated = True
+            if tomli_w:
+                if "course" in data:
+                    data["course"]["updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                m_path.write_text(tomli_w.dumps(data), encoding="utf-8")
+        except Exception:
+            pass
+
+    # 2. Append scoped memlog entries (CAP-4, CAP-9)
+    if append_entry:
+        try:
+            append_entry(
+                ws,
+                f"Section '{resolved_title}' completed and signed off.",
+                scope="course",
+                course_slug=slug,
+                tag="milestone",
+            )
+            append_entry(
+                ws,
+                f"Completed section '{resolved_title}' in {slug}",
+                scope="profile",
+                tag="milestone",
+                roll_up=True,
+            )
+        except Exception:
+            pass
+
+    # Legacy memlog append
+    course_memlogs = [
+        ws / "_tc" / "courses" / slug / "memlog.md",
+        ws / "courses" / slug / ".tc" / "memlog.md",
+        ws / "courses" / slug / "memlog.md",
+    ]
+    for c_ml in course_memlogs:
+        if c_ml.is_file():
+            try:
+                with open(c_ml, "a", encoding="utf-8") as f:
+                    f.write(f"- (milestone) sec:{sec_id_str}:status=completed:section_closed\n")
+            except Exception:
+                pass
+
+    # 3. Permanently scrub ephemeral session transcript (CAP-9, FR-49)
+    session_files = [
+        ws / "courses" / slug / ".tc" / "session.jsonl",
+        ws / "courses" / slug / "session.jsonl",
+        ws / "_tc" / "courses" / slug / "session.jsonl",
+    ]
+    sessions_dir = ws / "_tc" / "courses" / slug / "sessions"
+    if sessions_dir.is_dir():
+        for s_file in sessions_dir.glob("*.jsonl"):
+            session_files.append(s_file)
+
+    for sf in session_files:
+        if sf.is_file():
+            try:
+                sf.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    session_scrubbed = not any(sf.is_file() for sf in session_files)
+
+    # 4. Verify chapter notes exist on disk
+    notes_file = ws / "courses" / slug / "notes" / f"chapter-{effective_ch_num:02d}.md"
+    notes_verified = notes_file.is_file()
+
+    return {
+        "ok": True,
+        "slug": slug,
+        "section_id": sec_id_str,
+        "section_title": resolved_title,
+        "section_status": "completed",
+        "manifest_updated": manifest_updated,
+        "session_scrubbed": session_scrubbed,
+        "notes_verified": notes_verified,
+        "notes_path": str(notes_file) if notes_verified else None,
+    }
+
+
+def create_section_close_gate(
+    workspace: Path | str,
+    slug: str,
+    chapter_id: str | int,
+    section_id: str | int,
+    section_title: str,
+    chapter_title: str | None = None,
+    notes_path: Path | str | None = None,
+    recap: list[str] | None = None,
+    coverage_summary: str | None = None,
+) -> dict[str, Any]:
+    """Create Mandatory Section-Close Gate checkpoint after mastering the final concept (CAP-9, FR-49)."""
+    ws = Path(workspace).resolve()
+    ch_num_m = re.search(r"(\d+)", str(chapter_id))
+    ch_num = int(ch_num_m.group(1)) if ch_num_m else 1
+
+    resolved_notes = notes_path
+    if not resolved_notes:
+        candidate_notes = ws / "courses" / slug / "notes" / f"chapter-{ch_num:02d}.md"
+        if candidate_notes.is_file():
+            resolved_notes = str(candidate_notes.relative_to(ws)).replace("\\", "/")
+
+    prompt_lines = [
+        f"🎯 **Section Sign-Off Gate**: Concept mastery verified for **{section_title}**.",
+        "",
+    ]
+    if resolved_notes:
+        prompt_lines.append(f"📖 **Visible Textbook Notes**: `{resolved_notes}`")
+    if recap:
+        prompt_lines.append("\n### Section Mastery Recap:")
+        for r in recap:
+            prompt_lines.append(f"- ✅ {r}")
+    if coverage_summary:
+        prompt_lines.append(f"\n📊 **Authoritative Source Grounding**: {coverage_summary}")
+
+    prompt_lines.extend([
+        "",
+        "Please review the compiled chapter notes and confirm section sign-off:",
+        "- `[1]` **Approve & Close Section**: Mark section completed, append scoped memlog, permanently scrub ephemeral session, and advance.",
+        "- `[2]` **Revise Notes**: Add nuances, clarifications, or custom observations to the compiled chapter notes.",
+        "- `[3]` **Re-explain / Deepen**: Request deeper Socratic inquiry or revisit tricky edge cases.",
+        "- `[4]` **Keep Session Open**: Preserve interactive session without closing.",
+    ])
+    prompt_text = "\n".join(prompt_lines)
+
+    gate_data = {
+        "gate": GATE_SECTION_CLOSE,
+        "slug": slug,
+        "chapter_id": chapter_id,
+        "section_id": str(section_id),
+        "section_title": section_title,
+        "chapter_title": chapter_title,
+        "notes_path": str(resolved_notes) if resolved_notes else "",
+        "recap": recap or [],
+        "prompt": prompt_text,
+        "options": [
+            {"key": "1", "label": "Approve & Close Section", "action": "approve_close"},
+            {"key": "2", "label": "Revise Notes", "action": "revise_notes"},
+            {"key": "3", "label": "Re-explain / Deepen", "action": "deepen"},
+            {"key": "4", "label": "Keep Session Open", "action": "keep_open"},
+        ],
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+    save_checkpoint(workspace, gate_data)
+    return gate_data
+
+
 def handle_gate_response(
     response: str,
     workspace: Path | str,
@@ -378,6 +580,70 @@ def handle_gate_response(
                 "adjustment": response,
                 "slug": active_cp.get("slug"),
                 "message": f"Reconciling roadmap with your adjustment: '{response}'.",
+            }
+
+    elif gate == GATE_SECTION_CLOSE:
+        if resp_clean in {"1", "approve", "approve close", "close", "yes", "confirm", "approve & close section", "approve and close"}:
+            res_close = approve_section_close(
+                workspace=workspace,
+                slug=active_cp.get("slug"),
+                section_id=active_cp.get("section_id"),
+                section_title=active_cp.get("section_title"),
+            )
+            clear_checkpoint(workspace)
+            return {
+                "ok": True,
+                "has_active_gate": False,
+                "gate": gate,
+                "action": "approve_close",
+                "slug": active_cp.get("slug"),
+                "section_id": active_cp.get("section_id"),
+                "section_status": "completed",
+                "session_scrubbed": res_close.get("session_scrubbed", True),
+                "notes_verified": res_close.get("notes_verified", True),
+                "notes_path": res_close.get("notes_path"),
+                "message": f"Section '{active_cp.get('section_title')}' approved and closed. Ephemeral session scrubbed.",
+            }
+        elif resp_clean in {"2", "revise", "revise notes", "edit notes"}:
+            return {
+                "ok": True,
+                "has_active_gate": True,
+                "gate": gate,
+                "action": "revise_notes",
+                "slug": active_cp.get("slug"),
+                "section_id": active_cp.get("section_id"),
+                "message": f"What adjustments or clarifications would you like to add to notes for '{active_cp.get('section_title')}'?",
+            }
+        elif resp_clean in {"3", "re-explain", "deepen", "explain", "revisit"}:
+            return {
+                "ok": True,
+                "has_active_gate": True,
+                "gate": gate,
+                "action": "deepen",
+                "slug": active_cp.get("slug"),
+                "section_id": active_cp.get("section_id"),
+                "message": f"What concept or edge case in '{active_cp.get('section_title')}' should we explore more deeply?",
+            }
+        elif resp_clean in {"4", "keep", "keep open", "keep session open"}:
+            return {
+                "ok": True,
+                "has_active_gate": True,
+                "gate": gate,
+                "action": "keep_open",
+                "slug": active_cp.get("slug"),
+                "section_id": active_cp.get("section_id"),
+                "message": f"Session kept open for '{active_cp.get('section_title')}'. Section remains in review until approved.",
+            }
+        else:
+            return {
+                "ok": True,
+                "has_active_gate": True,
+                "gate": gate,
+                "action": "notes_feedback",
+                "feedback": response,
+                "slug": active_cp.get("slug"),
+                "section_id": active_cp.get("section_id"),
+                "message": f"Recorded feedback on section notes: '{response}'. Choose [1] Approve & Close, [2] Revise Notes, [3] Re-explain, [4] Keep Open.",
             }
 
     return {

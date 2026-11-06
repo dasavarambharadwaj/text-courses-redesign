@@ -749,6 +749,7 @@ def advance_lesson_concept(
                 "next_recommendation": f"Run practical evaluation: uv run _tc/scripts/practical_evaluator.py evaluate-lesson --course {course_slug} --section {active_info['section_id']}",
             }
 
+    close_gate = None
     if is_section_completed:
         # Final concept completed: automatically compile human-first notes.md
         recap_bullets = recap or [
@@ -779,7 +780,28 @@ def advance_lesson_concept(
             },
         )
 
-    return {
+        try:
+            from checkpoint_manager import create_section_close_gate
+        except ImportError:
+            try:
+                from _tc.scripts.checkpoint_manager import create_section_close_gate
+            except ImportError:
+                create_section_close_gate = None
+
+        if create_section_close_gate:
+            ch_notes = notes_compilation.get("chapter_notes_file") if notes_compilation else None
+            close_gate = create_section_close_gate(
+                workspace=ws,
+                slug=course_slug,
+                chapter_id=active_info.get("chapter_id", 1),
+                section_id=active_info["section_id"],
+                section_title=active_info["section_title"],
+                chapter_title=active_info.get("chapter_title"),
+                notes_path=ch_notes,
+                recap=recap_bullets,
+            )
+
+    ret = {
         "ok": True,
         "course_slug": course_slug,
         "section_id": active_info["section_id"],
@@ -791,6 +813,13 @@ def advance_lesson_concept(
         "teacher": teacher,
         "next_recommendation": "/tc-test-me" if is_section_completed else "/tc-teach",
     }
+    if is_section_completed and close_gate:
+        ret["gate"] = "section_close"
+        ret["has_active_gate"] = True
+        ret["close_gate"] = close_gate
+        ret["prompt"] = close_gate.get("prompt")
+        ret["options"] = close_gate.get("options")
+    return ret
 
 
 def log_question(course_slug: str, text: str, workspace: Path | str = ".") -> dict[str, Any]:

@@ -281,6 +281,20 @@ def dispatch_conversational_turn(
                     "context": ctx,
                     "fork_text": ctx.get("fork_text", ""),
                 }
+            elif action == "approve_close":
+                slug = pending_cp.get("slug")
+                return {
+                    "ok": True,
+                    "state": "section_closed",
+                    "action": "approve_close",
+                    "slug": slug,
+                    "section_id": res.get("section_id"),
+                    "section_status": "completed",
+                    "session_scrubbed": res.get("session_scrubbed", True),
+                    "notes_verified": res.get("notes_verified", True),
+                    "notes_path": res.get("notes_path"),
+                    "message": res.get("message", "Section closed and signed off. Ephemeral session scrubbed."),
+                }
         else:
             action = res.get("action")
             slug = pending_cp.get("slug", "active-course")

@@ -388,10 +388,20 @@ def compile_notes(
         else:
             warning = err
 
-        course_dir = manifest_file.parent
+        # Determine visible course directory courses/<slug>/ for notes
+        if manifest_file.parent.name == ".tc":
+            visible_course_dir = manifest_file.parent.parent
+        elif manifest_file.parent.parent.name == "_tc":
+            slug = manifest_file.parent.name
+            ws = manifest_file.parent.parent.parent
+            visible_course_dir = ws / "courses" / slug
+        else:
+            visible_course_dir = manifest_file.parent
+
+        course_dir = visible_course_dir
 
         # 1. Update flat chapter textbook notes at courses/<slug>/notes/chapter-XX.md
-        notes_dir = course_dir / "notes"
+        notes_dir = visible_course_dir / "notes"
         notes_dir.mkdir(parents=True, exist_ok=True)
 
         ch_num = 1
