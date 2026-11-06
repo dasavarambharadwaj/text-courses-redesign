@@ -9,7 +9,8 @@ from pathlib import Path
 import pytest
 
 MIGRATOR_SCRIPT = Path(__file__).parent.parent / "_tc" / "scripts" / "migrator.py"
-SKILL_FILE = Path(__file__).parent.parent / "skills" / "tc-migrate" / "SKILL.md"
+_skill = Path(__file__).parent.parent / "_tc" / "skills" / "tc-migrate" / "SKILL.md"
+SKILL_FILE = _skill if _skill.is_file() else Path(__file__).parent.parent / "skills" / "tc-migrate" / "SKILL.md"
 
 
 def test_migrator_cli_help():

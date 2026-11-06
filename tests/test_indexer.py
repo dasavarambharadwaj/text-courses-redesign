@@ -313,10 +313,11 @@ def test_course_builder_integrates_catalog_synthesis(temp_sources_workspace: tup
 def test_zero_bmad_invariant() -> None:
     """Enforce strict invariant: runtime code and user-facing skills must contain zero 'bmad' references."""
     indexer_code = Path("_tc/scripts/indexer.py").read_text(encoding="utf-8").lower()
-    skill_code = Path("skills/tc-index/SKILL.md").read_text(encoding="utf-8").lower()
+    skill_path = Path("_tc/skills/tc-index/SKILL.md") if Path("_tc/skills/tc-index/SKILL.md").is_file() else Path("skills/tc-index/SKILL.md")
+    skill_code = skill_path.read_text(encoding="utf-8").lower()
 
     assert "bmad" not in indexer_code, "Found 'bmad' in _tc/scripts/indexer.py"
-    assert "bmad" not in skill_code, "Found 'bmad' in skills/tc-index/SKILL.md"
+    assert "bmad" not in skill_code, f"Found 'bmad' in {skill_path}"
 
 
 def test_diacritic_normalization(tmp_path: Path) -> None:

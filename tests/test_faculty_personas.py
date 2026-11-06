@@ -10,7 +10,8 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SKILLS_DIR = REPO_ROOT / "skills"
+_internal_skills = REPO_ROOT / "_tc" / "skills"
+SKILLS_DIR = _internal_skills if _internal_skills.is_dir() else REPO_ROOT / "skills"
 SCRIPTS_DIR = REPO_ROOT / "_tc" / "scripts"
 TEACH_SCRIPT = SCRIPTS_DIR / "teach_engine.py"
 BOOTSTRAP_SCRIPT = SCRIPTS_DIR / "bootstrapper.py"

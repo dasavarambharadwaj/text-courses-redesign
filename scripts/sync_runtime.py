@@ -16,23 +16,23 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CANONICAL_DIR = REPO_ROOT / "_tc" / "scripts"
-RUNTIME_DIR = REPO_ROOT / "skills" / "tc-init" / "scripts" / "runtime"
+RUNTIME_DIR = REPO_ROOT / "_tc" / "skills" / "tc-init" / "scripts" / "runtime"
 
 SKILL_SCRIPT_MAP = {
-    "bootstrapper.py": REPO_ROOT / "skills" / "tc-init" / "scripts" / "bootstrapper.py",
-    "scout.py": REPO_ROOT / "skills" / "tc-research" / "scripts" / "scout.py",
-    "harvester.py": REPO_ROOT / "skills" / "tc-research" / "scripts" / "harvester.py",
-    "paper_fetcher.py": REPO_ROOT / "skills" / "tc-research" / "scripts" / "paper_fetcher.py",
-    "book_scout.py": REPO_ROOT / "skills" / "tc-research" / "scripts" / "book_scout.py",
-    "course_builder.py": REPO_ROOT / "skills" / "tc-create" / "scripts" / "course_builder.py",
-    "source_mapper.py": REPO_ROOT / "skills" / "tc-create" / "scripts" / "source_mapper.py",
-    "teach_engine.py": REPO_ROOT / "skills" / "tc-teach" / "scripts" / "teach_engine.py",
-    "diagnostic_tester.py": REPO_ROOT / "skills" / "tc-test-me" / "scripts" / "diagnostic_tester.py",
-    "practical_evaluator.py": REPO_ROOT / "skills" / "tc-practicals" / "scripts" / "practical_evaluator.py",
-    "auditor.py": REPO_ROOT / "skills" / "tc-verify-course" / "scripts" / "auditor.py",
-    "redirector.py": REPO_ROOT / "skills" / "tc-redirect-course" / "scripts" / "redirector.py",
-    "migrator.py": REPO_ROOT / "skills" / "tc-migrate" / "scripts" / "migrator.py",
-    "indexer.py": REPO_ROOT / "skills" / "tc-index" / "scripts" / "indexer.py",
+    "bootstrapper.py": REPO_ROOT / "_tc" / "skills" / "tc-init" / "scripts" / "bootstrapper.py",
+    "scout.py": REPO_ROOT / "_tc" / "skills" / "tc-research" / "scripts" / "scout.py",
+    "harvester.py": REPO_ROOT / "_tc" / "skills" / "tc-research" / "scripts" / "harvester.py",
+    "paper_fetcher.py": REPO_ROOT / "_tc" / "skills" / "tc-research" / "scripts" / "paper_fetcher.py",
+    "book_scout.py": REPO_ROOT / "_tc" / "skills" / "tc-research" / "scripts" / "book_scout.py",
+    "course_builder.py": REPO_ROOT / "_tc" / "skills" / "tc-create" / "scripts" / "course_builder.py",
+    "source_mapper.py": REPO_ROOT / "_tc" / "skills" / "tc-create" / "scripts" / "source_mapper.py",
+    "teach_engine.py": REPO_ROOT / "_tc" / "skills" / "tc-teach" / "scripts" / "teach_engine.py",
+    "diagnostic_tester.py": REPO_ROOT / "_tc" / "skills" / "tc-test-me" / "scripts" / "diagnostic_tester.py",
+    "practical_evaluator.py": REPO_ROOT / "_tc" / "skills" / "tc-practicals" / "scripts" / "practical_evaluator.py",
+    "auditor.py": REPO_ROOT / "_tc" / "skills" / "tc-verify-course" / "scripts" / "auditor.py",
+    "redirector.py": REPO_ROOT / "_tc" / "skills" / "tc-redirect-course" / "scripts" / "redirector.py",
+    "migrator.py": REPO_ROOT / "_tc" / "skills" / "tc-migrate" / "scripts" / "migrator.py",
+    "indexer.py": REPO_ROOT / "_tc" / "skills" / "tc-index" / "scripts" / "indexer.py",
 }
 
 

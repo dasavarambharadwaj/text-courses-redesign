@@ -8,7 +8,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCOUT_SCRIPT = REPO_ROOT / "_tc" / "scripts" / "scout.py"
-SKILL_FILE = REPO_ROOT / "skills" / "tc-research" / "SKILL.md"
+_skill = REPO_ROOT / "_tc" / "skills" / "tc-research" / "SKILL.md"
+SKILL_FILE = _skill if _skill.is_file() else REPO_ROOT / "skills" / "tc-research" / "SKILL.md"
 
 
 def test_scout_generates_five_hats_and_dossier(tmp_path: Path):

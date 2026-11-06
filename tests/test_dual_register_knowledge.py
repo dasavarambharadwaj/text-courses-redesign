@@ -21,8 +21,10 @@ NOTES_COMPILER = Path(__file__).parent.parent / "_tc" / "scripts" / "notes_compi
 TEACH_ENGINE = Path(__file__).parent.parent / "_tc" / "scripts" / "teach_engine.py"
 DIAG_TESTER = Path(__file__).parent.parent / "_tc" / "scripts" / "diagnostic_tester.py"
 MEMLOG_SCRIPT = Path(__file__).parent.parent / "_tc" / "scripts" / "memlog.py"
-TEACH_SKILL = Path(__file__).parent.parent / "skills" / "tc-teach" / "SKILL.md"
-TEST_SKILL = Path(__file__).parent.parent / "skills" / "tc-test-me" / "SKILL.md"
+_teach_s = Path(__file__).parent.parent / "_tc" / "skills" / "tc-teach" / "SKILL.md"
+TEACH_SKILL = _teach_s if _teach_s.is_file() else Path(__file__).parent.parent / "skills" / "tc-teach" / "SKILL.md"
+_test_s = Path(__file__).parent.parent / "_tc" / "skills" / "tc-test-me" / "SKILL.md"
+TEST_SKILL = _test_s if _test_s.is_file() else Path(__file__).parent.parent / "skills" / "tc-test-me" / "SKILL.md"
 
 
 def test_zero_bmad_references():

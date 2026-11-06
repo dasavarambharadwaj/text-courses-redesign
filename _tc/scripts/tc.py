@@ -137,12 +137,35 @@ def dispatch_conversational_turn(
             action = res.get("action")
             if action in {"proceed_open", "files_detected"}:
                 slug = pending_cp.get("slug", "active-course")
+                topic_title = pending_cp.get("title") or slug.replace("-", " ").title()
+                try:
+                    from course_builder import create_course
+                except ImportError:
+                    from _tc.scripts.course_builder import create_course
+                res_create = create_course(slug=slug, title=topic_title, workspace=ws)
+                gate = create_approval_gate(
+                    ws,
+                    slug=slug,
+                    title=topic_title,
+                    course_data=res_create,
+                    deliberation_summary=res_create.get("deliberation_summary", ""),
+                )
+                blueprint_file = ws / "_tc" / "courses" / slug / "blueprint.md"
+                if not blueprint_file.is_file():
+                    blueprint_file = ws / "courses" / slug / ".tc" / "blueprint.md"
+                if not blueprint_file.is_file():
+                    blueprint_file = ws / "courses" / slug / "blueprint.md"
                 return {
                     "ok": True,
-                    "state": "creating_course",
+                    "state": "blueprint",
+                    "gate": "curriculum_approval",
                     "action": action,
                     "slug": slug,
-                    "message": f"Checkpoint resolved ({action}). Synthesizing curriculum...",
+                    "deliberation_summary": res_create.get("deliberation_summary"),
+                    "active_artifact": str(blueprint_file),
+                    "prompt": gate["prompt"],
+                    "options": gate["options"],
+                    "message": f"Checkpoint resolved ({action}). Synthesized curriculum blueprint.",
                 }
             elif action == "start_lesson":
                 slug = pending_cp.get("slug")
@@ -168,7 +191,9 @@ def dispatch_conversational_turn(
         }
 
     # 2. Check workspace initialization
-    pref_file = ws / "profile" / "preferences.md"
+    pref_file = ws / "_tc" / "profile" / "preferences.md"
+    if not pref_file.is_file():
+        pref_file = ws / "profile" / "preferences.md"
     if not pref_file.is_file():
         pref_file = ws / "plan" / "preferences.md"
     if not pref_file.is_file():
@@ -225,7 +250,9 @@ def dispatch_conversational_turn(
 
             # 2. Extract discovered canonical books and auto-harvested sources
             rec_books = []
-            gs_file = ws / "research" / slug / "gold-standards.md"
+            gs_file = ws / "_tc" / "research" / slug / "gold-standards.md"
+            if not gs_file.is_file():
+                gs_file = ws / "research" / slug / "gold-standards.md"
             if gs_file.is_file():
                 for line in gs_file.read_text(encoding="utf-8").splitlines():
                     if "ACQUISITION NEEDED" in line:
@@ -237,15 +264,21 @@ def dispatch_conversational_turn(
                 rec_books = [f"Canonical reference for {topic_title}"]
 
             found_specs = []
-            rfcs_dir = ws / "research" / slug / "sources" / "rfcs"
+            rfcs_dir = ws / "_tc" / "research" / slug / "sources" / "rfcs"
+            if not rfcs_dir.is_dir():
+                rfcs_dir = ws / "research" / slug / "sources" / "rfcs"
             if rfcs_dir.is_dir():
                 for rf in sorted(rfcs_dir.glob("*.txt")):
                     found_specs.append(f"IETF RFC: {rf.stem.replace('_', ' ').upper()}")
-            docs_dir = ws / "research" / slug / "sources" / "docs"
+            docs_dir = ws / "_tc" / "research" / slug / "sources" / "docs"
+            if not docs_dir.is_dir():
+                docs_dir = ws / "research" / slug / "sources" / "docs"
             if docs_dir.is_dir():
                 for df in sorted(docs_dir.glob("*.md")):
                     found_specs.append(f"Official Spec: {df.stem.replace('_', ' ').title()}")
-            papers_dir = ws / "research" / slug / "sources" / "papers"
+            papers_dir = ws / "_tc" / "research" / slug / "sources" / "papers"
+            if not papers_dir.is_dir():
+                papers_dir = ws / "research" / slug / "sources" / "papers"
             if papers_dir.is_dir():
                 for pf in sorted(papers_dir.glob("*.md")):
                     found_specs.append(f"Academic Paper: {pf.stem.replace('_', ' ')}")
@@ -271,11 +304,18 @@ def dispatch_conversational_turn(
             course_data=res_create,
             deliberation_summary=res_create.get("deliberation_summary", ""),
         )
+        blueprint_file = ws / "_tc" / "courses" / slug / "blueprint.md"
+        if not blueprint_file.is_file():
+            blueprint_file = ws / "courses" / slug / ".tc" / "blueprint.md"
+        if not blueprint_file.is_file():
+            blueprint_file = ws / "courses" / slug / "blueprint.md"
         return {
             "ok": True,
-            "state": "approval_gate",
+            "state": "blueprint",
+            "gate": "curriculum_approval",
             "slug": slug,
             "deliberation_summary": res_create.get("deliberation_summary"),
+            "active_artifact": str(blueprint_file),
             "prompt": gate["prompt"],
             "options": gate["options"],
         }

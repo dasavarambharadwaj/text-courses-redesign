@@ -16,7 +16,8 @@ from pathlib import Path
 
 import pytest
 
-SKILL_FILE = Path(__file__).parent.parent / "skills" / "tc-roadmap" / "SKILL.md"
+_skill = Path(__file__).parent.parent / "_tc" / "skills" / "tc-roadmap" / "SKILL.md"
+SKILL_FILE = _skill if _skill.is_file() else Path(__file__).parent.parent / "skills" / "tc-roadmap" / "SKILL.md"
 
 
 def test_tc_roadmap_skill_exists_and_frontmatter():

@@ -10,7 +10,8 @@ import pytest
 import tomli_w
 
 TEACH_SCRIPT = Path(__file__).parent.parent / "_tc" / "scripts" / "teach_engine.py"
-SKILL_FILE = Path(__file__).parent.parent / "skills" / "tc-teach" / "SKILL.md"
+_skill = Path(__file__).parent.parent / "_tc" / "skills" / "tc-teach" / "SKILL.md"
+SKILL_FILE = _skill if _skill.is_file() else Path(__file__).parent.parent / "skills" / "tc-teach" / "SKILL.md"
 
 
 def test_teach_cli_help():

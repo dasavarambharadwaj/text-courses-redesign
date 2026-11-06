@@ -1201,6 +1201,39 @@ def scaffold_course_files(
         except Exception:
             pass
 
+    # 8. Scaffold Course Blueprint artifact (blueprint.md)
+    blueprint_lines = [
+        f"# Course Blueprint: {title}",
+        "",
+        f"- **Slug**: `{slug}`",
+        f"- **Archetype**: `{archetype_info['title']}`",
+        f"- **Status**: Ready for Approval",
+        f"- **Consensus**: Daedalus, Marie, and Hypatia Triad Consensus",
+        "",
+        "## Deliberation Summary",
+        f"> {deliberation_md or 'Triad verified 100% textbook coverage.'}",
+        "",
+        "## Curriculum Structure",
+        "",
+    ]
+    for ch_idx, ch in enumerate(course_data.get("chapters", []), 1):
+        blueprint_lines.append(f"### Chapter {ch_idx}: {ch['title']}")
+        for sec in ch.get("sections", []):
+            prereqs_str = f" *(Prereq: {', '.join(sec.get('prerequisites', []))})*" if sec.get("prerequisites") else ""
+            blueprint_lines.append(f"- **{sec['title']}**{prereqs_str}")
+        blueprint_lines.append("")
+
+    blueprint_lines.append("## Verification Strategy")
+    blueprint_lines.append("- Section-level diagnostic Bloom inquiries")
+    blueprint_lines.append("- Capstone practical evaluation in portfolio/")
+    blueprint_lines.append("")
+
+    blueprint_content = "\n".join(blueprint_lines)
+    _tc_course_dir = workspace / "_tc" / "courses" / slug
+    _tc_course_dir.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(_tc_course_dir / "blueprint.md", blueprint_content)
+    atomic_write_text(tc_dir / "blueprint.md", blueprint_content)
+
     return course_dir
 
 

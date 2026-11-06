@@ -301,10 +301,11 @@ def test_zero_bmad_invariant_across_epic_11() -> None:
         SCRIPTS_DIR / "auditor.py",
         SCRIPTS_DIR / "teach_engine.py",
         SCRIPTS_DIR / "course_builder.py",
-        Path("skills/tc-create/SKILL.md"),
-        Path("skills/tc-research/SKILL.md"),
-        Path("skills/tc-teach/SKILL.md"),
-        Path("skills/tc-verify-course/SKILL.md"),
+        Path("skills/tc/SKILL.md"),
+        Path("_tc/skills/tc-create/SKILL.md"),
+        Path("_tc/skills/tc-research/SKILL.md"),
+        Path("_tc/skills/tc-teach/SKILL.md"),
+        Path("_tc/skills/tc-verify-course/SKILL.md"),
     ]
 
     for f in files_to_check:

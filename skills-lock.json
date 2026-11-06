@@ -198,6 +198,12 @@
       "sourceType": "github",
       "skillPath": "skills/bmod-toolsmith/SKILL.md",
       "computedHash": "5989ce26176a3027716acccab91f35d7163488e78ee954d3827a565b6039c868"
+    },
+    "tc": {
+      "source": "skills/tc",
+      "sourceType": "local",
+      "skillPath": "skills/tc/SKILL.md",
+      "computedHash": "cace8d7b99a66ea1e844cb0f748817ee93d14315678e3e908acea7c1fefb4232"
     }
   }
 }

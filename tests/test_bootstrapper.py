@@ -30,7 +30,8 @@ from bootstrapper import (
 )
 
 BOOTSTRAPPER_SCRIPT = Path(__file__).parent.parent / "_tc" / "scripts" / "bootstrapper.py"
-SKILL_BOOTSTRAPPER_SCRIPT = Path(__file__).parent.parent / "skills" / "tc-init" / "scripts" / "bootstrapper.py"
+_skill_bs = Path(__file__).parent.parent / "_tc" / "skills" / "tc-init" / "scripts" / "bootstrapper.py"
+SKILL_BOOTSTRAPPER_SCRIPT = _skill_bs if _skill_bs.is_file() else Path(__file__).parent.parent / "skills" / "tc-init" / "scripts" / "bootstrapper.py"
 
 
 def run_bootstrapper(*args: str) -> subprocess.CompletedProcess[str]:
@@ -370,10 +371,11 @@ def test_preferences_get_and_set(tmp_path: Path):
 
 def test_zero_bmad_references():
     """Verify STRICT zero BMad references across tc-init skill, scripts, and assets."""
+    _init_dir = Path(__file__).parent.parent / "_tc" / "skills" / "tc-init" if (Path(__file__).parent.parent / "_tc" / "skills" / "tc-init").is_dir() else Path(__file__).parent.parent / "skills" / "tc-init"
     files_to_check = [
-        Path(__file__).parent.parent / "skills" / "tc-init" / "SKILL.md",
-        Path(__file__).parent.parent / "skills" / "tc-init" / "customize.toml",
-        Path(__file__).parent.parent / "skills" / "tc-init" / "assets" / "style-previews.md",
+        _init_dir / "SKILL.md",
+        _init_dir / "customize.toml",
+        _init_dir / "assets" / "style-previews.md",
         BOOTSTRAPPER_SCRIPT,
         SKILL_BOOTSTRAPPER_SCRIPT,
     ]

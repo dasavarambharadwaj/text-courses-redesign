@@ -10,7 +10,8 @@ import pytest
 import tomli_w
 
 REDIRECTOR_SCRIPT = Path(__file__).parent.parent / "_tc" / "scripts" / "redirector.py"
-SKILL_FILE = Path(__file__).parent.parent / "skills" / "tc-redirect-course" / "SKILL.md"
+_skill = Path(__file__).parent.parent / "_tc" / "skills" / "tc-redirect-course" / "SKILL.md"
+SKILL_FILE = _skill if _skill.is_file() else Path(__file__).parent.parent / "skills" / "tc-redirect-course" / "SKILL.md"
 
 
 def test_redirector_cli_help():

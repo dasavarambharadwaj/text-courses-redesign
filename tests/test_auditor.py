@@ -10,7 +10,8 @@ import pytest
 import tomli_w
 
 AUDITOR_SCRIPT = Path(__file__).parent.parent / "_tc" / "scripts" / "auditor.py"
-SKILL_FILE = Path(__file__).parent.parent / "skills" / "tc-verify-course" / "SKILL.md"
+_skill = Path(__file__).parent.parent / "_tc" / "skills" / "tc-verify-course" / "SKILL.md"
+SKILL_FILE = _skill if _skill.is_file() else Path(__file__).parent.parent / "skills" / "tc-verify-course" / "SKILL.md"
 
 
 def test_auditor_cli_help():

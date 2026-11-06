@@ -20,7 +20,8 @@ from pathlib import Path
 import pytest
 
 BUILDER_SCRIPT = Path(__file__).parent.parent / "_tc" / "scripts" / "course_builder.py"
-SKILL_FILE = Path(__file__).parent.parent / "skills" / "tc-create" / "SKILL.md"
+_skill = Path(__file__).parent.parent / "_tc" / "skills" / "tc-create" / "SKILL.md"
+SKILL_FILE = _skill if _skill.is_file() else Path(__file__).parent.parent / "skills" / "tc-create" / "SKILL.md"
 
 
 def test_zero_bmad_references():

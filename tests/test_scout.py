@@ -9,7 +9,8 @@ from pathlib import Path
 import pytest
 
 SCOUT_SCRIPT = Path(__file__).parent.parent / "_tc" / "scripts" / "scout.py"
-SKILL_FILE = Path(__file__).parent.parent / "skills" / "tc-research" / "SKILL.md"
+_skill = Path(__file__).parent.parent / "_tc" / "skills" / "tc-research" / "SKILL.md"
+SKILL_FILE = _skill if _skill.is_file() else Path(__file__).parent.parent / "skills" / "tc-research" / "SKILL.md"
 
 
 def test_scout_cli_help():

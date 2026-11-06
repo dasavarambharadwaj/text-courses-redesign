@@ -11,7 +11,8 @@ import pytest
 import tomli_w
 
 SCRIPT_PATH = Path(__file__).resolve().parent.parent / "_tc" / "scripts" / "practical_evaluator.py"
-SKILL_PATH = Path(__file__).resolve().parent.parent / "skills" / "tc-practicals" / "SKILL.md"
+_skill = Path(__file__).resolve().parent.parent / "_tc" / "skills" / "tc-practicals" / "SKILL.md"
+SKILL_PATH = _skill if _skill.is_file() else Path(__file__).resolve().parent.parent / "skills" / "tc-practicals" / "SKILL.md"
 
 
 @pytest.fixture

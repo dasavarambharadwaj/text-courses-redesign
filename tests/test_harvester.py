@@ -28,7 +28,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 HARVESTER_SCRIPT = SCRIPTS_DIR / "harvester.py"
 SCOUT_SCRIPT = SCRIPTS_DIR / "scout.py"
 TC_SCRIPT = SCRIPTS_DIR / "tc.py"
-SKILL_RESEARCH = PROJECT_ROOT / "skills" / "tc-research" / "SKILL.md"
+_skill = PROJECT_ROOT / "_tc" / "skills" / "tc-research" / "SKILL.md"
+SKILL_RESEARCH = _skill if _skill.is_file() else PROJECT_ROOT / "skills" / "tc-research" / "SKILL.md"
 
 
 def test_zero_bmad_references_in_harvester():

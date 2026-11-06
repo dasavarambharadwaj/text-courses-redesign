@@ -48,7 +48,7 @@ def test_dispatch_new_topic_triggers_acquisition_gate(tmp_path: Path):
 
 
 def test_dispatch_resolves_acquisition_gate(tmp_path: Path):
-    """Verify providing input '1' against acquisition gate resolves checkpoint."""
+    """Verify providing input '1' against acquisition gate resolves checkpoint and advances to blueprint."""
     init_learner_profile(tmp_path)
 
     # Trigger acquisition gate
@@ -57,8 +57,10 @@ def test_dispatch_resolves_acquisition_gate(tmp_path: Path):
     # Respond with '1' to proceed with open docs
     res = dispatch_conversational_turn("1", workspace=tmp_path)
     assert res["ok"] is True
-    assert res["state"] == "creating_course"
+    assert res["state"] == "blueprint"
     assert res["action"] == "proceed_open"
+    assert "active_artifact" in res
+    assert Path(res["active_artifact"]).is_file()
 
 
 def test_dispatch_active_course_fork_responses(tmp_path: Path):
