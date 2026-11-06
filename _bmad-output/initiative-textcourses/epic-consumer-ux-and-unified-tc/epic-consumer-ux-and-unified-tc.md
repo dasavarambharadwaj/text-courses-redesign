@@ -5,7 +5,7 @@ parent: initiative-textcourses
 covers: [CAP-1, CAP-2, CAP-3, CAP-4, CAP-5, CAP-6, CAP-7, CAP-8, CAP-9, CAP-10, FR-46, FR-47, FR-48, FR-49, FR-50]
 after: [epic-multi-source-deterministic-compiler]
 assignee: ""
-status: in-progress
+status: done
 risk: high
 ---
 
@@ -13,7 +13,7 @@ risk: high
 
 **Initiative**: `initiative-textcourses`  
 **Slug**: `epic-consumer-ux-and-unified-tc`  
-**Status**: in-progress  
+**Status**: done  
 **Covers**: CAP-1, CAP-2, CAP-3, CAP-4, CAP-5, CAP-6, CAP-7, CAP-8, CAP-9, CAP-10, FR-46, FR-47, FR-48, FR-49, FR-50  
 **References**:
 - Approved Sprint Change Proposal: `_bmad-output/initiative-textcourses/change-reconcile-flow-and-unattended-compiler/change-reconcile-flow-and-unattended-compiler.md`
