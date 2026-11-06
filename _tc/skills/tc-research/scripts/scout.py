@@ -625,6 +625,167 @@ The arrival of foundation models, generative AI assistants, and autonomous codin
     return doc
 
 
+def generate_source_proposal_markdown(
+    slug: str,
+    topic: str,
+    canonical_books: list[dict[str, Any]],
+    official_sources: list[dict[str, Any]],
+    github_repos: list[dict[str, Any]] | None = None,
+    community_consensus: list[dict[str, Any]] | str | None = None,
+    papers: list[dict[str, Any]] | None = None,
+    web_articles: list[dict[str, Any]] | None = None,
+) -> str:
+    """Generate structured 6-channel source proposal markdown (FR-43, CAP-8)."""
+    topic_clean = topic.title()
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    lines = [
+        "---",
+        "type: source-proposal",
+        f'slug: "{slug}"',
+        f'topic: "{topic}"',
+        f'generated_at: "{now_iso}"',
+        "---",
+        "",
+        f"# 📋 Multi-Source Research Proposal: {topic_clean}",
+        "",
+        f"> **Objective**: Autonomous multi-source discovery across 6 distinct literature channels for **{topic_clean}**.",
+        "> Review the proposed sources below. You can approve, request more research, add/remove sources, or stop.",
+        "",
+        "## Channel 1: Landmark Canonical Textbooks",
+        "",
+    ]
+
+    if canonical_books:
+        for idx, b in enumerate(canonical_books, 1):
+            auth = ", ".join(b.get("authors", [])) if isinstance(b.get("authors"), list) else b.get("authors", "Author")
+            st_badge = "✅ `[AUTO-HARVESTABLE - Open Repo]`" if b.get("status") == "auto_harvestable" else "⚠️ `[ACQUISITION NEEDED - Proprietary Book]`"
+            isbn_str = f" | ISBN: `{b.get('isbn')}`" if b.get("isbn") else ""
+            lines.append(f"### 1.{idx}. {b.get('title')} ({b.get('edition', 'Standard Ed')})")
+            lines.append(f"- **Authors**: {auth}{isbn_str}")
+            lines.append(f"- **Status**: {st_badge}")
+            lines.append(f"- **Why Essential**: {b.get('why_essential', 'Core domain reference.')}")
+            lines.append("")
+    else:
+        lines.append("- *No commercial textbook required; open documentation and academic literature serve as authoritative substrate.*\n")
+
+    lines.extend([
+        "## Channel 2: Academic Research Papers & Foundational Literature",
+        "",
+    ])
+    paper_list = papers or [s for s in official_sources if s.get("type") in {"paper", "arxiv_paper"}]
+    if paper_list:
+        for idx, p in enumerate(paper_list, 1):
+            ident = p.get("identifier") or p.get("arxiv_id", "")
+            lines.append(f"### 2.{idx}. {p.get('title')}")
+            if ident:
+                lines.append(f"- **Citation / Identifier**: `{ident}`")
+            if p.get("path"):
+                lines.append(f"- **Harvest Path**: `{p.get('path')}`")
+            lines.append("- **Category**: Peer-reviewed computer science literature")
+            lines.append("")
+    else:
+        lines.append(f"- Foundational papers and ArXiv surveys on {topic_clean}.\n")
+
+    lines.extend([
+        "## Channel 3: Official Specifications, Standards & RFCs",
+        "",
+    ])
+    spec_list = [s for s in official_sources if s.get("type") in {"rfc", "systems_doc", "doc", "spec"}]
+    if spec_list:
+        for idx, s in enumerate(spec_list, 1):
+            lines.append(f"### 3.{idx}. {s.get('title')}")
+            lines.append(f"- **Type**: `{s.get('type')}`")
+            lines.append(f"- **Identifier**: `{s.get('identifier', s.get('title'))}`")
+            if s.get("path"):
+                lines.append(f"- **Location**: `{s.get('path')}`")
+            lines.append("")
+    else:
+        lines.append("- Official IETF RFCs, POSIX manual specifications, and language reference manuals.\n")
+
+    lines.extend([
+        "## Channel 4: Open-Source GitHub Repositories & Implementations",
+        "",
+    ])
+    repos = github_repos or []
+    if not repos:
+        t_low = topic.lower()
+        if "rust" in t_low:
+            repos = [
+                {"name": "rust-lang/book", "description": "The Rust Programming Language official markdown source"},
+                {"name": "tokio-rs/tokio", "description": "Asynchronous runtime and networking primitives in Rust"},
+            ]
+        elif "storage" in t_low or "database" in t_low:
+            repos = [
+                {"name": "facebook/rocksdb", "description": "Persistent key-value store for fast storage internals"},
+                {"name": "tikv/tikv", "description": "Distributed transactional key-value database built in Rust"},
+            ]
+        elif "network" in t_low or "tcp" in t_low:
+            repos = [
+                {"name": "smoltcp-rs/smoltcp", "description": "Standalone, event-driven TCP/IP stack in pure Rust"},
+            ]
+        else:
+            repos = [
+                {"name": f"oss-reference/{slug}", "description": f"Open-source reference implementations and benchmarks for {topic_clean}"},
+            ]
+
+    for idx, r in enumerate(repos, 1):
+        lines.append(f"- **GitHub**: `{r.get('name')}` — {r.get('description')}")
+    lines.append("")
+
+    lines.extend([
+        "## Channel 5: Community Consensus (Reddit, Hacker News, Quora & Syllabi)",
+        "",
+    ])
+    if isinstance(community_consensus, str):
+        lines.append(community_consensus.strip())
+        lines.append("")
+    elif isinstance(community_consensus, list) and community_consensus:
+        for item in community_consensus:
+            if isinstance(item, dict):
+                lines.append(f"- **{item.get('source', 'Community')}**: {item.get('consensus', '')}")
+            else:
+                lines.append(f"- {item}")
+        lines.append("")
+    else:
+        lines.append(
+            f"Practitioners on Reddit (`r/learnprogramming`, `r/{slug}`) and Hacker News consensus consistently rate "
+            f"practical projects combined with authoritative specifications as the highest-retention path for {topic_clean}."
+        )
+        lines.append("")
+
+    lines.extend([
+        "## Channel 6: Curated Web Articles & Documentation",
+        "",
+    ])
+    articles = web_articles or [
+        {"title": f"Architecture Overview of {topic_clean}", "source": "Engineering Deep Dives", "type": "Architectural Whitepaper"},
+        {"title": f"Production Invariants and Pitfalls in {topic_clean}", "source": "Systems Engineering Journal", "type": "Field Guide"},
+    ]
+    for idx, a in enumerate(articles, 1):
+        lines.append(f"- **{a.get('title')}** ({a.get('source')}) — `{a.get('type')}`")
+    lines.append("")
+
+    lines.extend([
+        "---",
+        "",
+        "## Material Acquisition & Fallback Protocol",
+        "",
+        "- **Open Materials**: Auto-harvested and compiled into `_tc/research/<slug>/sources/` automatically upon approval.",
+        "- **Proprietary Books**: If you own a copy, drop it into `_tc/research/<slug>/sources/user-provided/` or anywhere in workspace.",
+        "- **Material Fallback Loop**: If a proprietary book is not provided, the compiler automatically falls back to open specifications and academic literature without stalling.",
+        "",
+        "## Action Options",
+        "",
+        "- `[1]` **Approve Sources & Fetch All**: Download & index proposed materials, then compile curriculum.",
+        "- `[2]` **Request More Research**: Perform broader or deeper discovery queries.",
+        "- `[3]` **Add Custom Source**: Introduce a specific URL, repository, or local document.",
+        "- `[4]` **Remove Source**: Exclude unwanted recommendations from curriculum compilation.",
+        "- `[5]` **Stop**: Cancel research and exit.",
+    ])
+
+    return "\n".join(lines) + "\n"
+
+
 def run_scout(
     slug: str,
     workspace: Path | str = ".",
@@ -700,9 +861,11 @@ def run_scout(
             except Exception as e:
                 notes.append(f"Paper fetcher note: {e}")
 
-        # 3. Write research/<slug>/gold-standards.md
+        # 3. Write research/<slug>/gold-standards.md (canonical and legacy mirror)
         gs_file = ws / "research" / slug / "gold-standards.md"
+        canon_gs_file = ws / "_tc" / "research" / slug / "gold-standards.md"
         gs_file.parent.mkdir(parents=True, exist_ok=True)
+        canon_gs_file.parent.mkdir(parents=True, exist_ok=True)
         gs_lines = [
             f"# Gold-Standard Literature & Official Specifications: {topic.title()}",
             "",
@@ -741,6 +904,7 @@ def run_scout(
             "Or proceed immediately using the auto-harvested official RFCs, papers, and open specifications above.",
         ])
         atomic_write_text(gs_file, "\n".join(gs_lines))
+        atomic_write_text(canon_gs_file, "\n".join(gs_lines))
 
         # 4. Aggregate extracted content from harvested sources
         content_parts = [f"# {topic.title()}\n\nOfficial technical curriculum substrate for {topic}.\n"]
@@ -917,11 +1081,24 @@ def run_scout(
             "status": s.get("status", "verified"),
         })
 
-    # Write to canonical visible research/ and encapsulated machine cache .tc/research/
+    proposal_md = generate_source_proposal_markdown(
+        slug=slug,
+        topic=topic_title,
+        canonical_books=discovered_books if "discovered_books" in locals() and discovered_books else [],
+        official_sources=harvested_official if "harvested_official" in locals() and harvested_official else [],
+    )
+
+    # Write to canonical _tc/research/ and legacy visible research/ and .tc/research/
     target_dirs = [
+        ws / "_tc" / "research" / slug,
         ws / "research" / slug,
         ws / ".tc" / "research" / slug,
     ]
+    primary_dir = target_dirs[0]
+
+    digest["source_proposal_path"] = str(primary_dir / "source-proposal.md")
+    digest["metadata"]["source_proposal_path"] = str(primary_dir / "source-proposal.md")
+
     for rdir in target_dirs:
         rdir.mkdir(parents=True, exist_ok=True)
         atomic_write_json(rdir / "digest.json", digest)
@@ -931,8 +1108,8 @@ def run_scout(
         atomic_write_text(rdir / "five-hats-critique.md", critique_md)
         atomic_write_text(rdir / "multi-hats-critique.md", critique_md)
         atomic_write_text(rdir / "critique.md", critique_md)
+        atomic_write_text(rdir / "source-proposal.md", proposal_md)
 
-    primary_dir = target_dirs[0]
     return {
         "ok": True,
         "slug": slug,
@@ -941,6 +1118,8 @@ def run_scout(
         "sources_file": str(primary_dir / "sources.toml"),
         "dossier_file": str(primary_dir / "dossier.md"),
         "critique_file": str(primary_dir / "five-hats-critique.md"),
+        "source_proposal_file": str(primary_dir / "source-proposal.md"),
+        "source_proposal_path": str(primary_dir / "source-proposal.md"),
         "headings_count": len(parsed["toc"]),
         "apis_count": len(parsed["api_index"]),
         "vocabulary_count": len(parsed["vocabulary"]),

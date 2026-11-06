@@ -323,13 +323,16 @@ def harvest_official_sources(
 ) -> dict[str, Any]:
     """Execute autonomous official source harvesting for a given topic."""
     ws = Path(workspace).resolve()
-    sources_dir = ws / "research" / slug / "sources"
-    rfcs_dir = sources_dir / "rfcs"
-    docs_dir = sources_dir / "docs"
-    papers_dir = sources_dir / "papers"
+    # Support both canonical _tc/research and legacy research/
+    canon_sources = ws / "_tc" / "research" / slug / "sources"
+    legacy_sources = ws / "research" / slug / "sources"
+    for s_dir in [canon_sources, legacy_sources]:
+        for sub in ["rfcs", "docs", "papers", "repos", "transcripts", "user-provided", "raw"]:
+            (s_dir / sub).mkdir(parents=True, exist_ok=True)
 
-    for d in [rfcs_dir, docs_dir, papers_dir]:
-        d.mkdir(parents=True, exist_ok=True)
+    rfcs_dir = canon_sources / "rfcs"
+    docs_dir = canon_sources / "docs"
+    papers_dir = canon_sources / "papers"
 
     harvested: list[dict[str, Any]] = []
 
@@ -351,6 +354,9 @@ def harvest_official_sources(
                 fetch_success = True
 
         if fetch_success:
+            leg_file = legacy_sources / target_file.relative_to(canon_sources)
+            if target_file.is_file():
+                atomic_write_text(leg_file, content)
             harvested.append({
                 "type": "rfc",
                 "title": s["title"],
@@ -368,6 +374,9 @@ def harvest_official_sources(
         target_file = docs_dir / f"{d['name']}.md"
         if not target_file.is_file():
             atomic_write_text(target_file, d["content"])
+        leg_file = legacy_sources / "docs" / f"{d['name']}.md"
+        if not leg_file.is_file():
+            atomic_write_text(leg_file, d["content"])
         
         content = target_file.read_text(encoding="utf-8")
         harvested.append({
@@ -398,6 +407,9 @@ def harvest_official_sources(
         paper_text = f"# {p['title']}\n\n**Authors**: {', '.join(p['authors'])}\n**ArXiv ID**: `{p['arxiv_id']}`\n**URL**: {p['url']}\n\n## Abstract\n{p['summary']}\n"
         if not summary_file.is_file():
             atomic_write_text(summary_file, paper_text)
+        leg_file = legacy_sources / "papers" / f"arxiv_{p_id}_{clean_title}.md"
+        if not leg_file.is_file():
+            atomic_write_text(leg_file, paper_text)
 
         harvested.append({
             "type": "arxiv_paper",

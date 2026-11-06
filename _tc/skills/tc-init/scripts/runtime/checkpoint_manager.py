@@ -27,6 +27,7 @@ from typing import Any
 CHECKPOINT_FILE = ".tc/checkpoint.json"
 
 GATE_ACQUISITION = "acquisition_gate"
+GATE_SOURCE_PROPOSAL = "source_proposal"
 GATE_APPROVAL = "approval_gate"
 GATE_ACTION_FORK = "action_fork"
 
@@ -118,6 +119,65 @@ def create_acquisition_gate(
     return gate_data
 
 
+def create_source_proposal_gate(
+    workspace: Path | str,
+    slug: str,
+    topic: str,
+    proposal_path: Path | str | None = None,
+    recommended_books: list[str] | None = None,
+    found_sources: list[str] | None = None,
+) -> dict[str, Any]:
+    """Create Interactive Source Proposal checkpoint gate across 6 channels (FR-43, CAP-8)."""
+    rec_books = recommended_books or []
+    found = found_sources or []
+    books_str = ", ".join(f"**{b}**" for b in rec_books) if rec_books else f"canonical authority on {topic}"
+
+    prompt_lines = [
+        f"📋 **Multi-Source Research Proposal**: Discovered materials for **{topic}**.",
+    ]
+    if proposal_path:
+        prompt_lines.append(f"📄 Proposal dossier: `{proposal_path}`")
+    prompt_lines.extend([
+        "",
+        f"📚 **Gold Standard Material Found**: Research recommends {books_str}.",
+    ])
+    if found:
+        prompt_lines.append("\n### Auto-Harvested Official Specs & Papers (Available Now):")
+        for s in found[:8]:
+            prompt_lines.append(f"- ✅ {s}")
+
+    prompt_lines.extend([
+        "",
+        "Review the proposed sources and choose your next action:",
+        "- `[1]` **Approve Sources & Fetch All** (or **Proceed with Open Docs**): Harvest and compile syllabus.",
+        "- `[2]` **Request More Research** (or **I'll Drop Files**): Search for more materials or wait for drop-in.",
+        "- `[3]` **Add Custom Source**: Add URL, paper, or repo to proposal.",
+        "- `[4]` **Remove Source**: Exclude a source from proposal.",
+        "- `[5]` **Stop**: Cancel research and exit.",
+    ])
+    prompt_text = "\n".join(prompt_lines)
+
+    gate_data = {
+        "gate": GATE_SOURCE_PROPOSAL,
+        "slug": slug,
+        "topic": topic,
+        "proposal_path": str(proposal_path) if proposal_path else "",
+        "recommended_books": rec_books,
+        "found_sources": found,
+        "prompt": prompt_text,
+        "options": [
+            {"key": "1", "label": "Approve Sources & Fetch All", "action": "proceed_open"},
+            {"key": "2", "label": "Request More Research", "action": "more_research"},
+            {"key": "3", "label": "Add Custom Source", "action": "add_source"},
+            {"key": "4", "label": "Remove Source", "action": "remove_source"},
+            {"key": "5", "label": "Stop", "action": "stop"},
+        ],
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+    save_checkpoint(workspace, gate_data)
+    return gate_data
+
+
 def create_approval_gate(
     workspace: Path | str,
     slug: str,
@@ -183,9 +243,15 @@ def handle_gate_response(
     gate = active_cp.get("gate")
     resp_clean = response.strip().lower()
 
-    if gate == GATE_ACQUISITION:
+    if gate in {GATE_ACQUISITION, GATE_SOURCE_PROPOSAL}:
         # Check if user dropped a file in the meantime
-        from extractor import discover_workspace_documents
+        try:
+            from extractor import discover_workspace_documents
+        except ImportError:
+            try:
+                from _tc.scripts.extractor import discover_workspace_documents
+            except ImportError:
+                discover_workspace_documents = lambda ws: []
         discovered = discover_workspace_documents(workspace)
         if len(discovered) > len(active_cp.get("found_sources", [])):
             clear_checkpoint(workspace)
@@ -193,28 +259,72 @@ def handle_gate_response(
                 "ok": True,
                 "has_active_gate": False,
                 "gate": gate,
+                "slug": active_cp.get("slug"),
                 "action": "files_detected",
                 "new_files": [str(p) for p in discovered],
                 "message": f"Found {len(discovered)} textbook documents in workspace. Proceeding to compilation.",
             }
 
-        # Check options: '1', 'proceed', 'open', 'yes'
-        if resp_clean in {"1", "proceed", "open", "continue", "yes", "proceed with open docs"}:
+        # Check options: '1', 'proceed', 'open', 'yes', 'approve', 'approve sources'
+        if resp_clean in {"1", "proceed", "open", "continue", "yes", "proceed with open docs", "approve", "approve sources", "approve sources & fetch all"}:
             clear_checkpoint(workspace)
             return {
                 "ok": True,
                 "has_active_gate": False,
                 "gate": gate,
+                "slug": active_cp.get("slug"),
                 "action": "proceed_open",
                 "message": "Proceeding with open docs, transcripts, and official repositories.",
             }
-        elif resp_clean in {"2", "wait", "drop", "pause", "wait for drop-in file"}:
+        elif (resp_clean in {"2", "more", "research", "more research", "do more research", "request more research"} or "more research" in resp_clean) and (gate == GATE_SOURCE_PROPOSAL or any(opt.get("action") == "more_research" for opt in active_cp.get("options", []))):
             return {
                 "ok": True,
                 "has_active_gate": True,
                 "gate": gate,
+                "slug": active_cp.get("slug"),
+                "action": "more_research",
+                "message": "Conducting deeper multi-source research for candidate topic.",
+            }
+        elif resp_clean in {"2", "wait", "drop", "pause", "wait for drop-in file", "i'll drop files"}:
+            return {
+                "ok": True,
+                "has_active_gate": True,
+                "gate": gate,
+                "slug": active_cp.get("slug"),
                 "action": "waiting_files",
                 "message": "Waiting for PDF or EPUB files to be added to workspace. Re-run /tc once dropped.",
+            }
+        elif resp_clean == "3" or resp_clean.startswith("add ") or resp_clean.startswith("add:"):
+            custom = response.split(":", 1)[-1].strip() if ":" in response else (response[4:].strip() if response.lower().startswith("add ") else response.lstrip("3").strip())
+            return {
+                "ok": True,
+                "has_active_gate": True,
+                "gate": gate,
+                "slug": active_cp.get("slug"),
+                "action": "add_source",
+                "custom_source": custom or response,
+                "message": f"Added custom source to proposal: '{custom or response}'.",
+            }
+        elif resp_clean == "4" or resp_clean.startswith("remove ") or resp_clean.startswith("remove:"):
+            removed = response.split(":", 1)[-1].strip() if ":" in response else (response[7:].strip() if response.lower().startswith("remove ") else response.lstrip("4").strip())
+            return {
+                "ok": True,
+                "has_active_gate": True,
+                "gate": gate,
+                "slug": active_cp.get("slug"),
+                "action": "remove_source",
+                "removed_source": removed or response,
+                "message": f"Removed source from proposal: '{removed or response}'.",
+            }
+        elif resp_clean in {"5", "stop", "cancel", "abort", "exit"}:
+            clear_checkpoint(workspace)
+            return {
+                "ok": True,
+                "has_active_gate": False,
+                "gate": gate,
+                "slug": active_cp.get("slug"),
+                "action": "stop",
+                "message": "Research and course creation cancelled.",
             }
         else:
             # Custom input or query
@@ -222,9 +332,10 @@ def handle_gate_response(
                 "ok": True,
                 "has_active_gate": True,
                 "gate": gate,
+                "slug": active_cp.get("slug"),
                 "action": "custom_inquiry",
                 "response_text": response,
-                "message": f"Recorded custom preference: '{response}'. You may type '1' to proceed or drop files.",
+                "message": f"Recorded custom preference: '{response}'. You may select [1] Approve, [2] More Research, [3] Add Source, [4] Remove Source, [5] Stop.",
             }
 
     elif gate == GATE_APPROVAL:

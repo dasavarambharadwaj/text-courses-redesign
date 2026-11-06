@@ -163,18 +163,70 @@ def dispatch_conversational_turn(
 
     # 1. Check pending interactive checkpoint gate
     try:
-        from checkpoint_manager import load_checkpoint, handle_gate_response, clear_checkpoint, create_acquisition_gate, create_approval_gate
+        from checkpoint_manager import (
+            load_checkpoint,
+            handle_gate_response,
+            clear_checkpoint,
+            create_acquisition_gate,
+            create_source_proposal_gate,
+            create_approval_gate,
+        )
     except ImportError:
-        from _tc.scripts.checkpoint_manager import load_checkpoint, handle_gate_response, clear_checkpoint, create_acquisition_gate, create_approval_gate
+        from _tc.scripts.checkpoint_manager import (
+            load_checkpoint,
+            handle_gate_response,
+            clear_checkpoint,
+            create_acquisition_gate,
+            create_source_proposal_gate,
+            create_approval_gate,
+        )
 
     pending_cp = load_checkpoint(ws)
     if pending_cp and inp:
         res = handle_gate_response(inp, workspace=ws)
         if not res.get("has_active_gate"):
             action = res.get("action")
-            if action in {"proceed_open", "files_detected"}:
+            if action == "stop":
+                clear_checkpoint(ws)
+                return {
+                    "ok": True,
+                    "state": "stopped",
+                    "action": "stop",
+                    "slug": pending_cp.get("slug"),
+                    "message": "Research and course creation halted by learner.",
+                }
+            elif action in {"proceed_open", "files_detected"}:
                 slug = pending_cp.get("slug", "active-course")
-                topic_title = pending_cp.get("title") or slug.replace("-", " ").title()
+                topic_title = pending_cp.get("topic") or pending_cp.get("title") or slug.replace("-", " ").title()
+
+                # Fetch all proposed and official resources (FR-43.6)
+                try:
+                    from paper_fetcher import harvest_official_sources
+                except ImportError:
+                    from _tc.scripts.paper_fetcher import harvest_official_sources
+                try:
+                    harvest_official_sources(slug=slug, topic=topic_title, workspace=ws)
+                except Exception:
+                    pass
+
+                # Material fallback check: log missing proprietary books to scoped memlog
+                try:
+                    from memlog import append_entry
+                except ImportError:
+                    from _tc.scripts.memlog import append_entry
+                missing_books = pending_cp.get("recommended_books", [])
+                if missing_books:
+                    try:
+                        append_entry(
+                            ws,
+                            f"Material fallback: Proceeding with open documentation and papers for {topic_title}; proprietary textbooks ({', '.join(missing_books)}) bypassed gracefully.",
+                            scope="research",
+                            course_slug=slug,
+                            tag="fallback",
+                        )
+                    except Exception:
+                        pass
+
                 try:
                     from course_builder import create_course
                 except ImportError:
@@ -218,6 +270,71 @@ def dispatch_conversational_turn(
                     "slug": slug,
                     "context": ctx,
                     "fork_text": ctx.get("fork_text", ""),
+                }
+        else:
+            action = res.get("action")
+            slug = pending_cp.get("slug", "active-course")
+            topic_title = pending_cp.get("topic") or pending_cp.get("title") or slug.replace("-", " ").title()
+            proposal_file = ws / "_tc" / "research" / slug / "source-proposal.md"
+            if not proposal_file.is_file():
+                proposal_file = ws / "research" / slug / "source-proposal.md"
+
+            if action == "more_research":
+                try:
+                    from scout import run_scout
+                except ImportError:
+                    from _tc.scripts.scout import run_scout
+                try:
+                    run_scout(slug=slug, topic=topic_title, workspace=ws, confidence_override="high")
+                except Exception:
+                    pass
+                gate = create_source_proposal_gate(
+                    ws,
+                    slug=slug,
+                    topic=topic_title,
+                    proposal_path=str(proposal_file),
+                    recommended_books=pending_cp.get("recommended_books", []),
+                    found_sources=pending_cp.get("found_sources", []),
+                )
+                return {
+                    "ok": True,
+                    "state": "acquisition_gate",
+                    "gate": "source_proposal",
+                    "action": "more_research",
+                    "slug": slug,
+                    "active_artifact": str(proposal_file),
+                    "prompt": gate["prompt"],
+                    "options": gate["options"],
+                    "message": "Conducted expanded multi-source research and updated proposal.",
+                }
+            elif action == "add_source":
+                custom = res.get("custom_source", "")
+                if proposal_file.is_file():
+                    with open(proposal_file, "a", encoding="utf-8") as f:
+                        f.write(f"\n- **User Added Source**: {custom}\n")
+                return {
+                    "ok": True,
+                    "state": "acquisition_gate",
+                    "gate": "source_proposal",
+                    "action": "add_source",
+                    "slug": slug,
+                    "active_artifact": str(proposal_file),
+                    "prompt": pending_cp.get("prompt"),
+                    "options": pending_cp.get("options", []),
+                    "message": f"Added custom source to proposal: '{custom}'.",
+                }
+            elif action == "remove_source":
+                removed = res.get("removed_source", "")
+                return {
+                    "ok": True,
+                    "state": "acquisition_gate",
+                    "gate": "source_proposal",
+                    "action": "remove_source",
+                    "slug": slug,
+                    "active_artifact": str(proposal_file),
+                    "prompt": pending_cp.get("prompt"),
+                    "options": pending_cp.get("options", []),
+                    "message": f"Removed source from proposal: '{removed}'.",
                 }
         return {
             "ok": True,
@@ -363,11 +480,24 @@ def dispatch_conversational_turn(
                 for pf in sorted(papers_dir.glob("*.md")):
                     found_specs.append(f"Academic Paper: {pf.stem.replace('_', ' ')}")
 
-            gate = create_acquisition_gate(ws, slug=slug, recommended_books=rec_books, found_sources=found_specs)
+            proposal_file = ws / "_tc" / "research" / slug / "source-proposal.md"
+            if not proposal_file.is_file():
+                proposal_file = ws / "research" / slug / "source-proposal.md"
+
+            gate = create_source_proposal_gate(
+                ws,
+                slug=slug,
+                topic=topic_title,
+                proposal_path=str(proposal_file),
+                recommended_books=rec_books,
+                found_sources=found_specs,
+            )
             return {
                 "ok": True,
                 "state": "acquisition_gate",
+                "gate": "source_proposal",
                 "slug": slug,
+                "active_artifact": str(proposal_file),
                 "prompt": gate["prompt"],
                 "options": gate["options"],
             }

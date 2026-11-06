@@ -119,9 +119,12 @@ def harvest_github_repo(
     """
     ws = Path(workspace).resolve()
     clone_url, owner, repo_name = normalize_github_url(repo_identifier)
-    target_dir = ws / "research" / slug / "sources" / "repos" / repo_name
+    canon_dir = ws / "_tc" / "research" / slug / "sources" / "repos" / repo_name
+    legacy_dir = ws / "research" / slug / "sources" / "repos" / repo_name
+    target_dir = canon_dir
 
-    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    canon_dir.parent.mkdir(parents=True, exist_ok=True)
+    legacy_dir.parent.mkdir(parents=True, exist_ok=True)
     clone_success = False
     harvest_method = "git_clone"
     error_msg = ""
@@ -319,11 +322,15 @@ def harvest_youtube_transcript(
     ws = Path(workspace).resolve()
     video_id = extract_youtube_video_id(url_or_id)
     video_url = f"https://www.youtube.com/watch?v={video_id}"
-    out_dir = ws / "research" / slug / "sources" / "transcripts"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    canon_dir = ws / "_tc" / "research" / slug / "sources" / "transcripts"
+    legacy_dir = ws / "research" / slug / "sources" / "transcripts"
+    canon_dir.mkdir(parents=True, exist_ok=True)
+    legacy_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = canon_dir
 
     slug_safe_title = re.sub(r"[^\w-]", "-", title.lower()).strip("-") or video_id
     out_file = out_dir / f"{slug_safe_title}-{video_id}.md"
+    leg_file = legacy_dir / f"{slug_safe_title}-{video_id}.md"
 
     transcript_text = ""
     method = ""
@@ -412,6 +419,7 @@ method: "{method}"
 {transcript_text}
 """
     atomic_write_text(out_file, markdown_doc)
+    atomic_write_text(leg_file, markdown_doc)
 
     return {
         "ok": True,
@@ -439,7 +447,9 @@ def record_gold_standards(
 ) -> dict[str, Any]:
     """Record community consensus and status of gold-standard books/materials."""
     ws = Path(workspace).resolve()
-    target_file = ws / "research" / slug / "gold-standards.md"
+    canon_file = ws / "_tc" / "research" / slug / "gold-standards.md"
+    legacy_file = ws / "research" / slug / "gold-standards.md"
+    target_file = canon_file
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     items_md_blocks = []
@@ -502,6 +512,7 @@ For materials marked **`[ACQUISITION NEEDED]`**:
 - **Zero-Stalling Choice**: If you do not have the book, you can proceed with open documentation and verified web sources.
 """
     atomic_write_text(target_file, content)
+    atomic_write_text(legacy_file, content)
 
     return {
         "ok": True,
@@ -522,8 +533,11 @@ def ingest_sources_directory(
 ) -> dict[str, Any]:
     """Scan research/<slug>/sources/ and integrate all harvested repos, transcripts, and files."""
     ws = Path(workspace).resolve()
-    sources_dir = ws / "research" / slug / "sources"
+    canon_sources = ws / "_tc" / "research" / slug / "sources"
+    legacy_sources = ws / "research" / slug / "sources"
+    sources_dir = canon_sources if canon_sources.exists() else legacy_sources
     if not sources_dir.exists():
+        sources_dir = canon_sources
         sources_dir.mkdir(parents=True, exist_ok=True)
 
     discovered_sources: list[dict[str, Any]] = []
