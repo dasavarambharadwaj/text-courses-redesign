@@ -217,6 +217,40 @@ def append_entry_to_file(
         os.fsync(f.fileno())
 
 
+def append_entry(
+    workspace: Path | str,
+    text: str,
+    scope: str = "profile",
+    course_slug: str | None = None,
+    chapter: str | None = None,
+    section: str | None = None,
+    tag: str = "decision",
+    by: str | None = None,
+    roll_up: bool = False,
+) -> Path:
+    """Convenience Python API to append an entry to a scoped memlog."""
+    ws = Path(workspace).resolve()
+    target_path = resolve_scoped_memlog_path(
+        ws,
+        scope=scope,
+        course=course_slug,
+        chapter=chapter,
+        section=section,
+    )
+    prefix = f"- ({tag}) " if tag else "- "
+    if tag and by:
+        prefix = f"- ({tag} by {by}) "
+    entry_line = f"{prefix}{text}"
+    default_topic = f"{scope.capitalize()} Memlog" if scope else "TextCourses Session"
+    append_entry_to_file(target_path, entry_line, default_topic=default_topic)
+
+    if roll_up and scope in {"section", "chapter", "course", "research"}:
+        global_path = ws / "_tc" / "profile" / DEFAULT_MEMLOG_NAME
+        append_entry_to_file(global_path, f"- (milestone) [{course_slug or scope}] {text}", default_topic="Learner Journey")
+
+    return target_path
+
+
 def cmd_init(args: argparse.Namespace) -> None:
     """Initialize a new pedagogical memlog file."""
     memlog_path = resolve_memlog_path(args)

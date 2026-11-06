@@ -300,6 +300,9 @@ def get_recommendations(
     }
 
 
+DEFAULT_MODES = ["interactive", "auto"]
+
+
 def compile_preferences_content(
     role: str = DEFAULT_ROLES[0],
     domain_experience: str = DEFAULT_EXPERIENCE_LEVELS[1],
@@ -309,6 +312,7 @@ def compile_preferences_content(
     target_subject: str = "",
     learning_goals: str = "",
     extra_notes: str = "",
+    mode: str = "interactive",
 ) -> str:
     """Compile valid markdown frontmatter + body for profile/preferences.md."""
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -356,6 +360,7 @@ def compile_preferences_content(
 role: "{role}"
 domain_experience: "{domain_experience}"
 explanation_density: "{explanation_density}"
+mode: "{mode}"
 target_subject: "{safe_subj}"
 learning_goals: "{safe_goals}"
 teacher: "{teacher}"
@@ -407,10 +412,12 @@ def parse_preferences_file(filepath: Path) -> dict[str, Any]:
                 key, val = line.split(":", 1)
                 key = key.strip()
                 val = val.strip().strip('"').strip("'")
-                if key in {"role", "domain_experience", "explanation_density", "style_profile", "teacher", "faculty", "target_subject", "learning_goals", "created", "updated"}:
+                if key in {"role", "domain_experience", "explanation_density", "mode", "style_profile", "teacher", "faculty", "target_subject", "learning_goals", "created", "updated"}:
                     result[key] = val
                     if key in {"teacher", "faculty"}:
                         result["teacher"] = val
+    if "mode" not in result:
+        result["mode"] = "interactive"
     return result
 
 
@@ -423,6 +430,7 @@ def bootstrap_workspace(
     styles: list[str] | str | None = None,
     teacher: str = "feynman",
     extra_notes: str = "",
+    mode: str = "interactive",
 ) -> dict[str, Any]:
     """Initialize a sovereign TextCourses workspace directory."""
     target_path = Path(path).resolve()
@@ -505,6 +513,7 @@ def bootstrap_workspace(
         styles=styles,
         teacher=teacher,
         extra_notes=extra_notes,
+        mode=mode,
     )
     pref_file = target_path / "_tc" / "profile" / "preferences.md"
     if not pref_file.exists():
@@ -821,6 +830,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> None:
             styles=styles,
             teacher=getattr(args, "teacher", "feynman"),
             extra_notes=getattr(args, "notes", ""),
+            mode=getattr(args, "mode", "interactive"),
         )
         output_json(result, exit_code=0)
     except Exception as e:
@@ -932,6 +942,17 @@ def cmd_set_preferences(args: argparse.Namespace) -> None:
                     goals = existing["learning_goals"]
                     break
 
+    mode = getattr(args, "mode", None)
+    if not mode:
+        for p_file in pref_candidates:
+            if p_file.is_file():
+                existing = parse_preferences_file(p_file)
+                if "mode" in existing:
+                    mode = existing["mode"]
+                    break
+    if not mode:
+        mode = "interactive"
+
     content = compile_preferences_content(
         role=getattr(args, "role", DEFAULT_ROLES[0]),
         domain_experience=getattr(args, "experience", DEFAULT_EXPERIENCE_LEVELS[1]),
@@ -941,6 +962,7 @@ def cmd_set_preferences(args: argparse.Namespace) -> None:
         target_subject=subject or "",
         learning_goals=goals or "",
         extra_notes=getattr(args, "notes", ""),
+        mode=mode,
     )
     # Always write to canonical _tc/profile/preferences.md
     primary_pref.parent.mkdir(parents=True, exist_ok=True)
@@ -988,6 +1010,7 @@ def main() -> None:
     p_boot.add_argument("--subject", "--topic", dest="subject", default="", help="Target subject or domain to learn")
     p_boot.add_argument("--goals", "--description", dest="goals", default="", help="In-depth learning goals and focus areas")
     p_boot.add_argument("--notes", default="", help="Optional learner notes")
+    p_boot.add_argument("--mode", choices=DEFAULT_MODES, default="interactive", help="Execution mode (interactive or auto)")
     p_boot.set_defaults(func=cmd_bootstrap)
 
     # init alias for bootstrap
@@ -1003,6 +1026,7 @@ def main() -> None:
     p_init.add_argument("--subject", "--topic", dest="subject", default="", help="Target subject or domain to learn")
     p_init.add_argument("--goals", "--description", dest="goals", default="", help="In-depth learning goals and focus areas")
     p_init.add_argument("--notes", default="", help="Optional learner notes")
+    p_init.add_argument("--mode", choices=DEFAULT_MODES, default="interactive", help="Execution mode (interactive or auto)")
     p_init.set_defaults(func=cmd_bootstrap)
 
     # scan subcommand
@@ -1031,6 +1055,7 @@ def main() -> None:
     p_set_pref.add_argument("--subject", "--topic", dest="subject", default="", help="Target subject or domain to learn")
     p_set_pref.add_argument("--goals", "--description", dest="goals", default="", help="In-depth learning goals, focus areas, and deliverables")
     p_set_pref.add_argument("--notes", default="", help="Optional learner notes")
+    p_set_pref.add_argument("--mode", choices=DEFAULT_MODES, default=None, help="Execution mode (interactive or auto)")
     p_set_pref.set_defaults(func=cmd_set_preferences)
 
     # recommend subcommand

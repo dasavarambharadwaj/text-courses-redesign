@@ -119,10 +119,47 @@ def dispatch_conversational_turn(
     user_input: str | None = None,
     workspace: Path | str = ".",
     course_slug: str | None = None,
+    mode: str | None = None,
 ) -> dict[str, Any]:
     """Conversational state machine and single-door dispatcher for /tc."""
     ws = Path(workspace).resolve()
     inp = user_input.strip() if user_input else ""
+
+    # Parse preferences to determine active mode
+    pref_file = ws / "_tc" / "profile" / "preferences.md"
+    if not pref_file.is_file():
+        pref_file = ws / "profile" / "preferences.md"
+    if not pref_file.is_file():
+        pref_file = ws / "plan" / "preferences.md"
+
+    try:
+        from bootstrapper import parse_preferences_file, compile_preferences_content, atomic_write_text
+    except ImportError:
+        from _tc.scripts.bootstrapper import parse_preferences_file, compile_preferences_content, atomic_write_text
+
+    pref_data = parse_preferences_file(pref_file) if pref_file.is_file() else {}
+
+    # Detect mode from argument, preferences, or input text
+    resolved_mode = mode or pref_data.get("mode")
+    if not resolved_mode:
+        if "--mode auto" in inp or "mode: auto" in inp or inp == "auto":
+            resolved_mode = "auto"
+        else:
+            resolved_mode = "interactive"
+
+    # If mode was explicitly provided or updated, persist it to preferences
+    if mode and pref_file.is_file() and pref_data.get("mode") != mode:
+        pref_data["mode"] = mode
+        updated_content = compile_preferences_content(
+            role=pref_data.get("role", "Software Engineer"),
+            domain_experience=pref_data.get("domain_experience", "intermediate"),
+            explanation_density=pref_data.get("explanation_density", "balanced"),
+            teacher=pref_data.get("teacher", "feynman"),
+            target_subject=pref_data.get("target_subject", ""),
+            learning_goals=pref_data.get("learning_goals", ""),
+            mode=mode,
+        )
+        atomic_write_text(pref_file, updated_content)
 
     # 1. Check pending interactive checkpoint gate
     try:
@@ -248,6 +285,49 @@ def dispatch_conversational_turn(
             except Exception:
                 pass
 
+        if resolved_mode == "auto":
+            # Auto mode bypasses acquisition gate & approval gate (FR-47)
+            try:
+                from memlog import append_entry
+            except ImportError:
+                from _tc.scripts.memlog import append_entry
+
+            try:
+                append_entry(ws, f"Auto-mode decision: Selected canonical research sources for {topic_title}", scope="profile", tag="decision")
+                append_entry(ws, f"Auto-mode decision: Proceeding with verified documentation and academic sources for {slug}", scope="research", course_slug=slug, tag="decision")
+            except Exception:
+                pass
+
+            try:
+                from course_builder import create_course
+            except ImportError:
+                from _tc.scripts.course_builder import create_course
+            res_create = create_course(slug=slug, title=topic_title, workspace=ws)
+
+            try:
+                append_entry(ws, f"Auto-mode decision: Approved curriculum blueprint for {slug}", scope="course", course_slug=slug, tag="decision")
+                append_entry(ws, f"Auto-mode milestone: Completed autonomous curriculum synthesis for {slug}", scope="profile", tag="milestone", roll_up=True)
+            except Exception:
+                pass
+
+            try:
+                from teach_engine import get_teaching_session
+            except ImportError:
+                from _tc.scripts.teach_engine import get_teaching_session
+            ctx = get_teaching_session(slug, workspace=ws)
+            return {
+                "ok": True,
+                "state": "teaching",
+                "action": "auto_created",
+                "mode": "auto",
+                "slug": slug,
+                "deliberation_summary": res_create.get("deliberation_summary"),
+                "context": ctx,
+                "fork_text": ctx.get("fork_text", ""),
+                "message": f"Autonomous course creation complete for {topic_title}. Ready for Lesson 1.",
+            }
+
+        if not discovered_docs:
             # 2. Extract discovered canonical books and auto-harvested sources
             rec_books = []
             gs_file = ws / "_tc" / "research" / slug / "gold-standards.md"
@@ -405,6 +485,7 @@ def main() -> None:
         input_val = None
         ws_val = "."
         course_val = None
+        mode_val = None
         for i, a in enumerate(args):
             if a in {"--input", "-i"} and i + 1 < len(args):
                 input_val = args[i + 1]
@@ -412,7 +493,9 @@ def main() -> None:
                 ws_val = args[i + 1]
             elif a in {"--course", "-c"} and i + 1 < len(args):
                 course_val = args[i + 1]
-        res = dispatch_conversational_turn(user_input=input_val, workspace=ws_val, course_slug=course_val)
+            elif a in {"--mode", "-m"} and i + 1 < len(args):
+                mode_val = args[i + 1]
+        res = dispatch_conversational_turn(user_input=input_val, workspace=ws_val, course_slug=course_val, mode=mode_val)
         if "--json" in args:
             print(json.dumps(res, indent=2))
         else:
