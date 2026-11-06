@@ -209,6 +209,16 @@ def dispatch_conversational_turn(
                 except Exception:
                     pass
 
+                # Convert all sources to zero-loss markdown and emit ledger (FR-48, CAP-3)
+                try:
+                    from extractor import convert_sources_to_markdown
+                except ImportError:
+                    from _tc.scripts.extractor import convert_sources_to_markdown
+                try:
+                    convert_sources_to_markdown(slug=slug, workspace=ws)
+                except Exception:
+                    pass
+
                 # Material fallback check: log missing proprietary books to scoped memlog
                 try:
                     from memlog import append_entry
@@ -399,6 +409,15 @@ def dispatch_conversational_turn(
 
             try:
                 run_scout(slug=slug, topic=topic_title, workspace=ws)
+            except Exception:
+                pass
+
+            try:
+                from extractor import convert_sources_to_markdown
+            except ImportError:
+                from _tc.scripts.extractor import convert_sources_to_markdown
+            try:
+                convert_sources_to_markdown(slug=slug, workspace=ws)
             except Exception:
                 pass
 
